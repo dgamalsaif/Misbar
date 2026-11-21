@@ -5,7 +5,6 @@ import CountrySelector from "@/components/CountrySelector";
 import FloatingButtons from "@/components/FloatingButtons";
 import { CoordinatorPortalSettings, DEFAULT_COORDINATOR_PORTAL_SETTINGS, PortalNavIcon } from "@/lib/coordinatorPortalSettings";
 import Footer from "@/components/Footer";
-import { SRMA_LOGO } from "@/components/BrandBackground";
 import { useLanguage } from "@/lib/i18n";
 import { LanguageMenu } from "@/components/Navbar";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
@@ -43,7 +42,7 @@ function CoordinatorHeader({ settings }: { settings: CoordinatorPortalSettings }
     <header className="relative z-50 border-b border-slate-100 bg-white shadow-[0_2px_12px_rgba(22,48,67,0.05)]">
       <div className="mx-auto flex h-[78px] max-w-[1450px] items-center justify-between gap-6 px-5 sm:px-8">
         <Link href="/" data-testid="link-coordinator-logo" className="flex shrink-0 items-center gap-2.5">
-          <BrandLogo src={siteContent?.brand.logoUrl || SRMA_LOGO} alt={language === "ar" ? siteContent?.brand.siteNameAr : siteContent?.brand.siteNameEn} animationEnabled={siteContent?.brand.logoAnimationEnabled} className="h-11 w-16 rounded-xl border border-[#0d765c]/20 bg-white object-contain shadow-sm" />
+          <BrandLogo src={siteContent?.brand.logoUrl || "/misbar-logo.svg"} alt={language === "ar" ? siteContent?.brand.siteNameAr : siteContent?.brand.siteNameEn} animationEnabled={siteContent?.brand.logoAnimationEnabled} className="h-11 w-16 rounded-xl border border-[color:var(--m-primary)]/20 bg-white object-contain shadow-sm" />
           <div className="text-right leading-none">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-black text-[#e2a229]">{settings.brandYear}</span>
@@ -420,7 +419,7 @@ export default function CoordinatorPortal() {
         <aside data-testid="coordinator-install-prompt" className="fixed bottom-5 right-5 z-[75] w-[calc(100%-2.5rem)] max-w-sm rounded-2xl border border-emerald-100 bg-white p-4 text-right shadow-[0_18px_42px_rgba(15,35,50,0.18)] page-enter">
           <button type="button" onClick={dismissInstall} className="absolute left-3 top-3 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100" aria-label={language === "en" ? "Close" : "إغلاق"}><X size={16} /></button>
           <div className="flex items-center gap-3">
-            <img src={SRMA_LOGO} alt="" className="h-10 w-10 shrink-0 rounded-xl border border-emerald-100 object-cover" />
+            <img src="/misbar-logo.svg" alt="" className="h-10 w-10 shrink-0 rounded-xl border border-emerald-100 object-cover" />
             <div>
               <h2 className="pl-6 text-sm font-black text-slate-800">{localize(settings.installTitle, settings.translations.installTitle)}</h2>
               <p className="mt-1 text-xs leading-5 text-slate-500">{localize(settings.installDescription, settings.translations.installDescription)}</p>

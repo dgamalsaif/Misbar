@@ -1340,7 +1340,8 @@ export default function AdminDashboard() {
             </button>
           )}
 
-{canManage && (<button
+{canManage && (
+          <button
             onClick={() => setView('settings')}
             className={`flex shrink-0 whitespace-nowrap items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
               view === 'settings'
@@ -1351,6 +1352,7 @@ export default function AdminDashboard() {
             <Settings size={16} />
             <span>{settingsNav.navLabels["settings"][adminLanguage]}</span>
           </button>
+          )}
 
           {canManage && (
             <button

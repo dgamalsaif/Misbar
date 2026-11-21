@@ -5,11 +5,10 @@
  */
 import assert from "node:assert/strict";
 import { eq } from "drizzle-orm";
-import { coordinatorPortalSettingsTable, getPersistentDatabase, pool } from "../lib/db/src/index";
+import { coordinatorPortalSettingsTable, db, pool } from "../lib/db/src/index";
 import { getSiteContentSettings, saveSiteContentSettings, SITE_CONTENT_KEY } from "../artifacts/api-server/src/lib/siteContentSettings";
 
 if (process.env.NODE_ENV === "production") throw new Error("This check is development-only");
-const db = getPersistentDatabase();
 const [original] = await db.select().from(coordinatorPortalSettingsTable)
   .where(eq(coordinatorPortalSettingsTable.key, SITE_CONTENT_KEY)).limit(1);
 try {

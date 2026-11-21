@@ -406,7 +406,7 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
 };
 
 export async function getSiteContentSettings(): Promise<SiteContentSettings> {
-  const [record] = await getPersistentDatabase().select().from(coordinatorPortalSettingsTable)
+  const [record] = await db.select().from(coordinatorPortalSettingsTable)
     .where(eq(coordinatorPortalSettingsTable.key, SITE_CONTENT_KEY)).limit(1);
   return record ? sanitizeSiteContentSettings(record.value) : DEFAULT_SITE_CONTENT_SETTINGS;
 }
@@ -750,7 +750,7 @@ type BrandTextKey = { [K in keyof BrandContactSettings]-?: BrandContactSettings[
 
 export async function saveSiteContentSettings(settings: SiteContentSettings) {
   const value = settings as unknown as Record<string, unknown>;
-  await getPersistentDatabase().insert(coordinatorPortalSettingsTable).values({ key: SITE_CONTENT_KEY, value })
+  await db.insert(coordinatorPortalSettingsTable).values({ key: SITE_CONTENT_KEY, value })
     .onConflictDoUpdate({ target: coordinatorPortalSettingsTable.key, set: { value, updatedAt: new Date() } });
 }
 
