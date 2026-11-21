@@ -51,7 +51,8 @@ export default function Home() {
   const affiliations = home.affiliations;
   const universities = (affiliations.universities || []).map(L).filter(Boolean);
   const countries = (affiliations.countries || []).map(L).filter(Boolean);
-  const journals = (settings.journalOptions || []).map((journal) => language === "ar" ? journal.nameAr : journal.nameEn).filter(Boolean);
+  const journalOptions = settings.journalOptions || [];
+  const journals = journalOptions.map((journal) => language === "ar" ? journal.nameAr || journal.nameEn : journal.nameEn || journal.nameAr).filter(Boolean);
   const services = settings.experience.content.services.items;
   const marqueeStyle = (seconds: number): CSSProperties => ({ "--m-home-marquee-duration": `${seconds}s` } as CSSProperties);
 
@@ -177,14 +178,52 @@ export default function Home() {
       </section>;
     },
     journalTicker: () => {
-      if (!journals.length) return null;
+      if (!journalOptions.length) return null;
       return <section id="journal-ticker" key="journalTicker" className="m-home-journals" data-testid="section-journal-ticker">
-        <div className="m-container m-home-journal-heading"><div><span className="m-eyebrow">{language === "ar" ? "خيارات المجلات" : "Journal options"}</span><h2>{L(home.journalTicker.title)}</h2><p>{L(home.journalTicker.subtitle)}</p></div><span className="m-home-journal-seal"><BookOpenText size={22} /></span></div>
-        <div className="m-home-journal-window" aria-label={language === "ar" ? "أسماء المجلات في إعدادات الفرص" : "Journal names in opportunity settings"}>
+        <div className="m-container m-home-journal-heading">
+          <div>
+            <span className="m-eyebrow">{language === "ar" ? "دليل المجلات" : "Journal directory"}</span>
+            <h2>{L(home.journalTicker.title)}</h2>
+            <p>{L(home.journalTicker.subtitle)}</p>
+          </div>
+          <span className="m-home-journal-seal" aria-hidden="true"><BookOpenText size={22} /></span>
+        </div>
+        <div className="m-home-journal-window" aria-label={language === "ar" ? "خيارات المجلات وبيانات الفهرسة المسجلة" : "Journal options and recorded indexing details"}>
           <div className="m-home-journal-track" data-animated={home.journalTicker.animationEnabled && settings.experience.theme.motion} style={marqueeStyle(home.journalTicker.animationDurationSeconds)}>
-            {[...journals, ...journals].map((name, i) => <span key={`${name}-${i}`} className="m-home-journal-name" dir={language === "ar" ? "rtl" : "ltr"} aria-hidden={i >= journals.length}>{name}<i aria-hidden="true" /></span>)}
+            {[...journalOptions, ...journalOptions].map((journal, i) => {
+              const name = language === "ar" ? journal.nameAr || journal.nameEn : journal.nameEn || journal.nameAr;
+              const specialtyParts = (journal.specialty || "").split(" / ");
+              const specialty = language === "ar" ? specialtyParts[specialtyParts.length - 1] : specialtyParts[0];
+              const indexes = [
+                { name: "PubMed", value: journal.pubmed },
+                { name: "Scopus", value: journal.scopus },
+                { name: "WoS", value: journal.wos },
+              ].filter(({ value }) => Boolean(value?.trim()) && !/^(no|false|none|n\/a)$/i.test(value.trim()));
+              return <article
+                key={`${journal.id || name}-${i}`}
+                className={`m-home-journal-card m-home-journal-card-${i % 4}`}
+                dir={language === "ar" ? "rtl" : "ltr"}
+                aria-hidden={i >= journalOptions.length}
+                data-testid={i < journalOptions.length ? `card-journal-${journal.id}` : undefined}
+              >
+                <div className="m-home-journal-cover" aria-hidden="true">
+                  <span className="m-home-journal-cover-number">MISBAR / {String((i % journalOptions.length) + 1).padStart(2, "0")}</span>
+                  <BookOpenText size={25} strokeWidth={1.5} />
+                  <span className="m-home-journal-cover-name" dir="ltr">{journal.nameEn || name}</span>
+                </div>
+                <div className="m-home-journal-card-copy">
+                  {specialty && <span className="m-home-journal-specialty">{specialty}</span>}
+                  <h3>{name}</h3>
+                  {journal.issn && <span className="m-home-journal-issn" dir="ltr">ISSN {journal.issn}</span>}
+                  {indexes.length > 0 && <div className="m-home-journal-indexes" aria-label={language === "ar" ? "بيانات الفهرسة" : "Indexing details"}>
+                    {indexes.map(({ name: indexName, value }) => <span key={indexName}><strong>{indexName}</strong><small>{value.trim().toLowerCase() === "indexed" && language === "ar" ? "مفهرس" : value}</small></span>)}
+                  </div>}
+                </div>
+              </article>;
+            })}
           </div>
         </div>
+        <p className="m-container m-home-journal-disclaimer">{language === "ar" ? "تُعرض بيانات الفهرسة وفق السجلات المحفوظة في لوحة الإدارة؛ تحقّق من المصدر الرسمي قبل اختيار المجلة." : "Indexing details reflect the records saved in the admin panel; verify them with the official source before choosing a journal."}</p>
       </section>;
     },
     pathways: () => (

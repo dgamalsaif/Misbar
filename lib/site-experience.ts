@@ -35,7 +35,8 @@ export const BUTTON_STYLES = ["pill", "rounded", "square"] as const;
 export const CARD_STYLES = ["elevated", "outline", "flat", "tinted"] as const;
 export const BACKGROUND_PATTERNS = ["none", "contour", "dots", "arches"] as const;
 export const DENSITIES = ["compact", "comfortable", "airy"] as const;
-export const HOME_SECTION_IDS = ["hero", "services", "programs", "affiliations", "journalTicker", "pathways", "process", "knowledge", "faqTeaser", "cta"] as const;
+export const HOME_SECTION_IDS = ["hero", "services", "journalTicker", "programs", "pathways", "process", "affiliations", "knowledge", "faqTeaser", "cta"] as const;
+const LEGACY_DEFAULT_HOME_SECTION_ORDER = ["hero", "services", "programs", "affiliations", "journalTicker", "pathways", "process", "knowledge", "faqTeaser", "cta"] as const;
 export const ANNOUNCEMENT_TONES = ["gold", "green", "neutral"] as const;
 
 export type ThemePreset = typeof THEME_PRESETS[number];
@@ -215,10 +216,17 @@ const t = (ar: string, en: string): BiText => ({ ar, en });
 const nav = (route: LinkableRouteId, ar: string, en: string, highlight = false, visible = true): NavItem => ({ route, label: t(ar, en), visible, highlight });
 
 export const THEME_PRESET_VALUES: Record<Exclude<ThemePreset, "custom">, Pick<ThemeSettings, "primary" | "gold" | "ink" | "background" | "surface">> = {
-  misbar: { primary: "#0b5145", gold: "#c69b35", ink: "#14231f", background: "#f3f1e7", surface: "#fffdf6" },
+  misbar: { primary: "#065634", gold: "#d4af37", ink: "#18352b", background: "#f3f5ef", surface: "#fffdf8" },
   oasis: { primary: "#0f6b55", gold: "#b8892a", ink: "#102620", background: "#eef4ee", surface: "#fbfdf9" },
   sandstone: { primary: "#2f5d3a", gold: "#a8742a", ink: "#2a2117", background: "#f4ede0", surface: "#fffaf0" },
   nightClinic: { primary: "#0e3d36", gold: "#d2a744", ink: "#0f1c1a", background: "#e9ece6", surface: "#fafbf6" },
+};
+const LEGACY_MISBAR_THEME_VALUES = {
+  primary: "#0b5145",
+  gold: "#c69b35",
+  ink: "#14231f",
+  background: "#f3f1e7",
+  surface: "#fffdf6",
 };
 
 const chrome = (ar: string, en: string): PageChrome => ({ eyebrow: t(ar, en), showEyebrow: true });
@@ -351,8 +359,11 @@ export const DEFAULT_EXPERIENCE_SETTINGS: ExperienceSettings = {
       animationDurationSeconds: 38,
     },
     journalTicker: {
-      title: t("المجلات ضمن خيارات الفرص", "Journals listed in opportunity settings"),
-      subtitle: t("تختلف المجلة المستهدفة من فرصة إلى أخرى.", "The target journal varies by opportunity."),
+      title: t("مجلات ضمن خيارات الفرص البحثية", "Journals featured in research opportunities"),
+      subtitle: t(
+        "أسماء المجلات وبيانات الفهرسة كما سُجلت في لوحة الإدارة؛ تحقّق من المتطلبات الحالية لكل مجلة.",
+        "Journal names and indexing details reflect the admin records; verify each journal’s current requirements.",
+      ),
       animationEnabled: true,
       animationDurationSeconds: 42,
     },
@@ -746,13 +757,24 @@ function parse(input: unknown, strict: boolean): ExperienceSettings {
   }
 
   const th = obj(s, input.theme, "theme");
+  const requestedThemePreset = oneOf(s, th.preset, THEME_PRESETS, D.theme.preset, "theme.preset");
+  const matchesPalette = (palette: Pick<ThemeSettings, "primary" | "gold" | "ink" | "background" | "surface">) =>
+    th.primary === palette.primary &&
+    th.gold === palette.gold &&
+    th.ink === palette.ink &&
+    th.background === palette.background &&
+    th.surface === palette.surface;
+  const legacySandstone = THEME_PRESET_VALUES.sandstone;
+  const migrateDefaultPalette =
+    (requestedThemePreset === "sandstone" && matchesPalette(legacySandstone)) ||
+    (requestedThemePreset === "misbar" && matchesPalette(LEGACY_MISBAR_THEME_VALUES));
   const theme: ThemeSettings = {
-    preset: oneOf(s, th.preset, THEME_PRESETS, D.theme.preset, "theme.preset"),
-    primary: color(s, th.primary, D.theme.primary, "theme.primary"),
-    gold: color(s, th.gold, D.theme.gold, "theme.gold"),
-    ink: color(s, th.ink, D.theme.ink, "theme.ink"),
-    background: color(s, th.background, D.theme.background, "theme.background"),
-    surface: color(s, th.surface, D.theme.surface, "theme.surface"),
+    preset: migrateDefaultPalette ? "misbar" : requestedThemePreset,
+    primary: migrateDefaultPalette ? THEME_PRESET_VALUES.misbar.primary : color(s, th.primary, D.theme.primary, "theme.primary"),
+    gold: migrateDefaultPalette ? THEME_PRESET_VALUES.misbar.gold : color(s, th.gold, D.theme.gold, "theme.gold"),
+    ink: migrateDefaultPalette ? THEME_PRESET_VALUES.misbar.ink : color(s, th.ink, D.theme.ink, "theme.ink"),
+    background: migrateDefaultPalette ? THEME_PRESET_VALUES.misbar.background : color(s, th.background, D.theme.background, "theme.background"),
+    surface: migrateDefaultPalette ? THEME_PRESET_VALUES.misbar.surface : color(s, th.surface, D.theme.surface, "theme.surface"),
     headingFont: oneOf(s, th.headingFont, HEADING_FONTS, D.theme.headingFont, "theme.headingFont"),
     bodyFont: oneOf(s, th.bodyFont, BODY_FONTS, D.theme.bodyFont, "theme.bodyFont"),
     baseFontSize: num(s, th.baseFontSize, D.theme.baseFontSize, EXPERIENCE_LIMITS.fontMin, EXPERIENCE_LIMITS.fontMax, "theme.baseFontSize", true),
@@ -802,15 +824,31 @@ function parse(input: unknown, strict: boolean): ExperienceSettings {
       seen.add(id);
       parsed.push({ id, visible: bool(s, o.visible, true, `${p}.visible`) });
     });
+    const isLegacyDefaultOrder =
+      parsed.length === LEGACY_DEFAULT_HOME_SECTION_ORDER.length &&
+      parsed.every((section, index) => section.id === LEGACY_DEFAULT_HOME_SECTION_ORDER[index]);
+    if (isLegacyDefaultOrder) {
+      parsed.sort((a, b) => HOME_SECTION_IDS.indexOf(a.id) - HOME_SECTION_IDS.indexOf(b.id));
+    }
+    const rank = new Map<HomeSectionId, number>(HOME_SECTION_IDS.map((id, index) => [id, index]));
+    const followsDefaultOrder = parsed.every((section, index) =>
+      index === 0 || rank.get(parsed[index - 1].id)! < rank.get(section.id)!,
+    );
     const afterSection: Partial<Record<HomeSectionId, HomeSectionId>> = {
       services: "hero",
-      affiliations: "programs",
-      journalTicker: "affiliations",
+      journalTicker: "services",
+      programs: "journalTicker",
+      pathways: "programs",
+      process: "pathways",
+      affiliations: "process",
+      knowledge: "affiliations",
+      faqTeaser: "knowledge",
+      cta: "faqTeaser",
     };
     HOME_SECTION_IDS.forEach((id) => {
       if (seen.has(id)) return;
       const section: HomeSection = { id, visible: true };
-      const pivot = afterSection[id];
+      const pivot = followsDefaultOrder ? afterSection[id] : undefined;
       const pivotIndex = pivot ? parsed.findIndex((item) => item.id === pivot) : -1;
       if (pivotIndex >= 0) parsed.splice(pivotIndex + 1, 0, section);
       else parsed.push(section);

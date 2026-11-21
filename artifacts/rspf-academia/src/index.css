@@ -43,11 +43,11 @@
 
 :root {
   /* Misbar palette — overwritten at runtime by ThemeSync from experience.theme */
-  --m-primary: #0b5145;
-  --m-gold: #c69b35;
-  --m-ink: #14231f;
-  --m-bg: #f3f1e7;
-  --m-surface: #fffdf6;
+  --m-primary: #065634;
+  --m-gold: #d4af37;
+  --m-ink: #18352b;
+  --m-bg: #f3f5ef;
+  --m-surface: #fffdf8;
   --m-radius: 1rem;
   --m-btn-radius: 999px;
   --m-space: 1;
@@ -60,25 +60,25 @@
   --m-line: color-mix(in oklab, var(--m-ink) 11%, transparent);
   --m-muted: color-mix(in oklab, var(--m-ink) 62%, var(--m-bg));
 
-  --background: 51 33% 93%;
-  --foreground: 162 27% 11%;
-  --border: 48 18% 85%;
-  --input: 48 18% 85%;
-  --ring: 170 76% 18%;
-  --card: 48 100% 98%;
-  --card-foreground: 162 27% 11%;
-  --card-border: 48 18% 86%;
-  --popover: 48 100% 98%;
-  --popover-foreground: 162 27% 11%;
-  --popover-border: 48 18% 86%;
-  --primary: 170 76% 18%;
-  --primary-foreground: 48 100% 98%;
-  --secondary: 48 30% 91%;
-  --secondary-foreground: 162 27% 11%;
-  --muted: 48 25% 91%;
-  --muted-foreground: 160 10% 38%;
-  --accent: 42 58% 88%;
-  --accent-foreground: 162 27% 11%;
+  --background: 80 24% 95%;
+  --foreground: 160 38% 15%;
+  --border: 80 15% 84%;
+  --input: 80 15% 84%;
+  --ring: 155 87% 18%;
+  --card: 46 100% 98%;
+  --card-foreground: 160 38% 15%;
+  --card-border: 80 15% 86%;
+  --popover: 46 100% 98%;
+  --popover-foreground: 160 38% 15%;
+  --popover-border: 80 15% 86%;
+  --primary: 155 87% 18%;
+  --primary-foreground: 46 100% 98%;
+  --secondary: 80 22% 91%;
+  --secondary-foreground: 160 38% 15%;
+  --muted: 80 20% 91%;
+  --muted-foreground: 155 10% 38%;
+  --accent: 45 62% 88%;
+  --accent-foreground: 160 38% 15%;
   --destructive: 4 70% 46%;
   --destructive-foreground: 48 100% 98%;
 
@@ -1227,4 +1227,188 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
   border-color: color-mix(in oklab, var(--m-gold) 42%, transparent);
   background: color-mix(in oklab, var(--m-primary) 82%, var(--m-ink));
   color: var(--m-gold);
+}
+
+/* Homepage journal directory and photo treatment; all colors remain admin-controlled. */
+.m-home-image-frame {
+  border-radius: 48% 48% .35rem .35rem;
+}
+.m-home-image-frame::before {
+  border-radius: 47% 47% .2rem .2rem;
+}
+.m-home-hero-image {
+  border-radius: inherit;
+}
+.m-home-journals {
+  padding-block: clamp(3.4rem, 6vw, 5.2rem);
+  color: var(--m-ink);
+  background:
+    radial-gradient(ellipse at 95% 0%, color-mix(in oklab, var(--m-gold) 16%, transparent), transparent 36%),
+    linear-gradient(145deg, var(--m-surface), color-mix(in oklab, var(--m-primary) 6%, var(--m-bg)));
+}
+.m-home-journal-heading {
+  align-items: flex-end;
+  margin-bottom: 1.8rem;
+}
+.m-home-journal-heading .m-eyebrow,
+.m-home-journal-heading h2 { color: var(--m-primary); }
+.m-home-journal-heading p {
+  max-width: 650px;
+  color: var(--m-muted);
+  line-height: 1.8;
+}
+.m-home-journal-window {
+  border: 0;
+  mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+}
+.m-home-journal-track {
+  align-items: stretch;
+  padding-block: .55rem 1.25rem;
+}
+.m-home-journal-card {
+  position: relative;
+  display: flex;
+  flex: 0 0 clamp(235px, 23vw, 285px);
+  flex-direction: column;
+  margin-inline: .55rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--m-primary) 14%, transparent);
+  border-radius: 1rem .35rem 1rem .35rem;
+  background: var(--m-surface);
+  box-shadow: 0 14px 30px -26px var(--m-primary);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+.m-home-journal-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 34px -24px var(--m-primary);
+}
+.m-home-journal-cover {
+  position: relative;
+  display: flex;
+  min-height: 112px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .65rem;
+  overflow: hidden;
+  padding: .9rem 1rem;
+  background: linear-gradient(135deg, var(--journal-cover), color-mix(in oklab, var(--journal-cover) 76%, var(--m-ink)));
+  color: var(--journal-cover-ink, var(--m-surface));
+}
+.m-home-journal-cover::before {
+  position: absolute;
+  top: -3.6rem;
+  inset-inline-end: -2rem;
+  width: 9rem;
+  height: 9rem;
+  border: 1px solid color-mix(in oklab, var(--m-gold) 58%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 10px color-mix(in oklab, var(--m-gold) 8%, transparent), 0 0 0 22px color-mix(in oklab, var(--m-surface) 7%, transparent);
+  content: "";
+}
+.m-home-journal-card-0 .m-home-journal-cover { --journal-cover: var(--m-primary); }
+.m-home-journal-card-1 .m-home-journal-cover { --journal-cover: color-mix(in oklab, var(--m-primary) 74%, var(--m-gold)); }
+.m-home-journal-card-2 .m-home-journal-cover { --journal-cover: color-mix(in oklab, var(--m-primary) 84%, var(--m-surface)); }
+.m-home-journal-card-3 .m-home-journal-cover {
+  --journal-cover: color-mix(in oklab, var(--m-gold) 34%, var(--m-primary));
+  --journal-cover-ink: var(--m-ink);
+}
+.m-home-journal-cover > * { position: relative; z-index: 1; }
+.m-home-journal-cover-number {
+  color: color-mix(in oklab, var(--journal-cover-ink, var(--m-surface)) 72%, transparent);
+  font: 600 .6rem/1 ui-monospace, monospace;
+  letter-spacing: .1em;
+}
+.m-home-journal-cover-name {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--journal-cover-ink, var(--m-surface));
+  font-family: var(--m-font-heading);
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m-home-journal-card-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .95rem 1rem 1rem;
+}
+.m-home-journal-specialty {
+  color: var(--m-primary);
+  font-size: .66rem;
+  font-weight: 700;
+}
+.m-home-journal-card-copy h3 {
+  margin: 0;
+  color: var(--m-ink);
+  font-family: var(--m-font-heading);
+  font-size: .9rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.m-home-journal-issn {
+  color: var(--m-muted);
+  font: 500 .62rem/1.4 ui-monospace, monospace;
+}
+.m-home-journal-indexes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: auto;
+  padding-top: .35rem;
+}
+.m-home-journal-indexes > span {
+  display: inline-flex;
+  align-items: center;
+  gap: .28rem;
+  border: 1px solid color-mix(in oklab, var(--m-primary) 14%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--m-primary) 5%, var(--m-surface));
+  padding: .24rem .45rem;
+  color: var(--m-primary);
+  font-size: .58rem;
+  line-height: 1.2;
+}
+.m-home-journal-indexes strong { font-weight: 800; }
+.m-home-journal-indexes small {
+  color: var(--m-muted);
+  font-size: .56rem;
+}
+.m-home-journal-disclaimer {
+  margin-top: .35rem;
+  color: var(--m-muted);
+  font-size: .7rem;
+  line-height: 1.8;
+}
+@media (max-width: 767px) {
+  .m-home-image-frame {
+    border-radius: 48% 48% .25rem .25rem;
+  }
+  .m-home-image-frame::before {
+    border-radius: 47% 47% .2rem .2rem;
+  }
+  .m-home-journal-heading { align-items: flex-start; }
+  .m-home-journal-window {
+    overflow: visible;
+    mask-image: none;
+  }
+  .m-home-journal-track {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .65rem;
+    animation: none;
+  }
+  .m-home-journal-card {
+    flex: 1 1 calc(50% - .65rem);
+    min-width: min(100%, 155px);
+    max-width: 265px;
+    margin: 0;
+  }
+  .m-home-journal-track [aria-hidden="true"] { display: none; }
 }
