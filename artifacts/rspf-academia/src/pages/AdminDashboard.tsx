@@ -10,9 +10,10 @@ import BulkEditModal from "@/components/BulkEditModal";
 import CoordinatorPortalSettingsPanel from "@/components/CoordinatorPortalSettingsPanel";
 import { CoordinatorPortalSettings, DEFAULT_COORDINATOR_PORTAL_SETTINGS } from "@/lib/coordinatorPortalSettings";
 import ContentControlPanel from "@/components/ContentControlPanel";
-import { DEFAULT_SITE_CONTENT_SETTINGS, OpportunityFieldId, SiteContentSettings } from "@/lib/siteContentSettings";
+import { checkExperienceSettings } from "../../../../lib/site-experience";
+import { useExperienceDraft } from "@/lib/experience-draft";
+import { DEFAULT_SITE_CONTENT_SETTINGS, OpportunityFieldId, SiteContentSettings, normalizeSiteContentSettings } from "@/lib/siteContentSettings";
 import Footer from "@/components/Footer";
-import { SRMA_LOGO } from "@/components/BrandBackground";
 import ResearchImagePicker from "@/components/ResearchImagePicker";
 import OpportunityMedia from "@/components/OpportunityMedia";
 import SpecialtyFilter, { buildSpecialtyOptions, specialtyMatches } from "@/components/SpecialtyFilter";
@@ -21,6 +22,7 @@ import OwnerDataManagementPanel from "@/components/OwnerDataManagementPanel";
 import OpportunityImportModal from "@/components/OpportunityImportModal";
 import { apiFetch } from "@/lib/api";
 import { OPPORTUNITY_DISPLAY_FIELDS, normalizeHiddenFields } from "@/lib/opportunityVisibility";
+import { useLanguage } from "@/lib/i18n";
 
 const EMPTY_FORM: Omit<ResearchOpportunity, "id" | "createdAt"> = {
   category: "active",
@@ -727,6 +729,8 @@ function ProgramCard({ research, onRegister, onEdit, onDelete, canManage, isSele
 
 export default function AdminDashboard() {
   const queryClient = useQueryClient();
+  const { language, setLanguage } = useLanguage();
+  const adminLanguage = language === "ar" ? "ar" : "en";
   const [location, setLocation] = useLocation();
   const { signOut } = useClerk();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
@@ -754,6 +758,8 @@ export default function AdminDashboard() {
   const [contentSettingsMessage, setContentSettingsMessage] = useState("");
   const [inquirySaving, setInquirySaving] = useState(false);
   const [inquiryMessage, setInquiryMessage] = useState("");
+  const { setDraft } = useExperienceDraft();
+  const settingsNav = contentSettings.experience.content.admin;
   const [importOpen, setImportOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
@@ -809,7 +815,7 @@ export default function AdminDashboard() {
     if (!role) return;
     apiFetch("/api/site-content-settings")
       .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((settings: SiteContentSettings) => setContentSettings(settings))
+      .then((settings: unknown) => setContentSettings(normalizeSiteContentSettings(settings)))
       .catch(() => role === "owner" && setContentSettingsMessage("تعذر تحميل إعدادات المحتوى حالياً."));
   }, [role]);
 
@@ -1106,20 +1112,28 @@ export default function AdminDashboard() {
   const saveContentSettings = async () => {
     setContentSettingsSaving(true);
     setContentSettingsMessage("");
+    const check = checkExperienceSettings(contentSettings.experience);
+    if (!check.ok) {
+      setContentSettingsMessage(`تعذر الحفظ: ${check.error}`);
+      setContentSettingsSaving(false);
+      return;
+    }
     try {
       const response = await fetch("/api/site-content-settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(contentSettings),
       });
-      const result = await response.json() as SiteContentSettings | { error?: string };
+      const result = await response.json().catch(() => ({})) as SiteContentSettings | { error?: string };
       if (!response.ok) {
-        setContentSettingsMessage("error" in result && result.error ? result.error : "تعذر حفظ إعدادات المحتوى.");
+        setContentSettingsMessage(`تعذر الحفظ (${response.status}): ${"error" in result && result.error ? result.error : "رفض الخادم الإعدادات."}`);
         return;
       }
-      setContentSettings(result as SiteContentSettings);
-      await queryClient.invalidateQueries({ queryKey: ["site-content-settings"] });
-      setContentSettingsMessage("تم الحفظ بنجاح. ستظهر التغييرات في صفحات المنصة عند إعادة فتحها.");
+      const saved = normalizeSiteContentSettings(result);
+      setContentSettings(saved);
+      queryClient.setQueryData(["site-content-settings"], saved);
+      setDraft(null);
+      setContentSettingsMessage("تم الحفظ بنجاح. التغييرات محفوظة في الخادم وتظهر لكل الزوار.");
     } catch {
       setContentSettingsMessage("تعذر الاتصال بالخادم. حاول مرة أخرى.");
     } finally {
@@ -1183,7 +1197,7 @@ export default function AdminDashboard() {
       {/* TOP BAR */}
       <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30 shadow-2xs">
         <div className="flex items-center gap-3.5">
-          <img src={SRMA_LOGO} alt="" className="h-11 w-11 rounded-2xl border border-emerald-100 object-cover shadow-2xs" />
+          {contentSettings.brand.logoUrl && <img src={contentSettings.brand.logoUrl} alt="" className="h-11 w-11 rounded-2xl border border-emerald-100 object-cover shadow-2xs" />}
           <div className="text-right">
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-black text-slate-900">
@@ -1284,6 +1298,12 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {settingsNav.welcome[adminLanguage] && <p className="mb-4 rounded-2xl border border-[color:var(--m-line)] bg-[color:var(--m-gold-soft)] px-5 py-3 text-sm font-semibold text-[color:var(--m-ink)]" data-testid="text-admin-welcome">{settingsNav.welcome[adminLanguage]}</p>}
+        <div className="mb-3 flex justify-end">
+          <button type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")} className="m-btn m-btn-ghost m-btn-sm" data-testid="button-admin-language-toggle">
+            {language === "ar" ? "English" : "العربية"}
+          </button>
+        </div>
         {/* NAVIGATION TABS (Segmented bar) */}
         <div className="w-full max-w-full min-w-0 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200 flex overflow-x-auto sm:flex-wrap items-center gap-1.5 mb-8 shadow-2xs scrollbar-thin">
           <button
@@ -1295,7 +1315,7 @@ export default function AdminDashboard() {
             }`}
           >
             <Landmark size={16} />
-            <span>إدارة البرامج والفرص</span>
+            <span>{settingsNav.navLabels["programs"][adminLanguage]}</span>
           </button>
 
           <Link
@@ -1303,7 +1323,7 @@ export default function AdminDashboard() {
             className="flex shrink-0 whitespace-nowrap items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black text-slate-700 hover:text-slate-900 hover:bg-white/60 transition-all"
           >
             <Users size={16} />
-            <span>{canManage ? "الطلاب المسجلون" : "طلابي المسجلون"}</span>
+              <span>{language === "ar" ? (canManage ? "الطلاب المسجلون" : "طلابي المسجلون") : (canManage ? "Registered participants" : "My participants")}</span>
           </Link>
 
           {canManage && (
@@ -1316,11 +1336,12 @@ export default function AdminDashboard() {
               }`}
             >
               <CreditCard size={16} />
-              <span>المستحقات المالية</span>
+              <span>{settingsNav.navLabels["payments"][adminLanguage]}</span>
             </button>
           )}
 
-{canManage && (<button
+{canManage && (
+          <button
             onClick={() => setView('settings')}
             className={`flex shrink-0 whitespace-nowrap items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
               view === 'settings'
@@ -1329,8 +1350,9 @@ export default function AdminDashboard() {
             }`}
           >
             <Settings size={16} />
-            <span>الإعدادات</span>
-          </button>)}
+            <span>{settingsNav.navLabels["settings"][adminLanguage]}</span>
+          </button>
+          )}
 
           {canManage && (
             <button
@@ -1343,7 +1365,7 @@ export default function AdminDashboard() {
               }`}
             >
               <LayoutDashboard size={16} />
-              <span>بوابة المنسق</span>
+              <span>{settingsNav.navLabels["portal-settings"][adminLanguage]}</span>
             </button>
           )}
 
@@ -1358,7 +1380,7 @@ export default function AdminDashboard() {
               }`}
             >
               <Edit size={16} />
-              <span>المحتوى والمظهر</span>
+              <span>{settingsNav.navLabels["content-settings"][adminLanguage]}</span>
             </button>
           )}
 
@@ -1373,7 +1395,7 @@ export default function AdminDashboard() {
               }`}
             >
               <Database size={16} />
-              <span>إدارة البيانات</span>
+              <span>{settingsNav.navLabels["data-management"][adminLanguage]}</span>
             </button>
           )}
         </div>

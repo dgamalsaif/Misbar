@@ -26,7 +26,7 @@ async function bootstrapInitialOwner(
     .values({
       email,
       clerkUserId,
-      fullName: clerkFullName?.trim() || "مالك منصة SRMA",
+      fullName: clerkFullName?.trim() || "مالك منصة Misbar",
       phone: "",
       status: "active",
     })

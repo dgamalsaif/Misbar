@@ -96,11 +96,8 @@ export default function CoordinatorPortalSettingsPanel({
         <div className="xl:col-span-8 space-y-6">
           {/* الهوية والنصوص */}
           <SectionCard icon={Layout} title="الهوية والنصوص">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <InputField label="اسم العلامة" value={settings.brandName} onChange={v => updateField("brandName", v)} testId="input-brand-name" />
-              <InputField label="سنة العلامة" value={settings.brandYear} onChange={v => updateField("brandYear", v)} testId="input-brand-year" />
-              <InputField label="الشعار اللفظي" value={settings.brandSubtitle} onChange={v => updateField("brandSubtitle", v)} testId="input-brand-subtitle" />
-              <InputField label="عنوان الصفحة (في المتصفح)" value={settings.pageTitle} onChange={v => updateField("pageTitle", v)} testId="input-page-title" />
+            <div className="rounded-2xl border border-[color:var(--m-line)] bg-[color:var(--m-primary-soft)] p-4 text-sm leading-7 text-[color:var(--m-ink)]">
+              اسم الموقع والشعار والألوان تُدار من إعدادات الهوية العامة، وتعديلات عنوان المتصفح تُدار من تبويب SEO. تظهر هذه الهوية تلقائياً في بوابة المنسق.
             </div>
 
             <div className="h-px bg-slate-100 my-8" />

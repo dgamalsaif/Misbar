@@ -32,7 +32,7 @@ const translations: Record<SiteLanguage, Record<TranslationKey, string>> = {
     "nav.about": "عن المنصة",
     "nav.participant": "بوابة المشارك",
     "nav.coordinator": "بوابة المنسق",
-    "nav.requests": "الطلبات الخاصة ⭐",
+    "nav.requests": "الطلبات الخاصة",
     "nav.faq": "الأسئلة الشائعة",
     "language.switch": "English",
     "language.ar": "العربية",

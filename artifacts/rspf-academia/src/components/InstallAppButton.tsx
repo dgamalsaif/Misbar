@@ -18,7 +18,7 @@ declare global {
 export default function InstallAppButton({ className = "" }: { className?: string }) {
   const { direction, language, localize } = useLanguage();
   const { data: settings = DEFAULT_SITE_CONTENT_SETTINGS } = useSiteContentSettings();
-  const appName = settings.brand.appNameAr || settings.brand.appNameEn || settings.brand.siteNameAr || "SRMA";
+  const appName = settings.brand.appNameAr || settings.brand.appNameEn || settings.brand.siteNameAr || "Misbar";
   const appIcon = settings.brand.appIconUrl || settings.brand.logoUrl;
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOpen, setIsOpen] = useState(false);

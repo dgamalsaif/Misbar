@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { raw, Router } from "express";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
@@ -7,9 +7,57 @@ import { getSiteContentSettings, sanitizeSiteContentSettings, saveSiteContentSet
 import { INQUIRY_KEYS, validateInquiryPatch } from "../lib/opportunityInquiryPatch";
 import { randomUUID } from "node:crypto";
 import { siteShareImageSource, siteShareImageVersion, validateSocialShareImageUrl } from "../lib/siteShareImage";
-import { getResearchImageBytes, resolveResearchImageUploadToken } from "../lib/researchImageStorage";
+import { validateExperienceSettings } from "../../../../lib/site-experience";
+import { getResearchImageBytes, resolveResearchImageUploadToken, ResearchImageStorageError, ResearchImageValidationError, uploadResearchImage } from "../lib/researchImageStorage";
 
 const router = Router();
+
+const SITE_LOGO_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/x-png", "image/webp", "application/octet-stream"];
+
+router.post("/site-brand-logo/upload", requireOwner, raw({ type: SITE_LOGO_IMAGE_TYPES, limit: "10mb" }), async (req, res): Promise<void> => {
+  if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+    res.status(400).json({ error: "اختر صورة شعار صالحة بصيغة PNG أو JPG أو WebP." });
+    return;
+  }
+  try {
+    const upload = await uploadResearchImage({ data: req.body, contentType: req.get("content-type") || "" });
+    const objectPath = resolveResearchImageUploadToken(upload.imageToken);
+    const imageId = objectPath.split("/").at(-1);
+    if (!imageId) throw new ResearchImageValidationError("تعذر تجهيز رابط الشعار.");
+    res.status(201).json({ logoUrl: `/api/site-brand-logo/${imageId}` });
+  } catch (error) {
+    if (error instanceof ResearchImageValidationError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    if (error instanceof ResearchImageStorageError) {
+      res.status(503).json({ error: error.message });
+      return;
+    }
+    req.log.error({ err: error }, "Failed to upload site brand logo");
+    res.status(500).json({ error: "تعذر رفع الشعار. لم يتم تأكيد الرفع؛ أعد المحاولة." });
+  }
+});
+
+router.get("/site-brand-logo/:imageId", async (req, res): Promise<void> => {
+  const imageId = req.params.imageId;
+  if (!/^[0-9a-f-]{36}$/i.test(imageId)) {
+    res.status(404).end();
+    return;
+  }
+  try {
+    const image = await getResearchImageBytes(`/objects/research-images/${imageId}`);
+    if (!image) {
+      res.status(404).end();
+      return;
+    }
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.type(image.contentType).send(image.data);
+  } catch {
+    res.status(404).end();
+  }
+});
 
 router.get("/site-content-settings", async (_req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
@@ -53,19 +101,19 @@ router.post("/site-share-image/resolve-upload", requireOwner, (req, res): void =
 });
 
 router.get("/pwa-manifest", async (_req, res): Promise<void> => {
-  const { brand } = await getSiteContentSettings();
-  const name = brand.appNameAr || brand.appNameEn || brand.siteNameAr || "SRMA";
+  const { brand, experience } = await getSiteContentSettings();
+  const name = `${brand.appNameAr || brand.siteNameAr || "مسبار"} | ${brand.appNameEn || brand.siteNameEn || "Misbar"}`;
   res.setHeader("Cache-Control", "no-store, max-age=0");
   res.type("application/manifest+json").json({
     id: "/",
     name,
-    short_name: brand.appShortName || "SRMA",
-    description: name,
+    short_name: brand.appShortName || "Misbar",
+    description: `${brand.appNameAr || "مسبار"} — ${brand.appNameEn || "Misbar"}`,
     start_url: "/?source=pwa",
     scope: "/",
     display: "standalone",
     orientation: "portrait-primary",
-    background_color: "#f8fafc",
+    background_color: experience.theme.background,
     theme_color: brand.appThemeColor,
     lang: "ar",
     dir: "rtl",
@@ -84,8 +132,8 @@ router.get("/pwa-icon/:size.png", async (req, res): Promise<void> => {
     return;
   }
   const { brand } = await getSiteContentSettings();
-  const source = await loadPwaIconSource(brand.appIconUrl || "/srma-logo.jpg")
-    .catch(() => loadPwaIconSource("/srma-logo.jpg"));
+  const source = await loadPwaIconSource(brand.appIconUrl || "/misbar-logo.svg")
+    .catch(() => loadPwaIconSource("/misbar-logo.svg"));
   const inset = Math.round(size * 0.72);
   const logo = await sharp(source).resize(inset, inset, { fit: "contain" }).png().toBuffer();
   const output = await sharp({
@@ -96,8 +144,20 @@ router.get("/pwa-icon/:size.png", async (req, res): Promise<void> => {
 });
 
 router.put("/site-content-settings", requireOwner, async (req, res): Promise<void> => {
-  const settings = sanitizeSiteContentSettings(req.body);
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+    res.status(400).json({ error: "إعدادات الموقع يجب أن تكون كائناً صالحاً." });
+    return;
+  }
   try {
+    validateExperienceSettings(req.body.experience);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "إعدادات المظهر غير صالحة." });
+    return;
+  }
+  let settings: ReturnType<typeof sanitizeSiteContentSettings>;
+  try {
+    const current = await getSiteContentSettings();
+    settings = sanitizeSiteContentSettings({ ...current, ...req.body });
     const brandInput = req.body?.brand || {};
     if (brandInput.socialShareImageUrl !== undefined) {
       settings.brand.socialShareImageUrl = validateSocialShareImageUrl(brandInput.socialShareImageUrl);
@@ -113,8 +173,14 @@ router.put("/site-content-settings", requireOwner, async (req, res): Promise<voi
     res.status(400).json({ error: (error as Error).message });
     return;
   }
-  await saveSiteContentSettings(settings);
-  res.json(settings);
+  try {
+    await saveSiteContentSettings(settings);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(settings);
+  } catch (error) {
+    req.log.error({ err: error }, "Could not save site settings");
+    res.status(500).json({ error: "تعذر حفظ الإعدادات. لم يتم تأكيد الحفظ؛ أعد المحاولة." });
+  }
 });
 
 router.patch("/site-content-settings/opportunity-inquiry", requireOwner, async (req, res): Promise<void> => {

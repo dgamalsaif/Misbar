@@ -1,5 +1,5 @@
-const CACHE_NAME = "srma-academy-v5";
-const APP_SHELL = ["./", "./favicon.svg", "./srma-logo.jpg"];
+const CACHE_NAME = "misbar-app-v6";
+const APP_SHELL = ["./", "./favicon.svg", "./misbar-logo.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

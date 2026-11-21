@@ -1,71 +1,9 @@
-import { useEffect } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { PRIVATE_ROUTE_IDS, fillSeoTemplate, resolveRouteId } from "../../../../lib/site-experience";
 import type { SiteLanguage } from "@/lib/i18n";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 
 const SITE_URL = "https://srmaacademy.com";
-
-const pageMetadata: Record<string, Record<SiteLanguage, { title: string; description: string }>> = {
-  "/": {
-    ar: {
-      title: "SRMA Research Academy | أبحاث للأطباء والنشر العلمي الطبي",
-      description: "نقدم خدمات أكاديمية وبحثية للأطباء لدعم التقديم على البورد والزمالات والترقي الأكاديمي، مع فرص بحثية وخدمات إعداد الأبحاث والتحليل الإحصائي والنشر العلمي.",
-    },
-    en: {
-      title: "SRMA Research Academy | Medical Research & Publication Support",
-      description: "Medical research opportunities, journal selection, and publication support for physicians targeting Q1 and Q2 journals indexed in PubMed, Scopus, and Web of Science.",
-    },
-  },
-  "/participant-portal": {
-    ar: {
-      title: "فرص بحثية للأطباء | البورد السعودي والزمالات 2026 | SRMA",
-      description: "فرص بحثية للأطباء والريزيدنت لدعم البورد السعودي وMatching 2026 والزمالات والترقية الأكاديمية والنشر العلمي الطبي.",
-    },
-    en: {
-      title: "Research Opportunities for Physicians | SRMA",
-      description: "Medical research opportunities for residents and physicians pursuing board applications, fellowships, academic promotion, and publication.",
-    },
-  },
-  "/knowledge-center": {
-    ar: {
-      title: "مركز المعرفة | البورد السعودي والنشر العلمي واختيار المجلات",
-      description: "أدلة عملية للأطباء حول أبحاث البورد السعودي وMatching 2026 والنشر العلمي واختيار مجلات Q1 وQ2 وفهرسة PubMed وScopus وWOS.",
-    },
-    en: {
-      title: "Knowledge Center | Medical Research, Boards & Publication",
-      description: "Practical medical research guides for board applications, fellowships, journal selection, Q1/Q2 publication, PubMed, Scopus, and Web of Science.",
-    },
-  },
-  "/about": {
-    ar: {
-      title: "عن SRMA Research Academy | دعم الأبحاث والنشر العلمي الطبي",
-      description: "تعرف على منصة SRMA لدعم الأطباء والباحثين في البحث العلمي الطبي والنشر واختيار المجلات والفهرسة الدولية.",
-    },
-    en: {
-      title: "About SRMA Research Academy | Medical Research Support",
-      description: "Learn about SRMA Research Academy and our support for medical research, scientific publication, journal selection, and international indexing.",
-    },
-  },
-  "/faq": {
-    ar: {
-      title: "الأسئلة الشائعة | أبحاث البورد والنشر العلمي | SRMA",
-      description: "إجابات حول فرص الأبحاث للأطباء، البورد السعودي، النشر العلمي، المجلات Q1 وQ2، PubMed وScopus وWeb of Science.",
-    },
-    en: {
-      title: "FAQs | Medical Research and Publication | SRMA",
-      description: "Answers about medical research opportunities, scientific publication, Q1/Q2 journals, PubMed, Scopus, Web of Science, and fellowships.",
-    },
-  },
-  "/special-requests": {
-    ar: {
-      title: "خدمات النشر العلمي واختيار المجلات | SRMA",
-      description: "خدمات بحثية للأطباء تشمل إعداد الأبحاث والتحليل الإحصائي واختيار المجلات والنشر العلمي في مجلات Q1 وQ2 المفهرسة.",
-    },
-    en: {
-      title: "Scientific Publication & Journal Selection Services | SRMA",
-      description: "Medical research services including study design, statistics, journal selection, and publication support for indexed Q1 and Q2 journals.",
-    },
-  },
-};
 
 function setMeta(selector: string, attribute: "name" | "property", value: string) {
   let element = document.head.querySelector<HTMLMetaElement>(selector);
@@ -96,57 +34,105 @@ export function buildPublicUrl(pathname: string, language: SiteLanguage) {
   return url.toString();
 }
 
-export function PageSeo({ pathname, language, title, description, image, jsonLd, noIndex = false }: {
+interface SeoOverride {
   pathname: string;
-  language: SiteLanguage;
+  title?: string;
+  description?: string;
+  image?: string;
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+}
+
+const SeoCtx = createContext<{ override: SeoOverride | null; setOverride: (o: SeoOverride | null) => void }>({ override: null, setOverride: () => undefined });
+
+export function SeoProvider({ children }: { children: ReactNode }) {
+  const [override, setOverride] = useState<SeoOverride | null>(null);
+  return <SeoCtx.Provider value={{ override, setOverride }}>{children}</SeoCtx.Provider>;
+}
+
+/**
+ * Page-level SEO registration. Pages pass raw values (e.g. the article/opportunity title);
+ * they are injected into the owner-editable template for that route ({title}, {description}).
+ * This component never writes to <head> itself, which removes the title race with the root manager.
+ */
+export function PageSeo({ pathname, title, description, image, jsonLd }: {
+  pathname: string;
+  language?: SiteLanguage;
   title?: string;
   description?: string;
   image?: string;
   jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
   noIndex?: boolean;
 }) {
-  const { data: settings } = useSiteContentSettings();
+  const { setOverride } = useContext(SeoCtx);
+  const jsonKey = jsonLd ? JSON.stringify(jsonLd) : "";
   useEffect(() => {
-    const knownPage = pageMetadata[pathname]?.[language] || pageMetadata["/"][language];
-    const siteName = language === "ar"
-      ? settings?.brand.siteNameAr || "SRMA Research Academy"
-      : settings?.brand.siteNameEn || "SRMA Research Academy";
-    const pageTitle = (title || knownPage.title).replace(/SRMA Research Academy|SRMA/g, siteName);
-    const pageDescription = description || knownPage.description;
+    setOverride({ pathname, title, description, image, jsonLd: jsonKey ? JSON.parse(jsonKey) : undefined });
+    return () => setOverride(null);
+  }, [pathname, title, description, image, jsonKey, setOverride]);
+  return null;
+}
+
+/** The single writer of document.title and SEO meta. Rendered once in App. */
+export function SeoManager({ pathname, language }: { pathname: string; language: SiteLanguage }) {
+  const { data: settings } = useSiteContentSettings();
+  const { override } = useContext(SeoCtx);
+  useEffect(() => {
+    const routeId = resolveRouteId(pathname);
+    const entry = settings.experience.seo[routeId];
+    const activeOverride = override && override.pathname.replace(/\/$/, "") === (pathname.replace(/\/$/, "") || "/") ? override : null;
+    const siteName = language === "ar" ? settings.brand.siteNameAr || "مسبار" : settings.brand.siteNameEn || "Misbar";
+    const vars = { title: activeOverride?.title || siteName, description: activeOverride?.description || "", site: siteName };
+    const pageTitle = fillSeoTemplate(entry.title[language] || siteName, vars) || siteName;
+    const pageDescription = fillSeoTemplate(entry.description[language], vars) || activeOverride?.description || settings.experience.seo.home.description[language];
+    const noIndex = entry.noIndex || PRIVATE_ROUTE_IDS.includes(routeId) || routeId === "notFound";
     const canonical = buildPublicUrl(pathname, language);
-    const configuredLogo = settings?.brand.logoUrl || "/srma-logo.jpg";
-    const logo = configuredLogo.startsWith("https://") ? configuredLogo : `${SITE_URL}${configuredLogo}`;
-    const socialImage = image ? (image.startsWith("http") ? image : `${SITE_URL}${image.startsWith("/") ? "" : "/"}${image}`) : `${SITE_URL}/api/site-share-image?v=${encodeURIComponent(settings?.brand.socialShareImageVersion || "current")}`;
+    const abs = (u: string) => new URL(u, SITE_URL).toString();
+    const logo = settings.brand.logoUrl ? abs(settings.brand.logoUrl) : "";
+    const imageSrc = activeOverride?.image || entry.imageUrl || settings.experience.seo.home.imageUrl;
+    const configuredShareImage = settings.brand.socialShareImageUrl;
+    const socialImage = configuredShareImage
+      ? abs(configuredShareImage)
+      : imageSrc && !imageSrc.startsWith("data:")
+        ? abs(imageSrc)
+        : `${SITE_URL}/api/site-share-image?v=${encodeURIComponent(settings.brand.socialShareImageVersion || "current")}`;
 
     document.title = pageTitle;
+    document.documentElement.lang = language;
     setMeta('meta[name="description"]', "name", pageDescription);
     setMeta('meta[name="robots"]', "name", noIndex ? "noindex, nofollow" : "index, follow");
     setMeta('meta[property="og:title"]', "property", pageTitle);
+    setMeta('meta[property="og:site_name"]', "property", siteName);
     setMeta('meta[property="og:description"]', "property", pageDescription);
     setMeta('meta[property="og:url"]', "property", canonical);
-    setMeta('meta[property="og:image"]', "property", socialImage);
-    setMeta('meta[property="og:image:secure_url"]', "property", socialImage);
+    if (socialImage) {
+      setMeta('meta[property="og:image"]', "property", socialImage);
+      setMeta('meta[property="og:image:secure_url"]', "property", socialImage);
+      setMeta('meta[property="og:image:alt"]', "property", siteName);
+      setMeta('meta[name="twitter:image"]', "name", socialImage);
+    } else {
+      document.head.querySelector('meta[property="og:image"]')?.remove();
+      document.head.querySelector('meta[property="og:image:secure_url"]')?.remove();
+      document.head.querySelector('meta[property="og:image:alt"]')?.remove();
+      document.head.querySelector('meta[name="twitter:image"]')?.remove();
+    }
     setMeta('meta[property="og:locale"]', "property", language === "ar" ? "ar_SA" : "en_US");
     setMeta('meta[name="twitter:card"]', "name", "summary_large_image");
     setMeta('meta[name="twitter:title"]', "name", pageTitle);
     setMeta('meta[name="twitter:description"]', "name", pageDescription);
-    setMeta('meta[name="twitter:image"]', "name", socialImage);
     setLink("canonical", canonical);
     setLink("alternate", buildPublicUrl(pathname, "ar"), "ar");
     setLink("alternate", buildPublicUrl(pathname, "en"), "en");
     setLink("alternate", buildPublicUrl(pathname, "ar"), "x-default");
 
-    const structuredData = jsonLd || {
+    const structuredData = activeOverride?.jsonLd || {
       "@context": "https://schema.org",
       "@graph": [
         {
           "@type": "Organization",
           name: siteName,
           url: SITE_URL,
-          logo,
-          description: language === "ar"
-            ? "خدمات أكاديمية وبحثية للأطباء تشمل دعم التقديم على البورد والزمالات والترقي الأكاديمي وإعداد الأبحاث والتحليل الإحصائي والنشر العلمي."
-            : "Medical research opportunities and academic support for board applications, fellowships, research, statistics, and scientific publication.",
+          ...(logo ? { logo } : {}),
+          description: settings.experience.seo.home.description[language] || pageDescription,
         },
         {
           "@type": "WebSite",
@@ -171,15 +157,16 @@ export function PageSeo({ pathname, language, title, description, image, jsonLd,
       document.head.appendChild(script);
     }
     script.text = JSON.stringify(structuredData);
-  }, [description, jsonLd, language, noIndex, pathname, settings, title]);
+  }, [language, pathname, settings, override]);
 
   return null;
 }
 
 export const SEO_KEYWORD_FAMILIES = {
   ar: [
-    "أبحاث البورد السعودي", "أطباء البورد", "Matching 2026", "البورد الأردني", "البورد الأمريكي", "البورد البريطاني",
-    "الزمالات الأمريكية", "الزمالة الكندية", "الترقية الأكاديمية", "نشر علمي للأبحاث", "اختيار المجلات",
+    "البورد السعودي", "أبحاث البورد السعودي", "التقديم على البورد للأطباء", "الزمالة السعودية", "الزمالات الطبية",
+    "ترقية أكاديمية للأطباء", "الترقي الأكاديمي", "Matching 2026", "البورد الأردني", "البورد الأمريكي", "البورد البريطاني",
+    "الزمالات الأمريكية", "الزمالة الكندية", "نشر علمي للأبحاث", "اختيار المجلات",
     "مجلات Q1 وQ2", "PubMed", "Scopus", "Web of Science", "SMLE", "SPLE", "SDLE", "USMLE", "MRCOG",
   ],
   en: [

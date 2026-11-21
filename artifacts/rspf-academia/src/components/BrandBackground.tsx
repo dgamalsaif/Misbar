@@ -1,15 +1,13 @@
-import srmaLogo from "@assets/IMG-20260806-WA0015_1787445073917.jpg";
+import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 
-export const SRMA_LOGO = srmaLogo;
-
+/** Page backdrop. Pattern is selected by experience.theme.backgroundPattern via html[data-pattern]. */
 export default function BrandBackground() {
+  const { data } = useSiteContentSettings();
+  const logo = data.brand.logoUrl;
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      <img
-        src={SRMA_LOGO}
-        alt=""
-        className="absolute left-1/2 top-1/2 h-[min(76vw,920px)] w-[min(76vw,920px)] -translate-x-1/2 -translate-y-1/2 rounded-full object-cover opacity-[0.035] blur-[0.2px]"
-      />
+    <div aria-hidden="true" className="m-backdrop pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      <div className="m-backdrop-pattern absolute inset-0" />
+      {logo && <img src={logo} alt="" className="absolute -bottom-24 h-[min(60vw,640px)] w-[min(60vw,640px)] rounded-full object-cover opacity-[0.03] ltr:-right-24 rtl:-left-24" />}
     </div>
   );
 }

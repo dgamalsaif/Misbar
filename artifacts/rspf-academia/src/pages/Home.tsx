@@ -1,416 +1,221 @@
-import { isFieldVisible } from "@/lib/opportunityVisibility";
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "wouter";
 import {
-  ArrowLeft,
-  ArrowRight,
-  BarChart2,
-  BookOpen,
-  ExternalLink,
-  FileText,
-  Globe,
-  GraduationCap,
-  Lock,
-  MessageCircle,
-  RefreshCw,
-  Shield,
-  Star,
+  ArrowLeft, ArrowRight, Award, BookOpenText, CalendarClock, Check, ChevronDown,
+  ClipboardCheck, FlaskConical, HelpCircle, Microscope, RefreshCw, Users,
 } from "lucide-react";
-import { apiFetch } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
-import { getEnglishOpportunityTitle } from "@/lib/opportunityDisplay";
-import { DEFAULT_SITE_CONTENT_SETTINGS, getContactUsHref } from "@/lib/siteContentSettings";
-import { ResearchOpportunity } from "@/lib/researchData";
-import RegistrationModal from "@/components/RegistrationModal";
-import SiteAnnouncement from "@/components/SiteAnnouncement";
-import ServiceModal from "@/components/ServiceModal";
-import OpportunityPrice from "@/components/OpportunityPrice";
-import { ProtectedResearchWatermark, AntiCaptureResearchTitle } from "@/components/ResearchProtection";
+import type { ResearchOpportunity } from "@/lib/researchData";
+import { LINKABLE_ROUTES, type HomeSectionId } from "../../../../lib/site-experience";
 
-const SERVICES = [
-  {
-    key: "study",
-    icon: FileText,
-    value: "إعداد الدراسة البحثية",
-    ar: "إعداد الدراسة البحثية",
-    en: "Research study preparation",
-    descAr: "من صياغة السؤال البحثي وكتابة البروتوكول حتى جاهزية المخطوطة للإرسال.",
-    descEn: "From framing the research question and protocol to a manuscript ready for submission.",
-  },
-  {
-    key: "stats",
-    icon: BarChart2,
-    value: "التحليل الإحصائي",
-    ar: "التحليل الإحصائي",
-    en: "Statistical analysis",
-    descAr: "تحليل بيانات الأبحاث الطبية مع جداول ورسوم جاهزة للنشر وتقرير تفسيري.",
-    descEn: "Medical data analysis with publication-ready tables, figures and an interpretive report.",
-  },
-  {
-    key: "edit",
-    icon: Globe,
-    value: "التدقيق والمراجعة",
-    ar: "التدقيق والمراجعة اللغوية",
-    en: "Editing and proofreading",
-    descAr: "تدقيق لغوي وطبي للمخطوطات قبل إرسالها إلى المجلات.",
-    descEn: "Language and medical editing of manuscripts before journal submission.",
-  },
-  {
-    key: "review",
-    icon: Shield,
-    value: "التحكيم العلمي",
-    ar: "التحكيم العلمي",
-    en: "Scientific peer review",
-    descAr: "تحكيم الأدوات البحثية والاستبانات ودعم ملفات لجان أخلاقيات البحث.",
-    descEn: "Validation of research instruments and questionnaires, with support for ethics committee files.",
-  },
-  {
-    key: "theses",
-    icon: GraduationCap,
-    value: "رسائل الماجستير",
-    ar: "رسائل الماجستير والدكتوراه",
-    en: "Master's and doctoral theses",
-    descAr: "دعم أكاديمي لرسائل الدراسات العليا في كل مراحلها.",
-    descEn: "Academic support for postgraduate theses at every stage.",
-  },
-  {
-    key: "other",
-    icon: Star,
-    value: "خدمات أخرى",
-    ar: "طلب خدمة أخرى",
-    en: "Other services",
-    descAr: "لديك احتياج بحثي مختلف؟ أرسل طلبك وسنراجعه معك.",
-    descEn: "A different research need? Send your request and we will review it with you.",
-  },
-];
+type ProgramsState = { status: "loading" } | { status: "error" } | { status: "ready"; items: ResearchOpportunity[] };
 
-type LoadState = "loading" | "error" | "ready";
+function usePrograms() {
+  const [state, setState] = useState<ProgramsState>({ status: "loading" });
+  const [nonce, setNonce] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    setState({ status: "loading" });
+    fetch("/api/programs", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((data: unknown) => {
+        if (!alive) return;
+        const list = Array.isArray(data) ? (data as ResearchOpportunity[]) : [];
+        const open = list
+          .filter((p) => p.status === "open" && (p.category || "active") === "active")
+          .sort((a, b) => (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999));
+        setState({ status: "ready", items: open });
+      })
+      .catch(() => alive && setState({ status: "error" }));
+    return () => { alive = false; };
+  }, [nonce]);
+  return { state, retry: () => setNonce((n) => n + 1) };
+}
 
 export default function Home() {
-  const { direction, language, localize } = useLanguage();
+  const { language, direction } = useLanguage() as ReturnType<typeof useLanguage> & { direction?: "rtl" | "ltr" };
+  const dir = direction || (language === "ar" ? "rtl" : "ltr");
   const { data: settings } = useSiteContentSettings();
-  const siteBrand = settings?.brand || DEFAULT_SITE_CONTENT_SETTINGS.brand;
-  const contact = getContactUsHref(siteBrand);
-  const contactLabel = language === "ar" ? contact.labelAr : contact.labelEn;
-  const isRtl = direction === "rtl";
-  const showDetails = settings?.showOpportunityDetails !== false;
+  const home = settings.experience.home;
+  const legacy = settings.pages.home;
+  const { state, retry } = usePrograms();
+  const L = (b: { ar: string; en: string }) => b[language] || "";
+  const Arrow = language === "ar" ? ArrowLeft : ArrowRight;
+  const [heroImageFailed, setHeroImageFailed] = useState(false);
+  useEffect(() => setHeroImageFailed(false), [home.hero.imageUrl]);
+  const showHeroImage = Boolean(home.hero.imageUrl) && !heroImageFailed;
+  const legacyTitle = language === "ar" ? legacy.titleAr : legacy.titleEn;
+  const legacyDesc = language === "ar" ? legacy.descriptionAr : legacy.descriptionEn;
+  const legacyContent = (language === "ar" ? legacy.contentAr : legacy.contentEn)?.trim();
+  const affiliations = home.affiliations;
+  const universities = (affiliations.universities || []).map(L).filter(Boolean);
+  const countries = (affiliations.countries || []).map(L).filter(Boolean);
+  const journals = (settings.journalOptions || []).map((journal) => language === "ar" ? journal.nameAr : journal.nameEn).filter(Boolean);
+  const services = settings.experience.content.services.items;
+  const marqueeStyle = (seconds: number): CSSProperties => ({ "--m-home-marquee-duration": `${seconds}s` } as CSSProperties);
 
-  const homeSettings = settings?.pages?.home;
-  const rawTitle = (language === "ar" ? homeSettings?.titleAr : homeSettings?.titleEn)?.trim();
-  const rawDesc = (language === "ar" ? homeSettings?.descriptionAr : homeSettings?.descriptionEn)?.trim();
-  const customNotice = (language === "ar" ? homeSettings?.contentAr : homeSettings?.contentEn)?.trim();
-
-  const heroTitle =
-    rawTitle ||
-    localize("فرص بحثية حقيقية للأطباء، من التسجيل حتى النشر", "Real research opportunities for physicians, from registration to publication");
-  const heroDesc =
-    rawDesc ||
-    localize(
-      "تصفح الدراسات المفتوحة حالياً، اختر تخصصك، وسجل مقعدك مباشرة. يتواصل معك منسق البرنامج لتأكيد المقعد.",
-      "Browse the studies open now, pick your specialty and reserve a seat. A program coordinator will contact you to confirm."
-    );
-
-  const [opportunities, setOpportunities] = useState<ResearchOpportunity[]>([]);
-  const [loadState, setLoadState] = useState<LoadState>("loading");
-  const [selectedOpportunity, setSelectedOpportunity] = useState<ResearchOpportunity | null>(null);
-  const [registrationModalOpen, setRegistrationModalOpen] = useState(false);
-  const [serviceModalOpen, setServiceModalOpen] = useState(false);
-  const [selectedServiceName, setSelectedServiceName] = useState("إعداد الدراسة البحثية");
-
-  const loadOpportunities = useCallback((background = false) => {
-    if (!background) setLoadState("loading");
-    apiFetch("/api/programs", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("programs unavailable"))))
-      .then((data: ResearchOpportunity[]) => {
-        const list = Array.isArray(data) ? data : [];
-        setOpportunities(list.filter((item) => item.status === "open" && (item.category || "active") === "active"));
-        setLoadState("ready");
-      })
-      .catch(() => setLoadState("error"));
-  }, []);
-
-  useEffect(() => {
-    loadOpportunities();
-    const refresh = () => { if (!document.hidden) loadOpportunities(true); };
-    const timer = window.setInterval(refresh, 10000);
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
-  }, [loadOpportunities]);
-
-  const preview = opportunities.slice(0, 6);
-  const Arrow = isRtl ? ArrowLeft : ArrowRight;
-
-  const openRegistration = (op: ResearchOpportunity) => {
-    setSelectedOpportunity(op);
-    setRegistrationModalOpen(true);
-  };
-  const openService = (name: string) => {
-    setSelectedServiceName(name);
-    setServiceModalOpen(true);
-  };
-
-  return (
-    <div className="min-h-[100dvh] bg-[#f7f9fb] text-slate-900 w-full max-w-full overflow-x-clip" dir={direction}>
-      {/* HERO */}
-      <section className="border-b border-slate-200 bg-gradient-to-b from-white to-[#f1f6f4] px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-        <div className="mx-auto max-w-4xl text-center srma-reveal">
-          <h1 className="text-3xl font-black leading-[1.3] tracking-tight text-[#0C3156] sm:text-4xl lg:text-5xl">
-            {heroTitle}
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-slate-600 sm:text-lg">{heroDesc}</p>
-
-          {customNotice && (
-            <div
-              data-testid="home-admin-notice"
-              className="mx-auto mt-6 max-w-2xl text-start"
-            >
-              <SiteAnnouncement content={customNotice} />
+  const sections: Record<HomeSectionId, () => ReactNode> = {
+    hero: () => (
+      <section key="hero" className="m-home-hero-v2" data-testid="section-hero">
+        <div className="m-home-hero-grid m-container">
+          <div className="m-home-copy">
+            <p className="m-home-kicker m-rise" data-testid="text-hero-eyebrow"><span className="m-home-kicker-mark" aria-hidden="true" />{legacyTitle && legacyTitle !== (language === "ar" ? settings.brand.siteNameAr : settings.brand.siteNameEn) ? legacyTitle : L(home.hero.eyebrow)}</p>
+            <h1 className="m-home-title m-rise m-rise-2" data-testid="text-hero-title">{L(home.hero.title)} <span className="m-home-title-accent">{L(home.hero.highlight)}</span></h1>
+            {legacyDesc && <p className="m-home-legacy-description m-rise m-rise-3" data-testid="text-hero-legacy-description">{legacyDesc}</p>}
+            <p className="m-home-subtitle m-rise m-rise-3" data-testid="text-hero-subtitle">{L(home.hero.subtitle)}</p>
+            <div className="m-home-actions m-rise m-rise-4">
+              <Link href={LINKABLE_ROUTES[home.hero.primaryCta.route]} className="m-btn m-btn-primary m-home-primary-cta" data-testid="link-hero-primary">{L(home.hero.primaryCta.label)}<Arrow size={17} /></Link>
+              <Link href={LINKABLE_ROUTES[home.hero.secondaryCta.route]} className="m-btn m-btn-ghost m-home-secondary-cta" data-testid="link-hero-secondary">{L(home.hero.secondaryCta.label)}</Link>
             </div>
-          )}
-
-          <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-            <Link
-              href="/participant-portal"
-              data-testid="button-hero-explore-programs"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0C3156] px-7 py-3.5 text-base font-bold text-white transition-colors hover:bg-[#0a2847]"
-            >
-              <span>{localize("استعرض الفرص البحثية", "Browse research opportunities")}</span>
-              <Arrow size={18} />
-            </Link>
-            <a
-              href={contact.href}
-              target={contact.isExternal ? "_blank" : undefined}
-              rel={contact.isExternal ? "noopener noreferrer" : undefined}
-              data-testid="button-hero-contact"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-base font-bold text-[#0C3156] transition-colors hover:border-[#117b59] hover:text-[#117b59]"
-            >
-              <MessageCircle size={18} />
-              <span>{contactLabel}</span>
-            </a>
+            <div className="m-home-trust-note m-rise m-rise-4">
+              <span className="m-home-trust-mark"><Check size={15} /></span>
+              <span>{language === "ar" ? "وضوح التفاصيل قبل اتخاذ القرار" : "Clear details before you decide"}</span>
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* LIVE OPPORTUNITIES */}
-      <section className="px-4 py-12 sm:px-6 sm:py-14 lg:px-8" aria-labelledby="home-opps-title">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 id="home-opps-title" className="text-2xl font-black text-[#0C3156] sm:text-3xl">
-                {localize("الفرص المفتوحة الآن", "Open opportunities")}
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                {localize("تصفح الفرص المسجلة لدى الأكاديمية واختر الدراسة المناسبة لك.", "Browse academy opportunities and choose the right study for you.")}
-              </p>
-            </div>
-            <Link
-              href="/participant-portal"
-              data-testid="link-view-all-portal"
-              className="inline-flex items-center gap-2 self-start text-sm font-bold text-[#117b59] hover:underline sm:self-auto"
-            >
-              <span>{localize("عرض الكل في بوابة المشارك", "View all in the participant portal")}</span>
-              <Arrow size={16} />
-            </Link>
-          </div>
-
-          {loadState === "loading" && (
-            <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3" aria-busy="true" data-testid="home-opps-loading">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="h-64 animate-pulse rounded-2xl border border-slate-200 bg-white motion-reduce:animate-none" />
-              ))}
-            </div>
-          )}
-
-          {loadState === "error" && (
-            <div role="alert" data-testid="home-opps-error" className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 text-center">
-              <p className="font-bold text-slate-800">{localize("تعذر تحميل الفرص البحثية حالياً.", "We could not load research opportunities.")}</p>
-              <p className="mt-1 text-sm text-slate-500">{localize("تحقق من الاتصال ثم أعد المحاولة.", "Check your connection and try again.")}</p>
-              <button
-                type="button"
-                onClick={() => loadOpportunities()}
-                data-testid="button-home-retry"
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#0C3156] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a2847]"
-              >
-                <RefreshCw size={15} />
-                {localize("إعادة المحاولة", "Retry")}
-              </button>
-            </div>
-          )}
-
-          {loadState === "ready" && preview.length === 0 && (
-            <div data-testid="home-opps-empty" className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-              <p className="font-bold text-slate-800">{localize("لا توجد فرص مفتوحة للتسجيل حالياً.", "No opportunities are open for registration right now.")}</p>
-              <p className="mt-1 text-sm text-slate-500">{localize("تواصل معنا لنخبرك عند فتح دراسة جديدة.", "Contact us and we will tell you when a new study opens.")}</p>
-            </div>
-          )}
-
-          {loadState === "ready" && preview.length > 0 && (
-            <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {preview.map((op) => {
-                const title = getEnglishOpportunityTitle(op);
-                const spec = (language === "ar" ? op.specialtyAr : op.specialtyEn) || op.specialty;
-                const desc = (language === "ar" ? op.descriptionAr : op.descriptionEn) || op.description;
-                return (
-                  <article
-                    key={op.id}
-                    data-protected="research"
-                    data-testid={`card-opportunity-${op.id}`}
-                    className="protected-research-content research-card relative flex select-none flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md"
-                    style={{ userSelect: "none", WebkitUserSelect: "none" }}
-                    onContextMenu={(e) => e.preventDefault()}
-                    onDragStart={(e) => e.preventDefault()}
-                  >
-                    <ProtectedResearchWatermark />
-                    <div className="relative z-10 flex-1">
-                      {showDetails && (
-                        <div className="mb-3 flex flex-wrap items-center gap-2">
-                          {spec && isFieldVisible(op, "specialty") && <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-800">{spec}</span>}
-                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                            <Lock size={10} />
-                            {localize("محمي", "Protected")}
-                          </span>
-                        </div>
-                      )}
-                      <AntiCaptureResearchTitle title={title} titleHref={`/research/${op.id}`} />
-                      {showDetails && (
-                        <>
-                          {desc && isFieldVisible(op, "description") && <p className="mb-3 line-clamp-3 text-sm leading-relaxed text-slate-600">{desc}</p>}
-                          <div className="mb-3 space-y-1 text-xs text-slate-500">
-                            {op.journalTarget && isFieldVisible(op, "journal") && (
-                              <p className="flex items-start gap-1.5">
-                                <BookOpen size={13} className="mt-0.5 shrink-0 text-[#0C3156]" />
-                                <span className="font-semibold text-slate-700">{op.journalTarget}</span>
-                              </p>
-                            )}
-                            {op.duration && isFieldVisible(op, "duration") && (
-                              <p>
-                                <span>{localize("المدة:", "Duration:")}</span> <span className="font-semibold text-slate-700">{op.duration}</span>
-                              </p>
-                            )}
-                            {isFieldVisible(op, "seats") && typeof op.seatsLeft === "number" && typeof op.totalSeats === "number" && (
-                              <p>
-                                {localize(`المقاعد المتبقية ${op.seatsLeft} من ${op.totalSeats}`, `${op.seatsLeft} of ${op.totalSeats} seats left`)}
-                              </p>
-                            )}
-                          </div>
-                          {isFieldVisible(op, "price") && <OpportunityPrice originalSar={op.priceOriginalSar} discountedSar={op.priceDiscountedSar} compact />}
-                        </>
-                      )}
-                    </div>
-                    <div className="relative z-10 mt-4 flex gap-2 border-t border-slate-100 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => openRegistration(op)}
-                        data-testid={`button-register-opportunity-${op.id}`}
-                        className="flex-1 rounded-xl bg-[#0C3156] py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0a2847]"
-                      >
-                        {localize("سجل الآن", "Register now")}
-                      </button>
-                      {showDetails && (
-                        <Link
-                          href={`/research/${op.id}`}
-                          data-testid={`link-detail-opportunity-${op.id}`}
-                          className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
-                        >
-                          <span>{localize("التفاصيل", "Details")}</span>
-                          <ExternalLink size={12} />
-                        </Link>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* SERVICES */}
-      <section className="border-t border-slate-200 bg-white px-4 py-12 sm:px-6 sm:py-14 lg:px-8" aria-labelledby="home-services-title">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-6 max-w-2xl">
-            <h2 id="home-services-title" className="text-2xl font-black text-[#0C3156] sm:text-3xl">
-              {localize("خدمات بحثية عند الطلب", "Research services on request")}
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              {localize("اختر الخدمة وأرسل طلبك، ونعود إليك بالتفاصيل.", "Choose a service and send your request. We will get back to you with details.")}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {SERVICES.map((s) => {
-              const Icon = s.icon;
-              return (
-                <div key={s.key} className="flex flex-col rounded-2xl border border-slate-200 bg-[#f7f9fb] p-5">
-                  <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#117b59]/10 text-[#117b59]">
-                    <Icon size={20} />
-                  </span>
-                  <h3 className="text-base font-black text-slate-900">{localize(s.ar, s.en)}</h3>
-                  <p className="mt-1 flex-1 text-sm leading-relaxed text-slate-600">{localize(s.descAr, s.descEn)}</p>
-                  <button
-                    type="button"
-                    onClick={() => openService(s.value)}
-                    data-testid={`button-service-${s.key}`}
-                    className="mt-4 inline-flex items-center gap-1.5 self-start text-sm font-bold text-[#0C3156] hover:text-[#117b59]"
-                  >
-                    <span>{localize("اطلب الخدمة", "Request this service")}</span>
-                    <Arrow size={14} />
-                  </button>
+          <div className="m-home-image-stage m-rise m-rise-2">
+            <div className="m-home-image-frame">
+              {showHeroImage ? <img src={home.hero.imageUrl} alt={L(home.hero.imageAlt)} className="m-home-hero-image" data-testid="img-hero" onError={() => setHeroImageFailed(true)} /> : (
+                <div className="m-home-image-fallback" aria-hidden="true">
+                  <div className="m-home-fallback-orbit m-home-fallback-orbit-a" />
+                  <div className="m-home-fallback-orbit m-home-fallback-orbit-b" />
+                  <div className="m-home-fallback-center"><Microscope size={42} strokeWidth={1.2} /><span>{language === "ar" ? settings.brand.siteNameAr : settings.brand.siteNameEn}</span></div>
                 </div>
-              );
+              )}
+              <div className="m-home-image-caption">
+                <span className="m-home-caption-index">M / 01</span>
+                <span>{language === "ar" ? "بحث أوضح. قرار أهدأ." : "Clearer research. Better-informed decisions."}</span>
+              </div>
+            </div>
+            <div className="m-home-image-stamp"><FlaskConical size={20} /><span>{language === "ar" ? "منهجية علمية" : "Scientific method"}</span></div>
+            {state.status === "ready" && state.items.length > 0 && (
+              <div className="m-home-open-badge" data-testid="badge-open-count">
+                <span className="m-home-open-number">{state.items.length}</span>
+                <span>{language === "ar" ? "فرصة مفتوحة الآن" : "open opportunities"}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="m-container m-home-facts m-rise m-rise-4" aria-label={language === "ar" ? "لمحة عن مسبار" : "Misbar at a glance"}>
+          <div className="m-home-fact"><span className="m-home-fact-medal"><Award size={17} /></span><strong>{state.status === "ready" ? state.items.length : "—"}</strong><span>{language === "ar" ? "فرص مفتوحة" : "open opportunities"}</span></div>
+          <div className="m-home-fact"><span className="m-home-fact-medal"><BookOpenText size={17} /></span><strong>{journals.length}</strong><span>{language === "ar" ? "خيارات للمجلات" : "journal options"}</span></div>
+          <div className="m-home-fact"><span className="m-home-fact-medal"><Users size={17} /></span><strong>{countries.length}</strong><span>{language === "ar" ? "دول في القائمة" : "countries listed"}</span></div>
+        </div>
+        {legacyContent && <div className="m-container pb-8"><div className="m-card m-home-legacy-content" data-testid="text-home-legacy-content">{legacyContent}</div></div>}
+        <div className="m-home-scroll-cue" aria-hidden="true"><span>{language === "ar" ? "اكتشف مسبار" : "Discover Misbar"}</span><ChevronDown size={15} /></div>
+      </section>
+    ),
+    services: () => (
+      <section key="services" className="m-home-services m-section" data-testid="section-services">
+        <div className="m-container">
+          <div className="m-home-section-heading m-home-heading-split">
+            <div><span className="m-eyebrow">{language === "ar" ? "ما تحتاجه في مكان واحد" : "Research, made navigable"}</span><h2 className="m-h2 mt-3">{L(home.services.title)}</h2></div>
+            <p className="m-muted max-w-md leading-7">{L(home.services.subtitle)}</p>
+          </div>
+          <div className="m-home-services-grid">
+            {(services || []).map((item, i) => {
+              const ServiceIcon = [Microscope, FlaskConical, BookOpenText, ClipboardCheck][i % 4];
+              return <article className={`m-home-service-card m-home-service-${i % 4}`} key={`${L(item.title)}-${i}`} data-testid={`card-service-${i}`}>
+                <span className="m-home-service-number">{String(i + 1).padStart(2, "0")}</span>
+                <div className="m-home-service-icon"><ServiceIcon size={21} strokeWidth={1.7} /></div>
+                <h3>{L(item.title)}</h3><p>{L(item.body)}</p>
+                <Link href="/special-requests" className="m-home-service-link" data-testid={`link-service-${i}`}>{language === "ar" ? "استكشف الخدمة" : "Explore service"}<Arrow size={15} /></Link>
+              </article>;
             })}
           </div>
         </div>
       </section>
-
-      {/* KNOWLEDGE + CONTACT */}
-      <section className="bg-[#0C3156] px-4 py-12 text-white sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-xl">
-            <h2 className="text-xl font-black sm:text-2xl">{localize("مركز المعرفة", "Knowledge Center")}</h2>
-            <p className="mt-1 text-sm leading-relaxed text-blue-100">
-              {localize(
-                "مقالات وأدلة عن منهجية البحث والنشر ومتطلبات الترقية. تجد إجابات أسئلتك الشائعة في صفحة الأسئلة الشائعة.",
-                "Articles and guides on research methods, publishing and career requirements. Common questions are answered on the FAQ page."
-              )}
-            </p>
+    ),
+    programs: () => (
+      <section key="programs" className="m-home-programs m-section" data-testid="section-programs">
+        <div className="m-container">
+          <div className="m-home-section-heading m-home-heading-split">
+            <div><span className="m-eyebrow">{language === "ar" ? "الفرص البحثية" : "Research opportunities"}</span><h2 className="m-h2 mt-3">{L(home.programs.title)}</h2><p className="m-muted mt-2">{L(home.programs.subtitle)}</p></div>
+            <Link href="/participant-portal" className="m-btn m-btn-ghost m-btn-sm" data-testid="link-programs-all">{L(home.programs.viewAllLabel)}<Arrow size={15} /></Link>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/knowledge-center"
-              data-testid="link-home-knowledge"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#0C3156] transition-colors hover:bg-emerald-50"
-            >
-              <BookOpen size={16} />
-              {localize("تصفح مركز المعرفة", "Open the Knowledge Center")}
-            </Link>
-            <Link
-              href="/faq"
-              data-testid="link-home-faq"
-              className="inline-flex items-center justify-center rounded-xl border border-white/30 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-white/10"
-            >
-              {localize("الأسئلة الشائعة", "FAQ")}
-            </Link>
+          <div className="mt-10">
+            {state.status === "loading" && <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="m-skeleton h-56" />)}</div>}
+            {state.status === "error" && <div className="m-card m-home-program-state" data-testid="state-programs-error"><p className="font-semibold">{language === "ar" ? "تعذر تحميل الفرص الآن." : "Could not load opportunities right now."}</p><button type="button" onClick={retry} className="m-btn m-btn-primary m-btn-sm" data-testid="button-programs-retry"><RefreshCw size={15} />{language === "ar" ? "إعادة المحاولة" : "Try again"}</button></div>}
+            {state.status === "ready" && state.items.length === 0 && <div className="m-card m-home-program-state" data-testid="state-programs-empty"><div className="m-home-state-icon"><CalendarClock size={24} /></div><p>{L(home.programs.emptyText)}</p><Link href="/knowledge-center" className="m-btn m-btn-ghost m-btn-sm">{L(home.knowledge.ctaLabel)}</Link></div>}
+            {state.status === "ready" && state.items.length > 0 && home.programs.limit > 0 && <div className="m-home-program-grid">
+              {state.items.slice(0, home.programs.limit).map((p, i) => {
+                const title = (language === "ar" ? p.titleAr : p.titleEn) || p.title;
+                const specialty = (language === "ar" ? p.specialtyAr : p.specialtyEn) || p.specialty;
+                return <Link key={p.id} href={`/research/${p.id}`} className="m-card m-home-program-card" style={{ animationDelay: `${i * 60}ms` }} data-testid={`card-program-${p.id}`}>
+                  <div className="m-home-program-card-top"><span className="m-home-program-index">{String(i + 1).padStart(2, "0")}</span><span className="m-home-specialty">{specialty}</span></div>
+                  <h3>{title}</h3>
+                  <div className="m-home-program-meta"><span><Users size={15} />{p.seatsLeft}/{p.totalSeats}</span>{p.duration && <span><CalendarClock size={15} />{p.duration}</span>}<Arrow size={16} className="m-home-program-arrow" /></div>
+                </Link>;
+              })}
+            </div>}
           </div>
         </div>
       </section>
+    ),
+    affiliations: () => {
+      if (!universities.length && !countries.length) return null;
+      return <section id="affiliations" key="affiliations" className="m-home-affiliations m-section" data-testid="section-affiliations">
+        <div className="m-container">
+          <div className="m-home-affiliation-head"><span className="m-eyebrow">{language === "ar" ? "امتداد معرفي" : "A wider research community"}</span><h2 className="m-h2 mt-3">{L(affiliations.title)}</h2><p className="m-muted mt-3">{L(affiliations.subtitle)}</p></div>
+          {countries.length > 0 && <div className="m-home-affiliation-group">
+            <h3 className="m-home-affiliation-label">{L(affiliations.countriesTitle)}</h3>
+            <div className="m-home-country-window" aria-label={L(affiliations.countriesTitle)}>
+              <div className="m-home-country-track" data-animated={affiliations.animationEnabled && settings.experience.theme.motion} style={marqueeStyle(affiliations.animationDurationSeconds)}>
+                {[...countries, ...countries].map((name, i) => <span className="m-home-country-chip" key={`${name}-${i}`} dir={language === "ar" ? "rtl" : "ltr"} aria-hidden={i >= countries.length}>{name}</span>)}
+              </div>
+            </div>
+          </div>}
+          {universities.length > 0 && <div className="m-home-affiliation-group">
+            <h3 className="m-home-affiliation-label">{L(affiliations.universitiesTitle)}</h3>
+            <div className="m-home-university-window" aria-label={L(affiliations.universitiesTitle)}>
+              <div className="m-home-university-track" data-animated={affiliations.animationEnabled && settings.experience.theme.motion} style={marqueeStyle(affiliations.animationDurationSeconds)}>
+                {[...universities, ...universities].map((name, i) => <span className="m-home-university-chip" key={`${name}-${i}`} dir={language === "ar" ? "rtl" : "ltr"} aria-hidden={i >= universities.length}><span className="m-home-university-seal" aria-hidden="true"><BookOpenText size={15} /></span>{name}</span>)}
+              </div>
+            </div>
+          </div>}
+        </div>
+      </section>;
+    },
+    journalTicker: () => {
+      if (!journals.length) return null;
+      return <section id="journal-ticker" key="journalTicker" className="m-home-journals" data-testid="section-journal-ticker">
+        <div className="m-container m-home-journal-heading"><div><span className="m-eyebrow">{language === "ar" ? "خيارات المجلات" : "Journal options"}</span><h2>{L(home.journalTicker.title)}</h2><p>{L(home.journalTicker.subtitle)}</p></div><span className="m-home-journal-seal"><BookOpenText size={22} /></span></div>
+        <div className="m-home-journal-window" aria-label={language === "ar" ? "أسماء المجلات في إعدادات الفرص" : "Journal names in opportunity settings"}>
+          <div className="m-home-journal-track" data-animated={home.journalTicker.animationEnabled && settings.experience.theme.motion} style={marqueeStyle(home.journalTicker.animationDurationSeconds)}>
+            {[...journals, ...journals].map((name, i) => <span key={`${name}-${i}`} className="m-home-journal-name" dir={language === "ar" ? "rtl" : "ltr"} aria-hidden={i >= journals.length}>{name}<i aria-hidden="true" /></span>)}
+          </div>
+        </div>
+      </section>;
+    },
+    pathways: () => (
+      <section key="pathways" className="m-home-pathways m-section" data-testid="section-pathways">
+        <div className="m-container">
+          <div className="m-home-pathway-intro"><span className="m-eyebrow">{language === "ar" ? "مسارات مهنية متنوعة" : "Different professional paths"}</span><h2 className="m-h2 mt-3">{L(home.pathways.title)}</h2><p>{L(home.pathways.subtitle)}</p></div>
+          <div className="m-home-pathway-grid">{home.pathways.items.map((item, i) => <article key={i} className="m-home-pathway-card" data-testid={`card-pathway-${i}`}><span className="m-home-pathway-index">{String(i + 1).padStart(2, "0")}</span><h3>{L(item.title)}</h3><p>{L(item.body)}</p></article>)}</div>
+        </div>
+      </section>
+    ),
+    process: () => (
+      <section key="process" className="m-home-process m-section" data-testid="section-process">
+        <div className="m-container"><div className="m-home-process-head"><span className="m-eyebrow">{language === "ar" ? "خطواتك القادمة" : "A clear next step"}</span><h2 className="m-h2 mt-3">{L(home.process.title)}</h2></div>
+          <ol className="m-home-process-list">{home.process.steps.map((step, i) => <li key={i} data-testid={`step-process-${i}`}><span className="m-home-process-count">{String(i + 1).padStart(2, "0")}</span><div><h3>{L(step.title)}</h3><p>{L(step.body)}</p></div></li>)}</ol>
+        </div>
+      </section>
+    ),
+    knowledge: () => (
+      <section key="knowledge" className="m-container m-home-resource-wrap" data-testid="section-knowledge">
+        <div className="m-home-resource-panel"><div className="m-home-resource-icon"><BookOpenText size={26} /></div><div><span className="m-eyebrow">{language === "ar" ? "مركز المعرفة" : "Knowledge center"}</span><h2>{L(home.knowledge.title)}</h2><p>{L(home.knowledge.body)}</p></div><Link href="/knowledge-center" className="m-btn m-btn-primary" data-testid="link-home-knowledge">{L(home.knowledge.ctaLabel)}<Arrow size={16} /></Link></div>
+      </section>
+    ),
+    faqTeaser: () => (
+      <section key="faqTeaser" className="m-container m-home-resource-wrap" data-testid="section-faq-teaser">
+        <div className="m-home-faq-panel"><div className="m-home-faq-icon"><HelpCircle size={25} /></div><div><span className="m-eyebrow">{language === "ar" ? "بلا إجابات مبهمة" : "Straight answers"}</span><h2>{L(home.faqTeaser.title)}</h2><p>{L(home.faqTeaser.body)}</p></div><Link href="/faq" className="m-btn m-btn-ghost" data-testid="link-home-faq">{L(home.faqTeaser.ctaLabel)}<Arrow size={16} /></Link></div>
+      </section>
+    ),
+    cta: () => (
+      <section key="cta" className="m-home-final m-section" data-testid="section-cta"><div className="m-container"><div className="m-home-final-panel"><span className="m-home-final-symbol" aria-hidden="true">{language === "ar" ? "م" : "M"}</span><span className="m-eyebrow">{language === "ar" ? "ابدأ من السؤال الصحيح" : "Start with the right question"}</span><h2>{L(home.cta.title)}</h2><p>{L(home.cta.body)}</p><Link href={LINKABLE_ROUTES[home.cta.route]} className="m-btn m-btn-gold" data-testid="link-home-cta">{L(home.cta.label)}<Arrow size={17} /></Link></div></div></section>
+    ),
+  };
 
-      {selectedOpportunity && (
-        <RegistrationModal
-          isOpen={registrationModalOpen}
-          onClose={() => setRegistrationModalOpen(false)}
-          researchTitle={getEnglishOpportunityTitle(selectedOpportunity)}
-          researchId={selectedOpportunity.id}
-          firstAuthorSeatsLeft={selectedOpportunity.firstAuthorSeatsLeft}
-          coAuthorSeatsLeft={selectedOpportunity.coAuthorSeatsLeft}
-          priceOriginalSar={selectedOpportunity.priceOriginalSar}
-          priceDiscountedSar={selectedOpportunity.priceDiscountedSar}
-          onRegistered={loadOpportunities}
-        />
-      )}
-
-      <ServiceModal isOpen={serviceModalOpen} onClose={() => setServiceModalOpen(false)} serviceName={selectedServiceName} />
-    </div>
-  );
+  return <div dir={dir} className="m-home-page">{home.sections.filter((s) => s.visible).map((s) => sections[s.id]())}</div>;
 }

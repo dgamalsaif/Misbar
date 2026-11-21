@@ -28,7 +28,10 @@ import OwnerSignUp from "@/pages/OwnerSignUp";
 import NotFound from "@/pages/not-found";
 import { LanguageProvider, useLanguage } from "@/lib/i18n";
 import { CurrencyProvider } from "@/lib/currency";
-import { PageSeo } from "@/lib/seo";
+import { SeoManager, SeoProvider } from "@/lib/seo";
+import ThemeSync from "@/components/ThemeSync";
+import { AnnouncementBar, DraftPreviewBar, RouteEyebrow } from "@/components/RouteChrome";
+import { ExperienceDraftProvider } from "@/lib/experience-draft";
 import SiteIdentitySync from "@/components/SiteIdentitySync";
 import { ResearchProtectionProvider } from "@/components/ResearchProtection";
 
@@ -47,16 +50,16 @@ const clerkAppearance = {
   cssLayerName: "clerk",
   options: { logoPlacement: "inside" as const, logoLinkUrl: basePath || "/" },
   variables: {
-    colorPrimary: "#117b59", colorForeground: "#0f2744", colorMutedForeground: "#64748b",
-    colorBackground: "#ffffff", colorInput: "#f8fafc", colorInputForeground: "#0f2744",
-    colorDanger: "#dc2626", colorNeutral: "#dbe4ee", fontFamily: "Tajawal, sans-serif", borderRadius: "1rem",
+    colorPrimary: "var(--m-primary, #0b5145)", colorForeground: "var(--m-ink, #14231f)", colorMutedForeground: "var(--m-muted, #5d6b66)",
+    colorBackground: "var(--m-surface, #fffdf6)", colorInput: "var(--m-bg, #f6f3e8)", colorInputForeground: "var(--m-ink, #14231f)",
+    colorDanger: "#b4372c", colorNeutral: "var(--m-line, #d9d4c3)", fontFamily: "var(--m-font-body, 'IBM Plex Sans Arabic', Tajawal, sans-serif)", borderRadius: "var(--m-radius, 1rem)",
   },
   elements: {
-    rootBox: "w-full flex justify-center", cardBox: "w-full max-w-md bg-white rounded-3xl shadow-xl border border-emerald-100",
+    rootBox: "w-full flex justify-center", cardBox: "w-full max-w-md bg-[color:var(--m-surface)] rounded-3xl shadow-xl border border-[color:var(--m-line)]",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none", footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
     headerTitle: "text-slate-900 font-black", headerSubtitle: "text-slate-500", formFieldLabel: "text-slate-700 font-bold",
-    formButtonPrimary: "bg-[#117b59] hover:bg-[#0c6549]", formFieldInput: "bg-slate-50 text-slate-900 border-slate-200",
-    footerActionLink: "text-[#117b59]", footerActionText: "text-slate-500",
+    formButtonPrimary: "bg-[color:var(--m-primary)] hover:opacity-90", formFieldInput: "bg-slate-50 text-slate-900 border-slate-200",
+    footerActionLink: "text-[color:var(--m-primary)]", footerActionText: "text-slate-500",
   },
 };
 
@@ -69,11 +72,13 @@ function Router() {
   const isPrivate = isAdmin || isCoordinatorPortal;
 
   return (
-    <div className="relative flex min-h-screen flex-col w-full max-w-full overflow-x-clip" style={{ fontFamily: "'Tajawal', sans-serif" }}>
-      <PageSeo pathname={location} language={language} noIndex={isPrivate} />
+    <div className="relative flex min-h-[100dvh] flex-col w-full max-w-full overflow-x-clip" style={{ fontFamily: "var(--m-font-body)" }}>
+      <SeoManager pathname={location} language={language} />
       <BrandBackground />
       <div className="relative z-10 flex min-h-screen flex-col w-full max-w-full overflow-x-clip">
-        {!isAdmin && !isCoordinatorPortal && <Navbar />}
+        <AnnouncementBar />
+        {!isPrivate && <Navbar />}
+        <RouteEyebrow />
         <main className="flex-1 w-full max-w-full min-w-0">
           <Switch>
             <Route path="/" component={Home} />
@@ -105,6 +110,7 @@ function Router() {
         </main>
         {!isAdmin && !isCoordinatorPortal && <Footer />}
         {!isAdmin && !isCoordinatorPortal && <FloatingButtons audience={floatingAudience} />}
+        <DraftPreviewBar />
       </div>
     </div>
   );
@@ -121,10 +127,13 @@ function App() {
       signUpUrl={`${basePath}/sign-up`}
     >
       <QueryClientProvider client={queryClient}>
+        <ExperienceDraftProvider>
+        <SeoProvider>
         <TooltipProvider>
           <LanguageProvider>
             <CurrencyProvider>
               <SiteIdentitySync />
+              <ThemeSync />
               <ResearchProtectionProvider>
                 <WouterRouter base={basePath}>
                   <Router />
@@ -134,6 +143,8 @@ function App() {
           </LanguageProvider>
           <Toaster />
         </TooltipProvider>
+        </SeoProvider>
+        </ExperienceDraftProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );

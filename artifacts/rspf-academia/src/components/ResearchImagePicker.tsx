@@ -213,7 +213,7 @@ export default function ResearchImagePicker({
         >
           <img src={previewUrl} alt="معاينة صورة الفرصة" draggable={false} className="h-48 w-full object-cover" />
           <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-950/5 text-sm font-black tracking-[0.2em] text-white/85 drop-shadow">
-            SRMA
+            Misbar
           </span>
           <button
             type="button"

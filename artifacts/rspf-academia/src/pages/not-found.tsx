@@ -1,21 +1,21 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { Link } from "wouter";
+import { Compass } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
+import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 
 export default function NotFound() {
+  const { language } = useLanguage();
+  const { data } = useSiteContentSettings();
+  const c = data.experience.content.notFound;
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
-
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
-          </p>
-        </CardContent>
-      </Card>
+    <div className="m-container flex min-h-[60dvh] items-center justify-center py-16" dir={language === "ar" ? "rtl" : "ltr"}>
+      <div className="m-card m-rise max-w-lg p-10 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--m-gold-soft)] text-[color:var(--m-primary)]"><Compass size={28} /></div>
+        <p className="m-numeral text-5xl">404</p>
+        <h1 className="m-h2 mt-3" data-testid="text-notfound-title">{c.title[language]}</h1>
+        <p className="m-muted mt-3 leading-7">{c.body[language]}</p>
+        <Link href="/" className="m-btn m-btn-primary mt-8" data-testid="link-notfound-home">{c.ctaLabel[language]}</Link>
+      </div>
     </div>
   );
 }

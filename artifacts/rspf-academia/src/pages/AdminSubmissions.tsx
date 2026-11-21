@@ -4,7 +4,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { ChevronRight, LogOut, RefreshCw, Users, FileText, Check, X, Clock, Mail, Phone, Download, Pencil, Trash2, Save, Loader2 } from "lucide-react";
 import Footer from "@/components/Footer";
-import { SRMA_LOGO } from "@/components/BrandBackground";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 import { apiFetch } from "@/lib/api";
 
@@ -220,7 +219,7 @@ function CoordinatorApproval({ requestId, fullName, phone, status, onUpdate }: {
       if (!response.ok || !result.accessCode) throw new Error(result.error || "تعذر إصدار الرمز");
       setMessage(`تم الإصدار: ${result.accessCode}`);
       const text = encodeURIComponent(
-        `مرحباً ${fullName}\nتم اعتمادك كمنسق في ${settings?.brand.siteNameAr || "أكاديمية الأبحاث"}.\n\nرمز الدخول الخاص بك: ${result.accessCode}\nبوابة المنسق: ${window.location.origin}/coordinator\n\nاحتفظ بالرمز ولا تشاركه مع الآخرين.`
+        `مرحباً ${fullName}\nتم اعتمادك كمنسق في ${settings?.brand.siteNameAr || "مسبار"}.\n\nرمز الدخول الخاص بك: ${result.accessCode}\nبوابة المنسق: ${window.location.origin}/coordinator\n\nاحتفظ بالرمز ولا تشاركه مع الآخرين.`
       );
       const waUrl = `https://wa.me/${phone.replace(/\D/g, "")}?text=${text}`;
       try {
@@ -365,6 +364,7 @@ function ServiceRequestDeleteModal({ service, onConfirm, onClose }: { service: S
 }
 
 export default function AdminSubmissions() {
+  const { data: siteSettings } = useSiteContentSettings();
   const [tab, setTab] = useState<"registrations" | "services">("registrations");
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [services, setServices] = useState<ServiceRequest[]>([]);
@@ -614,7 +614,7 @@ export default function AdminSubmissions() {
       {/* TOP BAR */}
       <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-20">
         <div className="flex items-center gap-4">
-           <img src={SRMA_LOGO} alt="" className="h-12 w-12 rounded-2xl border border-emerald-100 object-cover shadow-sm" />
+           {siteSettings.brand.logoUrl && <img src={siteSettings.brand.logoUrl} alt="" className="h-12 w-12 rounded-2xl border border-emerald-100 object-cover shadow-sm" />}
            <div className="text-right">
              <h1 className="text-2xl font-black text-slate-800">الطلبات والتسجيلات</h1>
               <p className="text-sm text-slate-500 mt-1 font-medium">{canManageCoordinatorRequests ? "بيانات جميع المستخدمين المسجلين في البرامج" : "تسجيلات الطلاب التي أنشأتها من لوحة المنسق"}</p>

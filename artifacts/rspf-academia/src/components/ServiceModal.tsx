@@ -158,7 +158,7 @@ export default function ServiceModal({ isOpen, onClose, serviceName }: ServiceMo
           <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm text-right">
-                ⚠️ {error}
+                {error}
               </div>
             )}
 
@@ -231,7 +231,7 @@ export default function ServiceModal({ isOpen, onClose, serviceName }: ServiceMo
               {loading ? (
                 <><Loader2 size={18} className="animate-spin" /> {localize("جاري الإرسال...", "Submitting...")}</>
               ) : (
-                localize("تقديم الطلب الآن 📤", "Submit request now 📤")
+                localize("تقديم الطلب الآن ", "Submit request now ")
               )}
             </button>
             <p className="text-center text-xs text-slate-400 mt-1">
