@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { SiteLanguage } from "@/lib/i18n";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
+import { displaySiteName, siteLogoSource } from "@/lib/siteContentSettings";
 
 const SITE_URL = "https://srmaacademy.com";
 
@@ -108,13 +109,11 @@ export function PageSeo({ pathname, language, title, description, image, jsonLd,
   const { data: settings } = useSiteContentSettings();
   useEffect(() => {
     const knownPage = pageMetadata[pathname]?.[language] || pageMetadata["/"][language];
-    const siteName = language === "ar"
-      ? settings?.brand.siteNameAr || "SRMA Research Academy"
-      : settings?.brand.siteNameEn || "SRMA Research Academy";
+    const siteName = displaySiteName(language === "ar" ? settings?.brand.siteNameAr : settings?.brand.siteNameEn);
     const pageTitle = (title || knownPage.title).replace(/SRMA Research Academy|SRMA/g, siteName);
     const pageDescription = description || knownPage.description;
     const canonical = buildPublicUrl(pathname, language);
-    const configuredLogo = settings?.brand.logoUrl || "/srma-logo.jpg";
+    const configuredLogo = siteLogoSource(settings?.brand.logoUrl || "/srma-logo.jpg");
     const logo = configuredLogo.startsWith("https://") ? configuredLogo : `${SITE_URL}${configuredLogo}`;
     const socialImage = image ? (image.startsWith("http") ? image : `${SITE_URL}${image.startsWith("/") ? "" : "/"}${image}`) : `${SITE_URL}/api/site-share-image?v=${encodeURIComponent(settings?.brand.socialShareImageVersion || "current")}`;
 

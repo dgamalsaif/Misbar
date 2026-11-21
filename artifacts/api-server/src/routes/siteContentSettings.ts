@@ -16,6 +16,24 @@ router.get("/site-content-settings", async (_req, res): Promise<void> => {
   res.json(await getSiteContentSettings());
 });
 
+router.get("/site-logo", async (_req, res): Promise<void> => {
+  const { brand } = await getSiteContentSettings();
+  const source = brand.logoUrl;
+  if (!source.startsWith("/objects/research-images/")) {
+    res.status(404).end();
+    return;
+  }
+  const image = await getResearchImageBytes(source);
+  if (!image) {
+    res.status(404).end();
+    return;
+  }
+  res.setHeader("Cache-Control", "no-store, max-age=0");
+  res.setHeader("Content-Disposition", 'inline; filename="site-logo"');
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.type(image.contentType).send(image.data);
+});
+
 router.get("/site-share-metadata", async (_req, res): Promise<void> => {
   const { brand } = await getSiteContentSettings();
   res.setHeader("Cache-Control", "no-store");

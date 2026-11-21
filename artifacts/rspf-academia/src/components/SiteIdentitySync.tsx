@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLanguage } from "@/lib/i18n";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
+import { displaySiteName, siteLogoSource } from "@/lib/siteContentSettings";
 
 export default function SiteIdentitySync() {
   const { language } = useLanguage();
@@ -9,7 +10,7 @@ export default function SiteIdentitySync() {
   useEffect(() => {
     if (!settings) return;
     const { brand } = settings;
-    const siteName = language === "ar" ? brand.siteNameAr : brand.siteNameEn;
+    const siteName = displaySiteName(language === "ar" ? brand.siteNameAr : brand.siteNameEn);
     document.title = siteName;
 
     const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
@@ -18,7 +19,7 @@ export default function SiteIdentitySync() {
       manifest.href = `/api/pwa-manifest?v=${version}`;
     }
     const icon = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
-    if (icon) icon.href = brand.appIconUrl || brand.logoUrl;
+    if (icon) icon.href = brand.appIconUrl || siteLogoSource(brand.logoUrl);
     const theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (theme) theme.content = brand.appThemeColor;
   }, [language, settings]);
