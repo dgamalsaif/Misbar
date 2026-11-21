@@ -20,7 +20,8 @@ export default function BrandLogo({
   decorative = false,
 }: BrandLogoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const logoSrc = src || STATIC_LOGO;
+  const configuredSrc = src || STATIC_LOGO;
+  const logoSrc = configuredSrc.startsWith("/objects/research-images/") ? "/api/site-logo" : configuredSrc;
   const videoSource = isVideo(logoSrc);
   const animatedImage = isAnimatedImage(logoSrc);
   const prefersReducedMotion = typeof window !== "undefined"

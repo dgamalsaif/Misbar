@@ -6,7 +6,7 @@ import InstallAppButton from "@/components/InstallAppButton";
 import { useLanguage } from "@/lib/i18n";
 import { useCurrency, OpportunityCurrency } from "@/lib/currency";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
-import { getContactUsHref } from "@/lib/siteContentSettings";
+import { displaySiteName, getContactUsHref } from "@/lib/siteContentSettings";
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -21,6 +21,7 @@ export default function Navbar() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
+  const siteName = displaySiteName(language === "ar" ? settings?.brand.siteNameAr : settings?.brand.siteNameEn);
   const contact = getContactUsHref(settings?.brand);
   const contactLabel = language === "ar" ? contact.labelAr : contact.labelEn;
   const languageLabel = language === "ar" ? "اللغة" : "Language";
@@ -46,11 +47,11 @@ export default function Navbar() {
             <BrandLogo
               src={settings?.brand.logoUrl}
               animationEnabled={settings?.brand.logoAnimationEnabled}
-              alt={settings?.brand.siteNameAr || settings?.brand.siteNameEn || "SRMA Research Academy"}
+              alt={siteName}
               className="h-10 w-14 max-h-10 max-w-14 rounded-lg border border-[#0C3156]/15 bg-white object-contain"
             />
             <span className="max-w-[9rem] truncate text-base font-black tracking-tight text-[#0C3156] sm:max-w-[13rem] lg:max-w-24 xl:max-w-28">
-              {(language === "ar" ? settings?.brand.siteNameAr : settings?.brand.siteNameEn) || "SRMA"}
+              {siteName}
             </span>
           </Link>
 

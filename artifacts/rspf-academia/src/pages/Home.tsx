@@ -20,7 +20,7 @@ import { apiFetch } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 import { getEnglishOpportunityTitle } from "@/lib/opportunityDisplay";
-import { DEFAULT_SITE_CONTENT_SETTINGS, getContactUsHref } from "@/lib/siteContentSettings";
+import { DEFAULT_SITE_CONTENT_SETTINGS, displaySiteName, getContactUsHref } from "@/lib/siteContentSettings";
 import { ResearchOpportunity } from "@/lib/researchData";
 import RegistrationModal from "@/components/RegistrationModal";
 import SiteAnnouncement from "@/components/SiteAnnouncement";
@@ -101,8 +101,9 @@ export default function Home() {
   const rawDesc = (language === "ar" ? homeSettings?.descriptionAr : homeSettings?.descriptionEn)?.trim();
   const customNotice = (language === "ar" ? homeSettings?.contentAr : homeSettings?.contentEn)?.trim();
 
+  const configuredHeroTitle = rawTitle ? displaySiteName(rawTitle, "") : "";
   const heroTitle =
-    rawTitle ||
+    configuredHeroTitle ||
     localize("فرص بحثية حقيقية للأطباء، من التسجيل حتى النشر", "Real research opportunities for physicians, from registration to publication");
   const heroDesc =
     rawDesc ||

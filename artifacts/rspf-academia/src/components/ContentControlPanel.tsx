@@ -1,9 +1,10 @@
 import { ChevronDown, ChevronUp, Eye, EyeOff, Palette, Save, SlidersHorizontal, Image, Phone, Mail, Link as LinkIcon, FileText, Send, Share2, ExternalLink, MessageCircle, Check, GraduationCap, ShieldCheck, Plus, Trash2, AlertTriangle } from "lucide-react";
-import { useState, useRef, useId } from "react";
+import { useEffect, useState, useRef, useId } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import SiteShareImageSettings from "@/components/SiteShareImageSettings";
 import { buildOpportunityInquiryLinks, getSelectedInquiryChannels, getInquiryOwnTarget } from "@/lib/siteContentSettings";
 import { CARD_PARTS, OPPORTUNITY_FIELDS, OpportunityDisplayMode, OpportunityFieldId, RegistrationFieldSetting, SiteContentSettings, SpecialtyOption, JournalOption, PublicPageId, BrandContactSettings, PublicPageContent, SOCIAL_ICON_OPTIONS, SocialIconId, FloatingIconPosition, ForwardingType, OpportunityInquiryChannel, ContactUsType, AcademicDegreeOption, DEFAULT_ACADEMIC_DEGREE_SETTINGS, DEFAULT_RESEARCH_EXPERIENCE_SETTINGS, DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS } from "@/lib/siteContentSettings";
+import { buildApiUrl } from "@/lib/api";
 
 interface Props {
   settings: SiteContentSettings;
@@ -26,6 +27,14 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
   const previewInquiries = buildOpportunityInquiryLinks(settings.brand, inquiryPreviewTitle, inquiryPreviewLanguage);
   const [activeForwardTab, setActiveForwardTab] = useState<"participant" | "coordinator">("participant");
   const [shareImageBusy, setShareImageBusy] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState("");
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState("");
+  const logoPreviewRef = useRef<string | null>(null);
+  const logoFileInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => () => {
+    if (logoPreviewRef.current) URL.revokeObjectURL(logoPreviewRef.current);
+  }, []);
   const selectedInquiryChannels = getSelectedInquiryChannels({ ...settings.brand, opportunityInquiryEnabled: true });
   const missingInquiryTargets = Array.isArray(settings.brand.opportunityInquiryChannels) && settings.brand.opportunityInquiryEnabled !== false ? selectedInquiryChannels.filter((c) => !getInquiryOwnTarget(settings.brand, c)) : [];
   const latestSettings = useRef(settings);
@@ -108,6 +117,55 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
   const updateBrand = <K extends keyof BrandContactSettings>(key: K, value: BrandContactSettings[K]) => {
     update("brand", { ...latestSettings.current.brand, [key]: value });
   };
+  const clearLogoPreview = () => {
+    if (logoPreviewRef.current) URL.revokeObjectURL(logoPreviewRef.current);
+    logoPreviewRef.current = null;
+    setLogoPreviewUrl("");
+  };
+  const uploadSiteLogo = async (file: File) => {
+    const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    const allowedTypes = new Set(["image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/x-png", "image/webp"]);
+    const allowedExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+    if ((file.type && !allowedTypes.has(file.type.toLowerCase()) && !allowedExtensions.has(extension)) || (!file.type && !allowedExtensions.has(extension))) {
+      setLogoUploadError("اختر شعاراً بصيغة JPG أو PNG أو WebP.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setLogoUploadError("يجب ألا يتجاوز حجم الشعار 10 ميغابايت.");
+      return;
+    }
+    setLogoUploading(true);
+    setLogoUploadError("");
+    const previewUrl = URL.createObjectURL(file);
+    try {
+      const uploadResponse = await fetch(buildApiUrl("/api/program-images/upload"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": file.type || "image/jpeg", Accept: "application/json" },
+        body: file,
+      });
+      const upload = (await uploadResponse.json().catch(() => ({}))) as { imageToken?: string; error?: string };
+      if (!uploadResponse.ok || !upload.imageToken) throw new Error(upload.error || "تعذر رفع الشعار.");
+      const resolveResponse = await fetch(buildApiUrl("/api/site-share-image/resolve-upload"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ imageToken: upload.imageToken }),
+      });
+      const resolved = (await resolveResponse.json().catch(() => ({}))) as { imagePath?: string; error?: string };
+      if (!resolveResponse.ok || !resolved.imagePath) throw new Error(resolved.error || "تعذر اعتماد الشعار المرفوع.");
+      clearLogoPreview();
+      logoPreviewRef.current = previewUrl;
+      setLogoPreviewUrl(previewUrl);
+      updateBrand("logoUrl", resolved.imagePath);
+      updateBrand("logoAnimationEnabled", false);
+    } catch (error) {
+      URL.revokeObjectURL(previewUrl);
+      setLogoUploadError(error instanceof Error ? error.message : "تعذر رفع الشعار. حاول مرة أخرى.");
+    } finally {
+      setLogoUploading(false);
+    }
+  };
   const toggleSocialIcon = (audience: "public" | "participant" | "coordinator", id: SocialIconId) => {
     const key = `${audience}SocialIcons` as const;
     const current = settings.brand[key];
@@ -165,7 +223,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
         </div>
         <div className="flex items-center gap-3">
           {message && <p className={`text-sm font-bold ${message.includes("نجاح") ? "text-[#117b59]" : "text-rose-600"}`}>{message}</p>}
-          <button type="button" onClick={onSave} disabled={saving || shareImageBusy} data-testid="button-save-content-settings" className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#117b59] px-5 py-3 font-black text-white shadow-sm transition hover:bg-[#0c6549] disabled:opacity-60">
+          <button type="button" onClick={onSave} disabled={saving || shareImageBusy || logoUploading} data-testid="button-save-content-settings" className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#117b59] px-5 py-3 font-black text-white shadow-sm transition hover:bg-[#0c6549] disabled:opacity-60">
             <Save size={17} />{saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}
           </button>
         </div>
@@ -176,15 +234,24 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
           <Panel title="إعدادات الهوية والتواصل" icon={Palette}>
             <SiteShareImageSettings value={settings.brand.socialShareImageUrl || ""} onChange={(value) => updateBrand("socialShareImageUrl", value)} onBusyChange={setShareImageBusy} version={settings.brand.socialShareImageVersion} />
             <div className="grid gap-4 md:grid-cols-2">
-              <TextField label="اسم المنصة (عربي)" value={settings.brand.siteNameAr} onChange={(v) => updateBrand("siteNameAr", v)} />
-              <TextField label="اسم المنصة (إنجليزي)" value={settings.brand.siteNameEn} onChange={(v) => updateBrand("siteNameEn", v)} />
+              <TextField label="اسم الموقع (عربي)" value={settings.brand.siteNameAr} onChange={(v) => updateBrand("siteNameAr", v)} />
+              <TextField label="اسم الموقع (إنجليزي)" value={settings.brand.siteNameEn} onChange={(v) => updateBrand("siteNameEn", v)} />
               <div className="md:col-span-2">
-                <TextField label="رابط الشعار (صورة أو GIF أو فيديو MP4)" value={settings.brand.logoUrl} onChange={(v) => updateBrand("logoUrl", v)} />
-                <p className="mt-1 text-xs leading-5 text-slate-500">استخدم رابط صورة أو ملف GIF أو MP4. يمكن إيقاف الحركة من الخيار أدناه، كما يمكن استعادة الشعار المتحرك المرفق.</p>
+                <TextField label="رابط الشعار (صورة أو GIF أو فيديو MP4)" value={settings.brand.logoUrl} onChange={(v) => { clearLogoPreview(); updateBrand("logoUrl", v); }} />
+                <p className="mt-1 text-xs leading-5 text-slate-500">استخدم رابط صورة أو ملف GIF أو MP4، أو ارفع صورة JPG أو PNG أو WebP من جهازك. يمكن إيقاف الحركة من الخيار أدناه، كما يمكن استعادة الشعار المتحرك المرفق.</p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button type="button" onClick={() => logoFileInputRef.current?.click()} disabled={logoUploading} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50">
+                    {logoUploading ? "جارٍ رفع الشعار..." : "رفع شعار من الجهاز"}
+                  </button>
+                  <input ref={logoFileInputRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={logoUploading} onChange={(event) => { const [file] = Array.from(event.currentTarget.files || []); if (file) void uploadSiteLogo(file); event.currentTarget.value = ""; }} />
+                  <span className="text-xs text-slate-500">حد أقصى 10 ميغابايت</span>
+                </div>
+                {logoUploadError && <p role="alert" className="mt-2 text-xs font-bold text-rose-700">{logoUploadError}</p>}
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
                     onClick={() => {
+                      clearLogoPreview();
                       update("brand", {
                         ...settings.brand,
                         logoUrl: "/srma-animated-logo.mp4",
@@ -208,7 +275,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                 {settings.brand.logoUrl && (
                   <div className="mt-3 inline-block overflow-hidden rounded-xl border border-slate-200 bg-slate-900 p-2">
                     <BrandLogo
-                      src={settings.brand.logoUrl}
+                      src={logoPreviewUrl || settings.brand.logoUrl}
                       alt="معاينة شعار المنصة"
                       animationEnabled={settings.brand.logoAnimationEnabled}
                       className="h-20 w-40 object-contain"

@@ -186,6 +186,29 @@ export interface SiteContentSettings {
   pages: Record<PublicPageId, PublicPageContent>;
 }
 
+export const MISBAR_BRAND_NAME = "Misbar";
+
+const LEGACY_SITE_NAMES = new Set([
+  "أكاديمية srma للأبحاث",
+  "srma research academy",
+  "misbar research academy",
+  "أكاديمية,misbar للأبحاث العلمية والنشر",
+  "أكاديمية misbar للأبحاث العلمية والنشر",
+]);
+
+export function displaySiteName(value: string | null | undefined, fallback = MISBAR_BRAND_NAME): string {
+  const name = value?.trim() || "";
+  if (!name) return fallback;
+  return LEGACY_SITE_NAMES.has(name.toLocaleLowerCase().replace(/\s+/g, " "))
+    ? MISBAR_BRAND_NAME
+    : name;
+}
+
+export function siteLogoSource(value: string | null | undefined): string {
+  const logo = value?.trim() || "";
+  return logo.startsWith("/objects/research-images/") ? "/api/site-logo" : logo;
+}
+
 export const CARD_PARTS = [
   { id: "description", label: "الوصف" },
   { id: "specialty", label: "التخصص" },
@@ -330,8 +353,8 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     { id: "country", label: "الدولة", labelEn: "Country", placeholder: "", placeholderEn: "", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
   ],
   brand: {
-    siteNameAr: "أكاديمية SRMA للأبحاث", siteNameEn: "SRMA Research Academy", logoUrl: "/srma-animated-logo.mp4", logoAnimationEnabled: true,
-    appNameAr: "أكاديمية SRMA للأبحاث", appNameEn: "SRMA Research Academy", appShortName: "SRMA", appIconUrl: "/srma-logo.jpg", appThemeColor: "#0d765c",
+    siteNameAr: "Misbar", siteNameEn: "Misbar", logoUrl: "/srma-animated-logo.mp4", logoAnimationEnabled: true,
+    appNameAr: "Misbar", appNameEn: "Misbar", appShortName: "Misbar", appIconUrl: "/srma-logo.jpg", appThemeColor: "#0d765c",
     phone: "+966562159258", whatsapp: "966562159258", participantWhatsapp: "966562159258", coordinatorWhatsapp: "966562159258", whatsappChannelUrl: "", email: "srmaacademy@gmail.com", telegramUsername: "SRMAAcademy", instagramUsername: "", xUsername: "", linkedinUsername: "",
     facebookUrl: "", tiktokUrl: "", youtubeUrl: "", snapchatUrl: "",
     publicSocialIcons: ["whatsapp", "telegram"], participantSocialIcons: ["whatsapp", "telegram"], coordinatorSocialIcons: ["whatsapp", "telegram"],
@@ -372,7 +395,7 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     opportunityInquiryMessageEn: "Hello, I would like to inquire about the research opportunity: {title}",
   },
   pages: {
-    home: { titleAr: "أكاديمية SRMA للأبحاث", titleEn: "SRMA Research Academy", descriptionAr: "نحو مجتمع بحثي أكثر تأثيراً", descriptionEn: "Building a more impactful research community", contentAr: "", contentEn: "" },
+    home: { titleAr: "Misbar", titleEn: "Misbar", descriptionAr: "نحو مجتمع بحثي أكثر تأثيراً", descriptionEn: "Building a more impactful research community", contentAr: "", contentEn: "" },
     participant: { titleAr: "بوابة المشارك", titleEn: "Participant Portal", descriptionAr: "اكتشف الفرص البحثية المتاحة وسجل في البرنامج المناسب", descriptionEn: "Explore available research opportunities and register for the right program", contentAr: "", contentEn: "" },
     knowledge: { titleAr: "مركز المعرفة", titleEn: "Knowledge Center", descriptionAr: "محتوى وأدلة تساعدك في رحلتك البحثية", descriptionEn: "Resources and guides for your research journey", contentAr: "", contentEn: "" },
     about: { titleAr: "عن الأكاديمية", titleEn: "About the Academy", descriptionAr: "تعرف على رسالة وأهداف أكاديمية SRMA", descriptionEn: "Learn about SRMA Academy's mission and goals", contentAr: "", contentEn: "" },
