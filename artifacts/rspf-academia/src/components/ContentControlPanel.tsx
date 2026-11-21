@@ -1,9 +1,10 @@
-import { ChevronDown, ChevronUp, Eye, EyeOff, Palette, Save, SlidersHorizontal, Image, Phone, Mail, Link as LinkIcon, FileText, Send, Share2, ExternalLink, MessageCircle, Check, GraduationCap, ShieldCheck, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, EyeOff, Palette, Save, SlidersHorizontal, Image, Phone, Mail, Link as LinkIcon, FileText, Send, Share2, ExternalLink, MessageCircle, Check, GraduationCap, ShieldCheck, Plus, Trash2, AlertTriangle, Upload, X } from "lucide-react";
 import { useState, useRef, useId } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import SiteShareImageSettings from "@/components/SiteShareImageSettings";
 import { buildOpportunityInquiryLinks, getSelectedInquiryChannels, getInquiryOwnTarget } from "@/lib/siteContentSettings";
 import { CARD_PARTS, OPPORTUNITY_FIELDS, OpportunityDisplayMode, OpportunityFieldId, RegistrationFieldSetting, SiteContentSettings, SpecialtyOption, JournalOption, PublicPageId, BrandContactSettings, PublicPageContent, SOCIAL_ICON_OPTIONS, SocialIconId, FloatingIconPosition, ForwardingType, OpportunityInquiryChannel, ContactUsType, AcademicDegreeOption, DEFAULT_ACADEMIC_DEGREE_SETTINGS, DEFAULT_RESEARCH_EXPERIENCE_SETTINGS, DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS } from "@/lib/siteContentSettings";
+import ExperienceControlPanel from "@/components/ExperienceControlPanel";
 
 interface Props {
   settings: SiteContentSettings;
@@ -30,6 +31,9 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
   const missingInquiryTargets = Array.isArray(settings.brand.opportunityInquiryChannels) && settings.brand.opportunityInquiryEnabled !== false ? selectedInquiryChannels.filter((c) => !getInquiryOwnTarget(settings.brand, c)) : [];
   const latestSettings = useRef(settings);
   latestSettings.current = settings;
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoUploadMessage, setLogoUploadMessage] = useState("");
+  const logoFileInput = useRef<HTMLInputElement>(null);
   const update = <K extends keyof SiteContentSettings>(key: K, value: SiteContentSettings[K]) => {
     const next = { ...latestSettings.current, [key]: value };
     latestSettings.current = next;
@@ -108,6 +112,45 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
   const updateBrand = <K extends keyof BrandContactSettings>(key: K, value: BrandContactSettings[K]) => {
     update("brand", { ...latestSettings.current.brand, [key]: value });
   };
+  const uploadSiteLogo = async (file?: File) => {
+    if (!file) return;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setLogoUploadMessage("اختر صورة PNG أو JPG أو WebP.");
+      if (logoFileInput.current) logoFileInput.current.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setLogoUploadMessage("حجم الشعار أكبر من 10 ميغابايت.");
+      if (logoFileInput.current) logoFileInput.current.value = "";
+      return;
+    }
+    setLogoUploading(true);
+    setLogoUploadMessage("");
+    try {
+      const response = await fetch("/api/site-brand-logo/upload", {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      const result: unknown = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = result && typeof result === "object" && "error" in result && typeof result.error === "string"
+          ? result.error
+          : "تعذر رفع الشعار.";
+        throw new Error(error);
+      }
+      if (!result || typeof result !== "object" || !("logoUrl" in result) || typeof result.logoUrl !== "string") {
+        throw new Error("لم يصل رابط الشعار من الخادم.");
+      }
+      updateBrand("logoUrl", result.logoUrl);
+      setLogoUploadMessage("تم رفع الصورة. اضغط «حفظ التغييرات» لتطبيقها على الموقع.");
+    } catch (error) {
+      setLogoUploadMessage(error instanceof Error ? error.message : "تعذر رفع الشعار. حاول مرة أخرى.");
+    } finally {
+      setLogoUploading(false);
+      if (logoFileInput.current) logoFileInput.current.value = "";
+    }
+  };
   const toggleSocialIcon = (audience: "public" | "participant" | "coordinator", id: SocialIconId) => {
     const key = `${audience}SocialIcons` as const;
     const current = settings.brand[key];
@@ -154,6 +197,14 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
     const updated = settings.journalOptions.map((item) => item.id === id ? { ...item, ...changes } : item);
     update("journalOptions", updated);
   };
+  const moveJournal = (id: string, offset: -1 | 1) => {
+    const index = settings.journalOptions.findIndex((item) => item.id === id);
+    const nextIndex = index + offset;
+    if (index < 0 || nextIndex < 0 || nextIndex >= settings.journalOptions.length) return;
+    const next = [...settings.journalOptions];
+    [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+    update("journalOptions", next);
+  };
 
   return (
     <section className="space-y-6" dir="rtl">
@@ -164,12 +215,14 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
           <p className="mt-1 text-sm text-slate-500">حدّد ما يظهر للمشترك والمنسق وكيف يُرتَّب ويُلوَّن.</p>
         </div>
         <div className="flex items-center gap-3">
-          {message && <p className={`text-sm font-bold ${message.includes("نجاح") ? "text-[#117b59]" : "text-rose-600"}`}>{message}</p>}
-          <button type="button" onClick={onSave} disabled={saving || shareImageBusy} data-testid="button-save-content-settings" className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#117b59] px-5 py-3 font-black text-white shadow-sm transition hover:bg-[#0c6549] disabled:opacity-60">
+          {message && <p role="status" aria-live="polite" data-testid="text-content-settings-message" className={`text-sm font-bold ${message.includes("نجاح") ? "text-[#117b59]" : "text-rose-600"}`}>{message}</p>}
+          <button type="button" onClick={onSave} disabled={saving || shareImageBusy || logoUploading} data-testid="button-save-content-settings" className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#117b59] px-5 py-3 font-black text-white shadow-sm transition hover:bg-[#0c6549] disabled:opacity-60">
             <Save size={17} />{saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}
           </button>
         </div>
       </div>
+
+      <ExperienceControlPanel settings={settings} onChange={onChange} />
 
       <div className="grid gap-6 xl:grid-cols-12">
         <div className="space-y-6 xl:col-span-8">
@@ -180,20 +233,16 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
               <TextField label="اسم المنصة (إنجليزي)" value={settings.brand.siteNameEn} onChange={(v) => updateBrand("siteNameEn", v)} />
               <div className="md:col-span-2">
                 <TextField label="رابط الشعار (صورة أو GIF أو فيديو MP4)" value={settings.brand.logoUrl} onChange={(v) => updateBrand("logoUrl", v)} />
-                <p className="mt-1 text-xs leading-5 text-slate-500">استخدم رابط صورة أو ملف GIF أو MP4. يمكن إيقاف الحركة من الخيار أدناه، كما يمكن استعادة الشعار المتحرك المرفق.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">ارفع شعارًا من جهازك أو أدخل رابط صورة/GIF/MP4، ثم احفظ التغييرات لتطبيقه.</p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
                     onClick={() => {
-                      update("brand", {
-                        ...settings.brand,
-                        logoUrl: "/srma-animated-logo.mp4",
-                        logoAnimationEnabled: true,
-                      });
+                      update("brand", { ...latestSettings.current.brand, logoUrl: "/misbar-logo.svg", logoAnimationEnabled: false });
                     }}
                     className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
                   >
-                    استخدام الشعار المتحرك المرفق
+                    استعادة شعار مسبار الافتراضي
                   </button>
                   <label className="inline-flex items-center gap-2 text-sm font-bold text-slate-700">
                     <input
@@ -204,17 +253,51 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                     />
                     تشغيل حركة الشعار
                   </label>
+                  {settings.brand.logoUrl ? (
+                    <div className="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                      <BrandLogo
+                        src={settings.brand.logoUrl}
+                        alt="معاينة شعار الموقع"
+                        animationEnabled={settings.brand.logoAnimationEnabled}
+                        className="h-12 w-12 rounded-lg object-contain"
+                      />
+                      <span className="text-xs text-slate-500">معاينة الشعار</span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">لا يوجد شعار للموقع حالياً؛ سيظهر اسم الموقع بدلاً منه.</p>
+                  )}
+                  <input
+                    ref={logoFileInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    aria-label="اختر صورة شعار الموقع"
+                    onChange={(event) => void uploadSiteLogo(event.currentTarget.files?.[0])}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => logoFileInput.current?.click()}
+                    disabled={logoUploading}
+                    className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+                  >
+                    <Upload size={16} />{logoUploading ? "جارٍ رفع الشعار..." : "رفع شعار من الجهاز"}
+                  </button>
+                  {settings.brand.logoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        update("brand", { ...latestSettings.current.brand, logoUrl: "" });
+                        setLogoUploadMessage("أزيل الشعار من المعاينة. اضغط «حفظ التغييرات» لتطبيق ذلك على الموقع.");
+                      }}
+                      disabled={logoUploading}
+                      className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                    >
+                      <X size={16} />إزالة الشعار
+                    </button>
+                  )}
+                  {logoUploadMessage && <p className="w-full text-sm text-slate-600" role="status" aria-live="polite">{logoUploadMessage}</p>}
+                  <p className="w-full text-xs text-slate-500">PNG أو JPG أو WebP، بحد أقصى 10 ميغابايت. احفظ التغييرات بعد الرفع أو الإزالة.</p>
                 </div>
-                {settings.brand.logoUrl && (
-                  <div className="mt-3 inline-block overflow-hidden rounded-xl border border-slate-200 bg-slate-900 p-2">
-                    <BrandLogo
-                      src={settings.brand.logoUrl}
-                      alt="معاينة شعار المنصة"
-                      animationEnabled={settings.brand.logoAnimationEnabled}
-                      className="h-20 w-40 object-contain"
-                    />
-                  </div>
-                )}
               </div>
               <TextField label="اسم التطبيق (عربي)" value={settings.brand.appNameAr} onChange={(v) => updateBrand("appNameAr", v)} />
               <TextField label="App name (English)" value={settings.brand.appNameEn} onChange={(v) => updateBrand("appNameEn", v)} />
@@ -526,9 +609,9 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
               <div className="md:col-span-2 rounded-2xl border-2 border-emerald-400 bg-gradient-to-br from-emerald-50/60 via-white to-sky-50/40 p-5 space-y-4 shadow-xs">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-white font-bold text-lg shadow-sm">💬</span>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-white font-bold text-lg shadow-sm"></span>
                     <div>
-                      <h4 className="text-base font-black text-slate-900">زر «تواصل معنا للاستفسار 💬» (تحت زر «سجل الآن» مباشرة)</h4>
+                      <h4 className="text-base font-black text-slate-900">زر «تواصل معنا للاستفسار » (تحت زر «سجل الآن» مباشرة)</h4>
                       <p className="text-xs text-slate-600 mt-0.5">تحكم كامل بالزر الموجود أسفل زر «سجل الآن»؛ خصص وسيلة التواصل (واتساب، بريد إلكتروني، أو تيليجرام)، الرقم أو المعرف، ونصوص الزر والرسالة الفورية.</p>
                     </div>
                   </div>
@@ -699,7 +782,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                           </div>
                           <div className="rounded-lg bg-emerald-50/70 border border-emerald-200/80 p-2.5 text-[11px] text-emerald-900 space-y-1">
                             <p className="font-bold flex items-center gap-1">
-                              <span>✓</span>
+                              <span></span>
                               <span>يفتح محادثة فورية في تطبيق الواتساب محملة باسم الفرصة البحثية تلقائياً.</span>
                             </p>
                             <p className="text-[10px] text-emerald-700 font-mono dir-ltr truncate text-left">
@@ -753,7 +836,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                             <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs space-y-2 text-amber-950">
                               <div className="flex items-center justify-between">
                                 <span className="font-bold flex items-center gap-1.5 text-amber-900">
-                                  ✉️ تم تفعيل البريد الإلكتروني للاستفسارات
+                                  تم تفعيل البريد الإلكتروني للاستفسارات
                                 </span>
                                 <a
                                   href={testMailto}
@@ -832,7 +915,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                             <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3 text-xs space-y-2 text-sky-950">
                               <div className="flex items-center justify-between">
                                 <span className="font-bold flex items-center gap-1.5 text-sky-900">
-                                  {isPhone ? "📞 تم التعرف عليه كرقم هاتف" : isUrl ? "🔗 تم التعرف عليه كرابط مباشر" : "👤 تم التعرف عليه كاسم مستخدم (معرف)"}
+                                  {isPhone ? "تم التعرف عليه كرقم هاتف" : isUrl ? "تم التعرف عليه كرابط مباشر" : "تم التعرف عليه كاسم مستخدم (معرف)"}
                                 </span>
                                 <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-white border border-sky-300 text-sky-700 font-mono">
                                   {isPhone ? "Direct Telegram App Protocol" : isUrl ? "Direct URL" : "Web & App Supported"}
@@ -894,7 +977,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                           </div>
                           <div className="rounded-lg bg-blue-50/70 border border-blue-200/80 p-2.5 text-[11px] text-blue-900 space-y-1">
                             <p className="font-bold flex items-center gap-1">
-                              <span>✓</span>
+                              <span></span>
                               <span>يقوم بإجراء اتصال هاتفي صوتي مباشر على هذا الرقم عند نقر الزائر.</span>
                             </p>
                             <p className="text-[10px] text-blue-700 font-mono dir-ltr truncate text-left">
@@ -927,13 +1010,13 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                           label="نص الزر بالعربية (أسفل سجل الآن)"
                           value={settings.brand.opportunityInquiryLabelAr ?? ""}
                           onChange={(v) => updateBrand("opportunityInquiryLabelAr", v)}
-                          placeholder="تواصل معنا للاستفسار 💬"
+                          placeholder="تواصل معنا للاستفسار "
                         />
                         <TextField
                           label="نص الزر بالإنجليزية"
                           value={settings.brand.opportunityInquiryLabelEn ?? ""}
                           onChange={(v) => updateBrand("opportunityInquiryLabelEn", v)}
-                          placeholder="Contact us for inquiries 💬"
+                          placeholder="Contact us for inquiries "
                         />
                       </div>
 
@@ -966,13 +1049,13 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                         <option value="en">Preview in English</option>
                       </select>
                       <p className="text-xs font-black text-slate-700 mb-2 flex items-center gap-1.5">
-                        <span>👁️</span>
+                        <span></span>
                         <span>معاينة حية لشكل الزر وموضعه تحت «سجل الآن»:</span>
                       </p>
                       <div className="max-w-xs mx-auto bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
                         <div className="flex gap-2">
                           <div className="flex-1 bg-[#0C3156] text-white font-bold py-2.5 rounded-xl text-xs text-center flex items-center justify-center gap-1">
-                            <span>سجل الآن</span> <span>👤</span>
+                            <span>سجل الآن</span> <span></span>
                           </div>
                           <div className="border border-[#0C3156]/30 text-[#0C3156] font-bold px-3 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1">
                             <span>التفاصيل</span> <span>‹</span>
@@ -995,9 +1078,8 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                         <p dir="ltr" className="break-all text-[10px] text-slate-500">{q.href}</p>
                         </div>))}
 
-
                         <div className="text-[11px] text-slate-400 py-0.5 text-center font-medium">
-                          🔗 نسخ رابط الفرصة
+                          نسخ رابط الفرصة
                         </div>
                       </div>
                     </div>
@@ -1019,7 +1101,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
               <div className="md:col-span-2 rounded-2xl border border-emerald-100 bg-emerald-50/30 p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-xs">💬</span>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-xs"></span>
                     <div>
                       <h4 className="text-sm font-black text-slate-800">قنوات التواصل في صفحة الفرصة البحثية (تحت زر التسجيل والطلب)</h4>
                       <p className="text-xs text-slate-600">إظهار أزرار تواصل مباشرة (واتساب، تيليجرام، إيميل، هاتف) أسفل زر التسجيل للتسهيل على المشتركين والباحثين.</p>
@@ -1065,7 +1147,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                                   : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                               }`}
                             >
-                              {isSelected ? "✓ " : "+ "}{ch.label}
+                              {isSelected ? "" : "+ "}{ch.label}
                             </button>
                           );
                         })}
@@ -1138,7 +1220,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                   <h3 className="mb-3 font-black text-slate-800">أيقونات {title}</h3>
                   <div className="mb-4 flex flex-wrap gap-2">
                     {SOCIAL_ICON_OPTIONS.map((option) => <button key={option.id} type="button" onClick={() => toggleSocialIcon(audience, option.id)} className={`rounded-xl border px-3 py-2 text-xs font-bold ${icons.includes(option.id) ? "border-[#117b59] bg-[#e6f5ef] text-[#117b59]" : "border-slate-200 text-slate-500"}`}>
-                      {icons.includes(option.id) ? "✓ " : ""}{option.label}
+                      {icons.includes(option.id) ? "" : ""}{option.label}
                     </button>)}
                   </div>
                   <label className="block text-xs font-bold text-slate-600">مكان الظهور</label>
@@ -1170,7 +1252,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
 
             {activePageTab === "home" && (
               <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs leading-relaxed text-emerald-900">
-                <span className="font-black text-emerald-800">💡 التحكم بالصفحة الرئيسية (عربي وإنجليزي):</span>
+                <span className="font-black text-emerald-800">التحكم بالصفحة الرئيسية (عربي وإنجليزي):</span>
                 <p className="mt-1">
                   يمكنك من هنا تخصيص العنوان البارز (Hero Headline)، والوصف الترحيبي (Hero Subtitle)، بالإضافة إلى إمكانية كتابة «إعلان أو تنويه رسمي من إدارة الأكاديمية» يظهر كبانر بارز ومميز في صدر الصفحة الرئيسية باللغتين.
                 </p>
@@ -1314,7 +1396,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                     onClick={() => updateBrand("participantAutoRedirect", !settings.brand.participantAutoRedirect)}
                     className={`rounded-xl px-4 py-2 text-xs font-black transition ${settings.brand.participantAutoRedirect ? "bg-[#117b59] text-white" : "bg-slate-200 text-slate-600"}`}
                   >
-                    {settings.brand.participantAutoRedirect ? "مفعّل ✓" : "معطّل"}
+                    {settings.brand.participantAutoRedirect ? "مفعّل " : "معطّل"}
                   </button>
                 </div>
 
@@ -1378,7 +1460,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                     onClick={() => updateBrand("coordinatorAutoRedirect", !settings.brand.coordinatorAutoRedirect)}
                     className={`rounded-xl px-4 py-2 text-xs font-black transition ${settings.brand.coordinatorAutoRedirect ? "bg-[#117b59] text-white" : "bg-slate-200 text-slate-600"}`}
                   >
-                    {settings.brand.coordinatorAutoRedirect ? "مفعّل ✓" : "معطّل"}
+                    {settings.brand.coordinatorAutoRedirect ? "مفعّل " : "معطّل"}
                   </button>
                 </div>
 
@@ -1456,7 +1538,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
           </Panel>
 
           <Panel title="المجلات والفهرسة العلمية" icon={SlidersHorizontal}>
-            <p className="mb-5 text-sm leading-6 text-slate-500">أضف اسم المجلة ورقم ISSN وتصنيفها أو حالتها في PubMed وScopus وWeb of Science. ستظهر في نموذج الفرصة لتختارها وتُملأ بياناتها تلقائياً.</p>
+            <p className="mb-5 text-sm leading-6 text-slate-500">أضف المجلات أو عدّل أسماءها وبياناتها ورتّب ظهورها. أسماء المجلات المحفوظة تظهر أيضاً في شريط الصفحة الرئيسية؛ هذا لا يعني وجود شراكة أو ضمان نشر.</p>
             <div className="grid gap-3 md:grid-cols-2">
               <TextField label="اسم المجلة بالعربية" value={journalDraft.nameAr} onChange={(value) => setJournalDraft({ ...journalDraft, nameAr: value })} />
               <TextField label="Journal name in English" value={journalDraft.nameEn} onChange={(value) => setJournalDraft({ ...journalDraft, nameEn: value })} />
@@ -1469,9 +1551,21 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
             <div className="mt-5 space-y-3">
               {settings.journalOptions.length === 0 ? <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">لم تُضف مجلات بعد.</p> : settings.journalOptions.map((journal) => (
                 <div key={journal.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div><p className="font-black text-slate-800">{journal.nameAr || journal.nameEn}</p>{journal.nameAr && journal.nameEn && <p className="mt-1 text-xs text-slate-500" dir="ltr">{journal.nameEn}</p>}</div>
-                    <button type="button" onClick={() => update("journalOptions", settings.journalOptions.filter((item) => item.id !== journal.id))} className="rounded-lg px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100">حذف</button>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-black text-slate-800">{journal.nameAr || journal.nameEn}</p>
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => moveJournal(journal.id, -1)} disabled={settings.journalOptions[0]?.id === journal.id} aria-label={`نقل ${journal.nameAr || journal.nameEn} للأعلى`} className="rounded-lg p-2 text-slate-500 hover:bg-white disabled:opacity-30"><ChevronUp size={16} /></button>
+                      <button type="button" onClick={() => moveJournal(journal.id, 1)} disabled={settings.journalOptions.at(-1)?.id === journal.id} aria-label={`نقل ${journal.nameAr || journal.nameEn} للأسفل`} className="rounded-lg p-2 text-slate-500 hover:bg-white disabled:opacity-30"><ChevronDown size={16} /></button>
+                      <button type="button" onClick={() => update("journalOptions", settings.journalOptions.filter((item) => item.id !== journal.id))} className="rounded-lg px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100">حذف</button>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <TextField label="اسم المجلة بالعربية" value={journal.nameAr} onChange={(value) => updateJournal(journal.id, { nameAr: value })} />
+                    <TextField label="Journal name in English" value={journal.nameEn} onChange={(value) => updateJournal(journal.id, { nameEn: value })} />
+                    <TextField label="ISSN / eISSN" value={journal.issn} onChange={(value) => updateJournal(journal.id, { issn: value })} />
+                    <TextField label="تصنيف PubMed أو حالته" value={journal.pubmed} onChange={(value) => updateJournal(journal.id, { pubmed: value })} />
+                    <TextField label="تصنيف Scopus أو حالته" value={journal.scopus} onChange={(value) => updateJournal(journal.id, { scopus: value })} />
+                    <TextField label="تصنيف Web of Science أو حالته" value={journal.wos} onChange={(value) => updateJournal(journal.id, { wos: value })} />
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-600">
                     {journal.issn && <span className="rounded-lg bg-white px-2 py-1">ISSN: {journal.issn}</span>}

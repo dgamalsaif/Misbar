@@ -62,7 +62,7 @@ export default function OwnerSecurityPanel({ onNameUpdated }: { onNameUpdated: (
           <div>
             <div className="flex items-center justify-end gap-2 text-[#117b59]"><ShieldCheck size={22} /><p className="font-black">حساب المالك المحمي</p></div>
             <h2 className="mt-2 text-2xl font-black text-slate-800">{profile?.fullName || user?.fullName || "حساب المالك"}</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">يتم حفظ كلمة المرور والتحقق وعوامل الأمان داخل خدمة المصادقة؛ لا تظهر أي كلمة مرور في لوحة SRMA.</p>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">يتم حفظ كلمة المرور والتحقق وعوامل الأمان داخل خدمة المصادقة؛ لا تظهر أي كلمة مرور في لوحة مسبار.</p>
           </div>
           <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-[#117b59]"><BadgeCheck size={15} /> حساب إداري موثّق</span>
         </div>

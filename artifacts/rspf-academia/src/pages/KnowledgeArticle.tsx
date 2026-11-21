@@ -1,6 +1,6 @@
 import { Link, useParams } from "wouter";
 import { ArrowLeft, Calendar, Clock, FileText } from "lucide-react";
-import { getKnowledgeArticle } from "@/lib/knowledgeArticles";
+import { mergeKnowledgeArticles } from "@/lib/knowledgeArticles";
 import { useLanguage } from "@/lib/i18n";
 import { PageSeo, buildPublicUrl } from "@/lib/seo";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
@@ -8,8 +8,8 @@ import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 export default function KnowledgeArticle() {
   const { slug } = useParams<{ slug: string }>();
   const { language, direction, t } = useLanguage();
-  const article = getKnowledgeArticle(slug);
   const { data: settings } = useSiteContentSettings();
+  const article = mergeKnowledgeArticles(settings.experience.content.knowledge.articles).find((a) => a.slug === slug);
 
   if (!article) {
     return (
@@ -35,12 +35,12 @@ export default function KnowledgeArticle() {
     dateModified: article.date,
     inLanguage: language,
     mainEntityOfPage: buildPublicUrl(pathname, language),
-    publisher: { "@type": "Organization", name: siteName || "SRMA Research Academy", url: "https://srmaacademy.com" },
+    publisher: { "@type": "Organization", name: siteName || "Misbar", url: "https://srmaacademy.com" },
   };
 
   return (
     <article className="min-h-screen bg-white" dir={direction}>
-      <PageSeo pathname={pathname} language={language} title={`${title} | ${siteName || "SRMA Research Academy"}`} description={description} jsonLd={jsonLd} />
+      <PageSeo pathname={pathname} language={language} title={title} description={description} jsonLd={jsonLd} />
       <header className="border-b border-slate-100 bg-gradient-to-br from-slate-50 via-blue-50/50 to-white px-4 py-14">
         <div className="mx-auto max-w-3xl">
           <Link href="/knowledge-center" className="mb-7 inline-flex items-center gap-2 text-sm font-bold text-[#0C3156] hover:underline">

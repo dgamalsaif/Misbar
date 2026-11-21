@@ -88,3 +88,58 @@ export const knowledgeArticles: KnowledgeArticle[] = [
 export function getKnowledgeArticle(slug: string | undefined) {
   return knowledgeArticles.find((article) => article.slug === slug);
 }
+/* ---------------- owner overrides (experience.content.knowledge.articles) ---------------- */
+import { parseArticleBody, type ArticleEntry } from "../../../../lib/site-experience";
+
+function bodyToSections(body: string): KnowledgeArticle["sections"]["ar"] {
+  const out: KnowledgeArticle["sections"]["ar"] = [];
+  let current: { heading: string; paragraphs: string[]; bullets?: string[] } = { heading: "", paragraphs: [] };
+  for (const block of parseArticleBody(body)) {
+    if (block.kind === "heading") {
+      if (current.heading || current.paragraphs.length || current.bullets?.length) out.push(current);
+      current = { heading: block.text, paragraphs: [] };
+    } else if (block.kind === "paragraph") current.paragraphs.push(block.text);
+    else current.bullets = [...(current.bullets || []), ...block.items];
+  }
+  if (current.heading || current.paragraphs.length || current.bullets?.length) out.push(current);
+  return out;
+}
+
+const pick = (override: string, fallback: string) => (override.trim() ? override : fallback);
+
+/** Built-in articles merged with owner overrides; owner can also add new slugs or hide articles. */
+export function mergeKnowledgeArticles(entries: ArticleEntry[]): KnowledgeArticle[] {
+  const bySlug = new Map(entries.map((e) => [e.slug, e]));
+  const merged: KnowledgeArticle[] = knowledgeArticles.map((a) => {
+    const o = bySlug.get(a.slug);
+    if (!o) return a;
+    return {
+      ...a,
+      featured: o.featured || a.featured,
+      category: { ar: pick(o.category.ar, a.category.ar), en: pick(o.category.en, a.category.en) },
+      title: { ar: pick(o.title.ar, a.title.ar), en: pick(o.title.en, a.title.en) },
+      excerpt: { ar: pick(o.excerpt.ar, a.excerpt.ar), en: pick(o.excerpt.en, a.excerpt.en) },
+      readTime: { ar: pick(o.readTime.ar, a.readTime.ar), en: pick(o.readTime.en, a.readTime.en) },
+      date: o.date || a.date,
+      sections: {
+        ar: o.body.ar.trim() ? bodyToSections(o.body.ar) : a.sections.ar,
+        en: o.body.en.trim() ? bodyToSections(o.body.en) : a.sections.en,
+      },
+    };
+  });
+  for (const e of entries) {
+    if (knowledgeArticles.some((a) => a.slug === e.slug)) continue;
+    merged.push({
+      slug: e.slug,
+      featured: e.featured,
+      categoryClass: "bg-[color:var(--m-gold-soft)] text-[color:var(--m-ink)]",
+      category: e.category,
+      title: { ar: e.title.ar || e.title.en, en: e.title.en || e.title.ar },
+      excerpt: e.excerpt,
+      readTime: e.readTime,
+      date: e.date,
+      sections: { ar: bodyToSections(e.body.ar || e.body.en), en: bodyToSections(e.body.en || e.body.ar) },
+    });
+  }
+  return merged.filter((a) => !bySlug.get(a.slug)?.hidden);
+}

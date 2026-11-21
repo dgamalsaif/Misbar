@@ -1,3 +1,6 @@
+import { migrateLegacySiteIdentity } from "../../../../lib/site-brand-migration";
+import { DEFAULT_EXPERIENCE_SETTINGS, sanitizeExperienceSettings, type ExperienceSettings } from "../../../../lib/site-experience";
+export type { ExperienceSettings } from "../../../../lib/site-experience";
 export type Audience = "participant" | "coordinator";
 export type TitleLanguage = "arabic" | "english" | "both";
 export type OpportunityDisplayMode = "grid" | "scroll";
@@ -184,6 +187,7 @@ export interface SiteContentSettings {
   registrationFields: RegistrationFieldSetting[];
   brand: BrandContactSettings;
   pages: Record<PublicPageId, PublicPageContent>;
+  experience: ExperienceSettings;
 }
 
 export const CARD_PARTS = [
@@ -303,9 +307,9 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
   coordinatorFormDescription: "أدخل بيانات الطالب كما تظهر في مستنداته الأكاديمية.",
   coordinatorFormDescriptionEn: "Enter the student's details exactly as they appear in their academic documents.",
   participantTitleLanguage: "english",
-  coordinatorTitleLanguage: "english",
-  primaryColor: "#0C3156",
-  accentColor: "#117b59",
+  coordinatorTitleLanguage: "arabic",
+  primaryColor: "#0b5145",
+  accentColor: "#c69b35",
   cardBackgroundColor: "#ffffff",
   opportunityDisplayMode: "grid",
   showOpportunityDetails: true,
@@ -330,8 +334,9 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     { id: "country", label: "الدولة", labelEn: "Country", placeholder: "", placeholderEn: "", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
   ],
   brand: {
-    siteNameAr: "أكاديمية SRMA للأبحاث", siteNameEn: "SRMA Research Academy", logoUrl: "/srma-animated-logo.mp4", logoAnimationEnabled: true,
-    appNameAr: "أكاديمية SRMA للأبحاث", appNameEn: "SRMA Research Academy", appShortName: "SRMA", appIconUrl: "/srma-logo.jpg", appThemeColor: "#0d765c",
+    siteNameAr: "مسبار", siteNameEn: "Misbar", logoUrl: "/misbar-logo.svg",
+    logoAnimationEnabled: false,
+    appNameAr: "مسبار", appNameEn: "Misbar", appShortName: "Misbar", appIconUrl: "/misbar-logo.svg", appThemeColor: "#0b5145",
     phone: "+966562159258", whatsapp: "966562159258", participantWhatsapp: "966562159258", coordinatorWhatsapp: "966562159258", whatsappChannelUrl: "", email: "srmaacademy@gmail.com", telegramUsername: "SRMAAcademy", instagramUsername: "", xUsername: "", linkedinUsername: "",
     facebookUrl: "", tiktokUrl: "", youtubeUrl: "", snapchatUrl: "",
     publicSocialIcons: ["whatsapp", "telegram"], participantSocialIcons: ["whatsapp", "telegram"], coordinatorSocialIcons: ["whatsapp", "telegram"],
@@ -366,20 +371,21 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     opportunityInquiryEmail: "srmaacademy@gmail.com",
     opportunityInquiryPhone: "+966562159258",
     opportunityInquiryCustomUrl: "",
-    opportunityInquiryLabelAr: "تواصل معنا للاستفسار 💬",
-    opportunityInquiryLabelEn: "Contact us for inquiries 💬",
+    opportunityInquiryLabelAr: "تواصل معنا للاستفسار",
+    opportunityInquiryLabelEn: "Contact us for inquiries",
     opportunityInquiryMessageAr: "مرحباً، أود الاستفسار والتسجيل بخصوص الفرصة البحثية: {title}",
     opportunityInquiryMessageEn: "Hello, I would like to inquire about the research opportunity: {title}",
   },
   pages: {
-    home: { titleAr: "أكاديمية SRMA للأبحاث", titleEn: "SRMA Research Academy", descriptionAr: "نحو مجتمع بحثي أكثر تأثيراً", descriptionEn: "Building a more impactful research community", contentAr: "", contentEn: "" },
+    home: { titleAr: "مسبار", titleEn: "Misbar", descriptionAr: "فرص بحثية طبية بوضوح وأمانة", descriptionEn: "Medical research opportunities, clearly and honestly", contentAr: "", contentEn: "" },
     participant: { titleAr: "بوابة المشارك", titleEn: "Participant Portal", descriptionAr: "اكتشف الفرص البحثية المتاحة وسجل في البرنامج المناسب", descriptionEn: "Explore available research opportunities and register for the right program", contentAr: "", contentEn: "" },
     knowledge: { titleAr: "مركز المعرفة", titleEn: "Knowledge Center", descriptionAr: "محتوى وأدلة تساعدك في رحلتك البحثية", descriptionEn: "Resources and guides for your research journey", contentAr: "", contentEn: "" },
-    about: { titleAr: "عن الأكاديمية", titleEn: "About the Academy", descriptionAr: "تعرف على رسالة وأهداف أكاديمية SRMA", descriptionEn: "Learn about SRMA Academy's mission and goals", contentAr: "", contentEn: "" },
+    about: { titleAr: "عن مسبار", titleEn: "About Misbar", descriptionAr: "تعرف على رسالة وأهداف مسبار", descriptionEn: "Learn about Misbar's mission and goals", contentAr: "", contentEn: "" },
     faq: { titleAr: "الأسئلة الشائعة", titleEn: "Frequently Asked Questions", descriptionAr: "إجابات عن أكثر الأسئلة تكراراً", descriptionEn: "Answers to the most common questions", contentAr: "", contentEn: "" },
     specialRequests: { titleAr: "الطلبات الخاصة", titleEn: "Special Requests", descriptionAr: "خدمات بحثية متخصصة ومتكاملة", descriptionEn: "Specialized and integrated research services", contentAr: "", contentEn: "" },
     researchDetail: { titleAr: "تفاصيل الفرصة البحثية", titleEn: "Research Opportunity Details", descriptionAr: "راجع تفاصيل الفرصة ثم أكمل التسجيل", descriptionEn: "Review the opportunity details and complete your registration", contentAr: "", contentEn: "" },
   },
+  experience: DEFAULT_EXPERIENCE_SETTINGS,
 };
 
 /**
@@ -401,6 +407,62 @@ export function getOrderedRegistrationFields(
     if (!byId.has(fallback.id)) byId.set(fallback.id, fallback);
   }
   return [...byId.values()];
+}
+
+/** Exact legacy brand values that are migrated to Misbar on read. Anything else is a custom value and is preserved. */
+const LEGACY_BRAND_MAP: Record<string, string> = {
+  "أكاديمية SRMA للأبحاث": "مسبار",
+  "SRMA Research Academy": "Misbar",
+  "SRMA": "Misbar",
+  "/srma-logo.jpg": "/misbar-logo.svg",
+  "#0d765c": "#0b5145",
+};
+const LEGACY_PAGE_TEXT: Record<string, string> = {
+  "نحو مجتمع بحثي أكثر تأثيراً": "فرص بحثية طبية بوضوح وأمانة",
+  "Building a more impactful research community": "Medical research opportunities, clearly and honestly",
+  "عن الأكاديمية": "عن مسبار",
+  "About the Academy": "About Misbar",
+  "تعرف على رسالة وأهداف أكاديمية SRMA": "تعرف على رسالة وأهداف مسبار",
+  "Learn about SRMA Academy's mission and goals": "Learn about Misbar's mission and goals",
+  "تواصل معنا للاستفسار ": "تواصل معنا للاستفسار",
+  "Contact us for inquiries ": "Contact us for inquiries",
+};
+const migrateExact = (value: unknown, map: Record<string, string>) => (typeof value === "string" && map[value] !== undefined ? map[value] : value);
+
+/**
+ * Normalizes settings from the API: fills missing sections with defaults, sanitizes `experience`,
+ * and migrates ONLY exact legacy default brand strings/assets. Custom values are preserved as-is.
+ * Domains, contact destinations and route slugs are never touched.
+ */
+export function normalizeSiteContentSettings(input: unknown): SiteContentSettings {
+  const migrated = migrateLegacySiteIdentity(input);
+  const raw = (migrated && typeof migrated === "object" ? migrated : {}) as Partial<SiteContentSettings>;
+  const D = DEFAULT_SITE_CONTENT_SETTINGS;
+  const brandIn = { ...D.brand, ...(raw.brand || {}) } as BrandContactSettings;
+  const brand = { ...brandIn } as BrandContactSettings;
+  (["siteNameAr", "siteNameEn", "appNameAr", "appNameEn", "appShortName", "logoUrl", "appIconUrl", "appThemeColor"] as const).forEach((k) => {
+    (brand as unknown as Record<string, unknown>)[k] = migrateExact(brandIn[k], LEGACY_BRAND_MAP);
+  });
+  brand.opportunityInquiryLabelAr = migrateExact(brand.opportunityInquiryLabelAr, LEGACY_PAGE_TEXT) as string;
+  brand.opportunityInquiryLabelEn = migrateExact(brand.opportunityInquiryLabelEn, LEGACY_PAGE_TEXT) as string;
+  const pages = { ...D.pages } as Record<PublicPageId, PublicPageContent>;
+  (Object.keys(D.pages) as PublicPageId[]).forEach((id) => {
+    const p = { ...D.pages[id], ...((raw.pages || {})[id] || {}) } as PublicPageContent;
+    (Object.keys(p) as (keyof PublicPageContent)[]).forEach((k) => {
+      p[k] = migrateExact(migrateExact(p[k], LEGACY_BRAND_MAP), LEGACY_PAGE_TEXT) as string;
+    });
+    pages[id] = p;
+  });
+  return {
+    ...D,
+    ...raw,
+    academicDegreeSettings: raw.academicDegreeSettings || D.academicDegreeSettings,
+    researchExperienceSettings: raw.researchExperienceSettings || D.researchExperienceSettings,
+    feeAndTaskAgreementSettings: raw.feeAndTaskAgreementSettings || D.feeAndTaskAgreementSettings,
+    brand,
+    pages,
+    experience: sanitizeExperienceSettings(raw.experience),
+  } as SiteContentSettings;
 }
 
 export function getContactUsHref(brand?: BrandContactSettings): { href: string; isExternal: boolean; labelAr: string; labelEn: string } {
@@ -605,8 +667,8 @@ export function getOpportunityInquiryLink(
   const rawMsg = language === "en" ? defaultEnMsg : defaultArMsg;
   const message = rawMsg.replace(/\{title\}|\{name\}|\btitle\b/gi, () => titleText);
 
-  const labelAr = b.opportunityInquiryLabelAr || b.opportunityContactLabelAr || "تواصل معنا للاستفسار 💬";
-  const labelEn = b.opportunityInquiryLabelEn || b.opportunityContactLabelEn || "Contact us for inquiries 💬";
+  const labelAr = b.opportunityInquiryLabelAr || b.opportunityContactLabelAr || "تواصل معنا للاستفسار";
+  const labelEn = b.opportunityInquiryLabelEn || b.opportunityContactLabelEn || "Contact us for inquiries";
 
   if (channel === "whatsapp") {
     const rawVal = (
@@ -693,8 +755,8 @@ export function getOpportunityInquiryLink(
       channel: "telegram",
       href,
       isExternal: true,
-      labelAr: b.opportunityInquiryLabelAr || "تواصل معنا للاستفسار 💬",
-      labelEn: b.opportunityInquiryLabelEn || "Contact us for inquiries 💬",
+      labelAr: b.opportunityInquiryLabelAr || "تواصل معنا للاستفسار",
+      labelEn: b.opportunityInquiryLabelEn || "Contact us for inquiries",
       displayValue,
     };
   }
@@ -711,8 +773,8 @@ export function getOpportunityInquiryLink(
       channel: "phone",
       href: `tel:${cleanPhone}`,
       isExternal: false,
-      labelAr: b.opportunityInquiryLabelAr || "اتصال للاستفسار 📞",
-      labelEn: b.opportunityInquiryLabelEn || "Call for inquiries 📞",
+      labelAr: b.opportunityInquiryLabelAr || "اتصال للاستفسار ",
+      labelEn: b.opportunityInquiryLabelEn || "Call for inquiries ",
       displayValue: phoneVal,
     };
   }
@@ -733,8 +795,8 @@ export function getOpportunityInquiryLink(
       channel: "custom_url",
       href: url.toString(),
       isExternal: true,
-      labelAr: b.opportunityInquiryLabelAr || "رابط الاستفسار والتواصل 🔗",
-      labelEn: b.opportunityInquiryLabelEn || "Inquiry & Contact Link 🔗",
+      labelAr: b.opportunityInquiryLabelAr || "رابط الاستفسار والتواصل ",
+      labelEn: b.opportunityInquiryLabelEn || "Inquiry & Contact Link ",
       displayValue: urlVal,
     };
   }

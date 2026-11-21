@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { BadgePercent, BookOpen, Clock3, Expand, LibraryBig, UsersRound, X } from "lucide-react";
 import { ResearchOpportunity } from "@/lib/researchData";
 import { formatOpportunityMoney, getDiscountPercentage } from "@/lib/opportunityPricing";
-import { SRMA_LOGO } from "@/components/BrandBackground";
 import BrandLogo from "@/components/BrandLogo";
 import { useLanguage } from "@/lib/i18n";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
@@ -90,7 +89,7 @@ function OpportunityMetadata({ research, className = "" }: { research: ResearchO
 
 export default function OpportunityMedia({ research, className = "aspect-[4/3] min-h-[172px]" }: { research: ResearchOpportunity; className?: string }) {
   const { data: settings } = useSiteContentSettings();
-  const brandLogo = settings?.brand.logoUrl || SRMA_LOGO;
+  const brandLogo = settings?.brand.logoUrl || "/misbar-logo.svg";
   const brandName = settings?.brand.siteNameAr || settings?.brand.siteNameEn || "SRMA";
   const { direction, language, localize } = useLanguage();
   const title = getEnglishOpportunityTitle(research);

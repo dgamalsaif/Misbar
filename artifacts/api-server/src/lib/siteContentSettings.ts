@@ -1,5 +1,7 @@
 import { coordinatorPortalSettingsTable, db } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
+import { DEFAULT_EXPERIENCE_SETTINGS, sanitizeExperienceSettings, type ExperienceSettings } from "../../../../lib/site-experience";
+import { migrateLegacySiteIdentity } from "../../../../lib/site-brand-migration";
 
 export type Audience = "participant" | "coordinator";
 type TitleLanguage = "arabic" | "english" | "both";
@@ -172,6 +174,7 @@ const SOCIAL_ICON_IDS: SocialIconId[] = ["whatsapp", "telegram", "instagram", "x
 const ICON_POSITIONS: FloatingIconPosition[] = ["bottom-left", "bottom-right", "middle-left", "middle-right"];
 
 export interface SiteContentSettings {
+  experience: ExperienceSettings;
   participantTitle: string;
   participantTitleEn: string;
   participantDescription: string;
@@ -284,6 +287,7 @@ export const DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS: FeeAndTaskAgreementSetting
 };
 
 export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
+  experience: DEFAULT_EXPERIENCE_SETTINGS,
   participantTitle: "بوابة المشارك",
   participantTitleEn: "Participant Portal",
   participantDescription: "اكتشف الفرص البحثية المتاحة وسجل في البرنامج المناسب لتخصصك وأهدافك المهنية",
@@ -293,9 +297,9 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
   coordinatorFormDescription: "أدخل بيانات الطالب كما تظهر في مستنداته الأكاديمية.",
   coordinatorFormDescriptionEn: "Enter the student's details exactly as they appear in their academic documents.",
   participantTitleLanguage: "english",
-  coordinatorTitleLanguage: "english",
-  primaryColor: "#0C3156",
-  accentColor: "#117b59",
+  coordinatorTitleLanguage: "arabic",
+  primaryColor: "#0b5145",
+  accentColor: "#c69b35",
   cardBackgroundColor: "#ffffff",
   opportunityDisplayMode: "grid",
   showOpportunityDetails: true,
@@ -320,15 +324,15 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     { id: "country", label: "الدولة", labelEn: "Country", placeholder: "", placeholderEn: "", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
   ],
   brand: {
-    siteNameAr: "أكاديمية SRMA للأبحاث",
-    siteNameEn: "SRMA Research Academy",
-    logoUrl: "/srma-animated-logo.mp4",
-    logoAnimationEnabled: true,
-    appNameAr: "أكاديمية SRMA للأبحاث",
-    appNameEn: "SRMA Research Academy",
-    appShortName: "SRMA",
-    appIconUrl: "/srma-logo.jpg",
-    appThemeColor: "#0d765c",
+    siteNameAr: "مسبار",
+    siteNameEn: "Misbar",
+    logoUrl: "/misbar-logo.svg",
+    logoAnimationEnabled: false,
+    appNameAr: "مسبار",
+    appNameEn: "Misbar",
+    appShortName: "Misbar",
+    appIconUrl: "/misbar-logo.svg",
+    appThemeColor: "#0b5145",
     phone: "+966562159258",
     whatsapp: "966562159258",
     participantWhatsapp: "966562159258",
@@ -391,10 +395,10 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     opportunityInquiryMessageEn: "Hello, I would like to inquire about the research opportunity: {title}",
   },
   pages: {
-    home: { titleAr: "أكاديمية SRMA للأبحاث", titleEn: "SRMA Research Academy", descriptionAr: "نحو مجتمع بحثي أكثر تأثيراً", descriptionEn: "Building a more impactful research community", contentAr: "", contentEn: "" },
+    home: { titleAr: "مسبار", titleEn: "Misbar", descriptionAr: "نحو مجتمع بحثي أكثر تأثيراً", descriptionEn: "Building a more impactful research community", contentAr: "", contentEn: "" },
     participant: { titleAr: "بوابة المشارك", titleEn: "Participant Portal", descriptionAr: "اكتشف الفرص البحثية المتاحة وسجل في البرنامج المناسب", descriptionEn: "Explore available research opportunities and register for the right program", contentAr: "", contentEn: "" },
     knowledge: { titleAr: "مركز المعرفة", titleEn: "Knowledge Center", descriptionAr: "محتوى وأدلة تساعدك في رحلتك البحثية", descriptionEn: "Resources and guides for your research journey", contentAr: "", contentEn: "" },
-    about: { titleAr: "عن الأكاديمية", titleEn: "About the Academy", descriptionAr: "تعرف على رسالة وأهداف أكاديمية SRMA", descriptionEn: "Learn about SRMA Academy's mission and goals", contentAr: "", contentEn: "" },
+    about: { titleAr: "عن مسبار", titleEn: "About Misbar", descriptionAr: "تعرف على رسالة وأهداف مسبار", descriptionEn: "Learn about Misbar's mission and goals", contentAr: "", contentEn: "" },
     faq: { titleAr: "الأسئلة الشائعة", titleEn: "Frequently Asked Questions", descriptionAr: "إجابات عن أكثر الأسئلة تكراراً", descriptionEn: "Answers to the most common questions", contentAr: "", contentEn: "" },
     specialRequests: { titleAr: "الطلبات الخاصة", titleEn: "Special Requests", descriptionAr: "خدمات بحثية متخصصة ومتكاملة", descriptionEn: "Specialized and integrated research services", contentAr: "", contentEn: "" },
     researchDetail: { titleAr: "تفاصيل الفرصة البحثية", titleEn: "Research Opportunity Details", descriptionAr: "راجع تفاصيل الفرصة ثم أكمل التسجيل", descriptionEn: "Review the opportunity details and complete your registration", contentAr: "", contentEn: "" },
@@ -402,12 +406,13 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
 };
 
 export async function getSiteContentSettings(): Promise<SiteContentSettings> {
-  const [record] = await db.select().from(coordinatorPortalSettingsTable)
+  const [record] = await getPersistentDatabase().select().from(coordinatorPortalSettingsTable)
     .where(eq(coordinatorPortalSettingsTable.key, SITE_CONTENT_KEY)).limit(1);
   return record ? sanitizeSiteContentSettings(record.value) : DEFAULT_SITE_CONTENT_SETTINGS;
 }
 
 export function sanitizeSiteContentSettings(value: unknown): SiteContentSettings {
+  value = migrateLegacySiteIdentity(value);
   if (!value || typeof value !== "object" || Array.isArray(value)) return DEFAULT_SITE_CONTENT_SETTINGS;
   const input = value as Record<string, unknown>;
   const text = (key: keyof SiteContentSettings, max = 600) => typeof input[key] === "string"
@@ -442,7 +447,7 @@ export function sanitizeSiteContentSettings(value: unknown): SiteContentSettings
       return nameAr || nameEn ? [{ id, nameAr, nameEn, ...(groupUrl ? { groupUrl } : {}) }] : [];
     }).slice(0, 100)
     : DEFAULT_SITE_CONTENT_SETTINGS.specialtyOptions;
-  const journalOptions = Array.isArray(input.journalOptions) && input.journalOptions.length > 0
+  const journalOptions = Array.isArray(input.journalOptions)
     ? input.journalOptions.flatMap((item) => {
       if (!item || typeof item !== "object") return [];
       const value = item as Record<string, unknown>;
@@ -591,6 +596,7 @@ type BrandTextKey = { [K in keyof BrandContactSettings]-?: BrandContactSettings[
 
   return {
     participantTitle: text("participantTitle", 120),
+    experience: sanitizeExperienceSettings(input.experience),
     participantTitleEn: translatedText("participantTitleEn", "participantTitle", 120),
     participantDescription: text("participantDescription", 600),
     participantDescriptionEn: translatedText("participantDescriptionEn", "participantDescription", 600),
@@ -744,7 +750,7 @@ type BrandTextKey = { [K in keyof BrandContactSettings]-?: BrandContactSettings[
 
 export async function saveSiteContentSettings(settings: SiteContentSettings) {
   const value = settings as unknown as Record<string, unknown>;
-  await db.insert(coordinatorPortalSettingsTable).values({ key: SITE_CONTENT_KEY, value })
+  await getPersistentDatabase().insert(coordinatorPortalSettingsTable).values({ key: SITE_CONTENT_KEY, value })
     .onConflictDoUpdate({ target: coordinatorPortalSettingsTable.key, set: { value, updatedAt: new Date() } });
 }
 

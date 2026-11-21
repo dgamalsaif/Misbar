@@ -1,57 +1,44 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
-
-const faqs = [
-  { ar: { q: "ما هي SRMA Research Academy ومن المستهدف من الخدمة؟", a: "SRMA Research Academy هي أكاديمية متخصصة في دعم الأطباء والباحثين الصحيين في رحلتهم البحثية. نستهدف أطباء البورد، المقيمين، الاستشاريين، وطلاب الدراسات العليا في المملكة العربية السعودية ودول الخليج." }, en: { q: "What is SRMA Research Academy, and who are its services for?", a: "SRMA Research Academy specializes in supporting physicians and health researchers throughout their research journey. We serve board-certified physicians, residents, consultants, and postgraduate students in Saudi Arabia and the Gulf countries." } },
-  { ar: { q: "كيف يمكنني التسجيل في فرصة بحثية؟", a: "ادخل إلى بوابة المشارك، اختر الفرصة البحثية المناسبة لتخصصك، ثم اضغط على زر 'سجل الآن' وأكمل بيانات التسجيل. سيتواصل معك فريق SRMA خلال 24-48 ساعة لتأكيد التسجيل." }, en: { q: "How can I register for a research opportunity?", a: "Go to the Participant Portal, choose the research opportunity suited to your specialty, then click “Register now” and complete the registration details. The SRMA team will contact you within 24–48 hours to confirm your registration." } },
-  { ar: { q: "ما الفرق بين الفرص البحثية وبرنامج تدريب الباحث؟", a: "الفرص البحثية: تنضم فيها إلى بحث قائم بالفعل كمؤلف مشارك مع إشراف كامل. برنامج تدريب الباحث: برنامج تدريبي متكامل يعلمك مهارات البحث العلمي من الصفر مع فرصة نشر حقيقية في نهاية البرنامج." }, en: { q: "What is the difference between research opportunities and the Researcher Training Program?", a: "Research opportunities let you join an existing study as a co-author with full supervision. The Researcher Training Program is a comprehensive course that teaches research skills from the ground up, with a genuine publication opportunity at its conclusion." } },
-  { ar: { q: "هل الأبحاث مفهرسة في PubMed وScopus؟", a: "نعم، جميع أبحاثنا تنشر في مجلات مفهرسة في قواعد البيانات الدولية المعتمدة مثل PubMed وScopus وWeb of Science وPMC. نختار المجلات بعناية لضمان أعلى جودة أكاديمية وأوسع انتشار علمي." }, en: { q: "Are the studies indexed in PubMed and Scopus?", a: "Yes. All our studies are published in journals indexed by recognized international databases such as PubMed, Scopus, Web of Science, and PMC. We carefully select journals to ensure the highest academic quality and broadest scientific reach." } },
-  { ar: { q: "كم تستغرق عملية النشر؟", a: "تتفاوت مدة النشر بين 6 و18 شهراً حسب المجلة والبحث. عادةً تستغرق مرحلة إعداد البحث 3-6 أشهر، ثم مرحلة مراجعة المجلة والنشر من 3 إلى 12 شهراً." }, en: { q: "How long does publication take?", a: "Publication takes between 6 and 18 months depending on the journal and study. Research preparation typically takes 3–6 months, followed by journal review and publication for 3–12 months." } },
-  { ar: { q: "هل أحتاج خبرة سابقة في البحث العلمي؟", a: "لا، لا تحتاج إلى أي خبرة سابقة. فريق SRMA يشرف على كل خطوة بدءاً من اختيار الموضوع وحتى النشر النهائي. كل ما نحتاجه منك هو الالتزام وحضور اجتماعات الفريق." }, en: { q: "Do I need prior research experience?", a: "No prior experience is needed. The SRMA team supervises every step, from selecting the topic through final publication. All we need from you is commitment and attendance at team meetings." } },
-  { ar: { q: "ما هي نقاط SCFHS وكيف تساعدني SRMA في الحصول عليها؟", a: "نقاط SCFHS هي نقاط التعليم الطبي المستمر المطلوبة لتجديد الترخيص المهني والتقدم للبورد السعودي. SRMA تمنحك 5 نقاط SCFHS عند إتمام المشاركة في بحث ونشره." }, en: { q: "What are SCFHS points, and how does SRMA help me earn them?", a: "SCFHS points are continuing medical education points required to renew professional licensure and apply for the Saudi Board. SRMA awards 5 SCFHS points upon completing participation in a study and its publication." } },
-  { ar: { q: "هل تقدمون خدمات لطلاب الطب؟", a: "نعم، لدينا باقة خاصة للمجالس الطلابية والأندية الأكاديمية تشمل خصماً خاصاً وإمكانية المشاركة كمجموعة. يمكن لطلاب الطب الاستفادة من برامجنا لبناء ملف بحثي قوي منذ سنوات الدراسة." }, en: { q: "Do you offer services for medical students?", a: "Yes. We have a special package for student councils and academic clubs, including a special discount and group participation. Medical students can use our programs to build a strong research portfolio from their study years." } },
-  { ar: { q: "كيف أتواصل مع فريق SRMA؟", a: "يمكنك التواصل معنا عبر واتساب: +966 56 215 9258 | تيليجرام: @SRMAAcademy | قناة WhatsApp: whatsapp.com/channel/0029Vb7QxGE1iUxikfgEFJ0I. فريقنا متاح 6 أيام في الأسبوع." }, en: { q: "How can I contact the SRMA team?", a: "You can contact us via WhatsApp: +966 56 215 9258 | Telegram: @SRMAAcademy | WhatsApp Channel: whatsapp.com/channel/0029Vb7QxGE1iUxikfgEFJ0I. Our team is available 6 days a week." } },
-  { ar: { q: "هل يمكن إحياء بحث متوقف؟", a: "بالتأكيد! إذا كان لديك بحث توقف لأي سبب (بيانات غير محللة، فريق انحل، مشكلة في المنهجية)، يمكن لفريق SRMA إعادة تقييمه وإحيائه ووصوله إلى مرحلة النشر." }, en: { q: "Can a stalled study be revived?", a: "Absolutely. If you have a study that stopped for any reason—unanalyzed data, a disbanded team, or a methodology issue—the SRMA team can reassess, revive, and guide it to publication." } },
-];
+import { getContactUsHref } from "@/lib/siteContentSettings";
+import PageHero from "@/components/PageHero";
 
 export default function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const { language, localize } = useLanguage();
-  const { data: settings } = useSiteContentSettings();
-  const siteName = language === "ar" ? settings?.brand.siteNameAr || "المنصة" : settings?.brand.siteNameEn || "the platform";
-  const formatText = (value: string) => value
-    .replace(/SRMA Research Academy|SRMA/g, siteName)
-    .replace(/\+966 56 215 9258/g, `+${settings?.brand.whatsapp || "966562159258"}`)
-    .replace(/@SRMAAcademy/g, `@${settings?.brand.telegramUsername || "SRMAAcademy"}`)
-    .replace(/whatsapp\.com\/channel\/0029Vb7QxGE1iUxikfgEFJ0I/g, settings?.brand.whatsappChannelUrl || "");
-  return <div className="min-h-screen bg-white">
-    <section className="bg-gradient-to-br from-slate-50 via-blue-50/30 to-white py-14 px-4 text-center"><div className="max-w-2xl mx-auto">
-      <div className="inline-flex items-center gap-2 bg-[#0C3156]/8 border border-[#0C3156]/15 text-[#0C3156] px-4 py-1.5 rounded-full text-sm font-semibold mb-4">{language === "ar" ? settings?.pages.faq.titleAr : settings?.pages.faq.titleEn}</div>
-      <p className="text-slate-600">{language === "ar" ? settings?.pages.faq.descriptionAr : settings?.pages.faq.descriptionEn}</p>
-    </div></section>
-{((language === "ar" ? settings?.pages.faq.contentAr : settings?.pages.faq.contentEn) || "").trim() && (
-        <section className="py-10 px-4 bg-white border-b border-slate-100">
-          <div className="max-w-4xl mx-auto whitespace-pre-wrap text-slate-700 leading-relaxed">
-            {language === "ar" ? settings?.pages.faq.contentAr : settings?.pages.faq.contentEn}
+  const [open, setOpen] = useState<number | null>(0);
+  const { language, direction } = useLanguage();
+  const { data } = useSiteContentSettings();
+  const c = data.experience.content.faq;
+  const contact = getContactUsHref(data.brand);
+  return (
+    <div dir={direction} className="pb-10">
+      <PageHero page="faq" />
+      <section className="m-container max-w-3xl">
+        {c.items.length === 0 ? (
+          <div className="m-card p-10 text-center m-muted" data-testid="state-faq-empty">{language === "ar" ? "لا توجد أسئلة منشورة حالياً." : "No questions published yet."}</div>
+        ) : (
+          <div className="grid gap-3">
+            {c.items.map((item, i) => {
+              const isOpen = open === i;
+              return (
+                <div key={i} className="m-card overflow-hidden" data-testid={`faq-item-${i}`}>
+                  <button type="button" onClick={() => setOpen(isOpen ? null : i)} aria-expanded={isOpen} className="flex w-full items-center justify-between gap-4 px-6 py-5 text-start font-semibold" data-testid={`button-faq-${i}`}>
+                    {item.q[language]}
+                    <Plus size={18} className={`shrink-0 text-[color:var(--m-gold)] transition-transform ${isOpen ? "rotate-45" : ""}`} />
+                  </button>
+                  {isOpen && <p className="m-muted m-rise whitespace-pre-wrap px-6 pb-6 leading-8">{item.a[language]}</p>}
+                </div>
+              );
+            })}
           </div>
-        </section>
-      )}
-
-    <section className="py-12 px-4"><div className="max-w-3xl mx-auto space-y-3">{faqs.map((faq, index) => {
-      const item = faq[language];
-      return <div key={index} className="border border-slate-200 rounded-2xl overflow-hidden hover:border-[#0C3156]/25 transition-colors" data-testid={`accordion-faq-${index}`}>
-        <button className="w-full flex items-center justify-between gap-4 px-6 py-5 text-right hover:bg-slate-50 transition-colors" onClick={() => setOpenIndex(openIndex === index ? null : index)} data-testid={`button-faq-toggle-${index}`}>
-          <div className="flex items-center gap-2">{openIndex === index ? <ChevronUp size={18} className="text-[#0C3156] flex-shrink-0" /> : <ChevronDown size={18} className="text-slate-400 flex-shrink-0" />}</div>
-          <div className="flex items-center gap-3 flex-row-reverse flex-1"><span className="w-7 h-7 rounded-full bg-[#0C3156]/10 text-[#0C3156] text-xs font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span><span className="font-semibold text-slate-900 text-right">{formatText(item.q)}</span></div>
-        </button>
-        {openIndex === index && <div className="px-6 pb-5 border-t border-slate-100 bg-[#EFF6FF]/60"><p className="text-slate-600 leading-relaxed pt-4 text-sm text-right">{formatText(item.a)}</p></div>}
-      </div>;
-    })}</div></section>
-    <section className="py-12 px-4"><div className="max-w-3xl mx-auto"><div className="bg-gradient-to-br from-[#0C3156] to-[#1A5FAE] rounded-2xl p-7 text-right text-white shadow-xl">
-      <h3 className="text-xl font-black mb-2">{localize("هل لديك سؤال آخر؟", "Do you have another question?")}</h3><p className="text-blue-100 text-sm mb-5">{localize("فريقنا جاهز للإجابة على جميع استفساراتك عبر قنوات التواصل المختلفة", "Our team is ready to answer all your questions through our communication channels.")}</p>
-      <div className="flex gap-3 flex-wrap"><a href={`https://wa.me/${settings?.brand.whatsapp || "966562159258"}`} target="_blank" rel="noopener noreferrer" data-testid="button-faq-whatsapp" className="inline-flex items-center gap-2 bg-[#25D366] text-white px-5 py-2.5 rounded-full font-bold text-sm hover:bg-[#1eb856] transition-colors">{localize("واتساب ←", "WhatsApp →")}</a><a href={`https://t.me/${settings?.brand.telegramUsername || "SRMAAcademy"}`} target="_blank" rel="noopener noreferrer" data-testid="button-faq-telegram" className="inline-flex items-center gap-2 border border-white/30 text-white px-5 py-2.5 rounded-full font-bold text-sm hover:bg-white/10 transition-colors">@{settings?.brand.telegramUsername || "SRMAAcademy"} {language === "ar" ? "←" : "→"}</a></div>
-    </div></div></section>
-  </div>;
+        )}
+        <div className="mt-10 rounded-[var(--m-radius)] bg-[color:var(--m-gold-soft)] p-8 text-center">
+          <h2 className="text-xl font-semibold">{c.contactTitle[language]}</h2>
+          <p className="m-muted mt-2">{c.contactBody[language]}</p>
+          <a href={contact.href} target={contact.isExternal ? "_blank" : undefined} rel={contact.isExternal ? "noopener noreferrer" : undefined} className="m-btn m-btn-primary mt-5" data-testid="link-faq-contact">{language === "ar" ? contact.labelAr : contact.labelEn}</a>
+        </div>
+      </section>
+    </div>
+  );
 }

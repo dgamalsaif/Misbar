@@ -203,7 +203,7 @@ export default function OpportunityImportModal({
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 text-right">
           <p className="font-black text-slate-800">1. نزّل القالب واملأه</p>
           <p className="mt-1 text-xs leading-5 text-slate-600">العناوين مطابقة لحقول الفرص في المنصة، والتخصصات الجديدة تُضاف تلقائياً.</p>
-          <button type="button" onClick={() => downloadTemplate(settings?.brand.siteNameEn || "Research Academy")} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#117b59]/20 bg-white px-4 py-2.5 text-sm font-bold text-[#117b59] shadow-sm transition hover:bg-emerald-50">
+          <button type="button" onClick={() => downloadTemplate(settings?.brand.siteNameEn || "Misbar")} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#117b59]/20 bg-white px-4 py-2.5 text-sm font-bold text-[#117b59] shadow-sm transition hover:bg-emerald-50">
             <Download size={16} /> تنزيل قالب Excel
           </button>
         </div>

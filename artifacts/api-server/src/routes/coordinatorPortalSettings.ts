@@ -51,12 +51,27 @@ interface CoordinatorPortalSettings {
 
 const SETTINGS_KEY = "coordinator-portal";
 const ICONS: PortalNavIcon[] = ["home", "book", "info", "graduation", "users", "file"];
+const LEGACY_TEXT: Record<string, string> = {
+  "brandName:SRMA": "Misbar",
+  "brandSubtitle:Research Academy": "مسار الطبيب إلى البحث",
+  "pageTitle:SRMA Research Academy — بوابة المنسق": "بوابة المنسق | مسبار",
+  "pageTitle:SRMA Research Academy — Coordinator Portal": "Coordinator Portal | Misbar",
+  "pageTitle:Misbar — Coordinator Portal": "Coordinator Portal | Misbar",
+  "installTitle:ثبّت تطبيق SRMA Research Academy": "ثبّت تطبيق مسبار",
+  "installTitle:Install SRMA Research Academy": "Install Misbar",
+  "cookieDescription:نستخدم ملفات تعريف الارتباط لتحسين تجربتك وقياس أداء المنصة. يمكنك تغيير قرارك لاحقاً من صفحة السياسات والشروط.": "نحفظ اختيارك على هذا الجهاز لتذكره عند زيارتك القادمة.",
+  "cookieDescription:We use cookies to improve your experience and measure platform performance. You can change your choice later from the policies page.": "We save your choice on this device so it is remembered on your next visit.",
+  "cookiePolicyUrl:/policies": "",
+};
+const LEGACY_ENGLISH_TEXT: Record<string, string> = {
+  "brandSubtitle:Research Academy": "A physician's research path",
+};
 
 const DEFAULT_SETTINGS: CoordinatorPortalSettings = {
-  brandName: "SRMA",
-  brandYear: "2026",
-  brandSubtitle: "Research Academy",
-  pageTitle: "SRMA Research Academy — بوابة المنسق",
+  brandName: "Misbar",
+  brandYear: "",
+  brandSubtitle: "مسار الطبيب إلى البحث",
+  pageTitle: "بوابة المنسق | مسبار",
   loginTitle: "بوابة المنسقين",
   loginDescription: "سجّل دخولك برمز الوصول الخاص بك",
   codeLabel: "رمز الدخول",
@@ -71,18 +86,18 @@ const DEFAULT_SETTINGS: CoordinatorPortalSettings = {
   showWhatsapp: true,
   showCookieBanner: true,
   cookieTitle: "نحن نستخدم ملفات تعريف الارتباط",
-  cookieDescription: "نستخدم ملفات تعريف الارتباط لتحسين تجربتك وقياس أداء المنصة. يمكنك تغيير قرارك لاحقاً من صفحة السياسات والشروط.",
+  cookieDescription: "نحفظ اختيارك على هذا الجهاز لتذكره عند زيارتك القادمة.",
   cookieRejectLabel: "رفض غير الضروري",
   cookieAcceptLabel: "قبول الكل",
-  cookiePolicyUrl: "/policies",
+  cookiePolicyUrl: "",
   showInstallPrompt: true,
-  installTitle: "ثبّت تطبيق SRMA Research Academy",
+  installTitle: "ثبّت تطبيق مسبار",
   installDescription: "أضف المنصة إلى شاشتك الرئيسية للوصول السريع.",
   installActionLabel: "تثبيت",
   installDismissLabel: "ليس الآن",
   translations: {
-    brandSubtitle: "Research Academy",
-    pageTitle: "SRMA Research Academy — Coordinator Portal",
+    brandSubtitle: "A physician's research path",
+    pageTitle: "Coordinator Portal | Misbar",
     loginTitle: "Coordinator Portal",
     loginDescription: "Sign in with your personal access code",
     codeLabel: "Access code",
@@ -92,10 +107,10 @@ const DEFAULT_SETTINGS: CoordinatorPortalSettings = {
     registrationLabel: "Register now",
     footnote: "This portal is for approved coordinators only",
     cookieTitle: "We use cookies",
-    cookieDescription: "We use cookies to improve your experience and measure platform performance. You can change your choice later from the policies page.",
+    cookieDescription: "We save your choice on this device so it is remembered on your next visit.",
     cookieRejectLabel: "Reject non-essential",
     cookieAcceptLabel: "Accept all",
-    installTitle: "Install SRMA Research Academy",
+    installTitle: "Install Misbar",
     installDescription: "Add the platform to your home screen for quick access.",
     installActionLabel: "Install",
     installDismissLabel: "Not now",
@@ -148,10 +163,12 @@ async function readSettings(): Promise<CoordinatorPortalSettings> {
 function sanitizeSettings(value: unknown): CoordinatorPortalSettings | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
+  const migrate = (key: string, candidate: string, english = false) =>
+    (english ? LEGACY_ENGLISH_TEXT : LEGACY_TEXT)[`${key}:${candidate}`] ?? candidate;
   const text = (key: keyof CoordinatorPortalSettings, maxLength = 500) => {
     const candidate = input[key];
     if (typeof candidate !== "string") return DEFAULT_SETTINGS[key] as string;
-    return candidate.trim().slice(0, maxLength);
+    return migrate(String(key), candidate.trim().slice(0, maxLength));
   };
   const flag = (key: keyof CoordinatorPortalSettings) => typeof input[key] === "boolean"
     ? input[key] as boolean
@@ -164,14 +181,14 @@ function sanitizeSettings(value: unknown): CoordinatorPortalSettings | null {
   const translations = COPY_KEYS.reduce((result, key) => {
     const supplied = rawTranslations[key];
     result[key] = typeof supplied === "string"
-      ? supplied.trim().slice(0, key.includes("Description") ? 800 : 300)
-      : (typeof input[key] === "string" ? input[key].trim().slice(0, key.includes("Description") ? 800 : 300) : DEFAULT_SETTINGS.translations[key]);
+      ? migrate(key, supplied.trim().slice(0, key.includes("Description") ? 800 : 300), true)
+      : (typeof input[key] === "string" ? migrate(key, input[key].trim().slice(0, key.includes("Description") ? 800 : 300), true) : DEFAULT_SETTINGS.translations[key]);
     return result;
   }, {} as Record<CoordinatorCopyKey, string>);
   const telegramUrl = text("telegramUrl", 300);
   const whatsappUrl = text("whatsappUrl", 300);
   const cookiePolicyUrl = text("cookiePolicyUrl", 300);
-  if (![telegramUrl, whatsappUrl, cookiePolicyUrl].every(isSafeUrl)) return null;
+  if (![telegramUrl, whatsappUrl].every(isSafeUrl) || (cookiePolicyUrl && !isSafeUrl(cookiePolicyUrl))) return null;
 
   return {
     brandName: text("brandName", 40),

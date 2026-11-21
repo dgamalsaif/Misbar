@@ -1,174 +1,97 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Check, ChevronDown, Languages, Menu, MessageCircle, X } from "lucide-react";
-import BrandLogo from "@/components/BrandLogo";
 import InstallAppButton from "@/components/InstallAppButton";
 import { useLanguage } from "@/lib/i18n";
 import { useCurrency, OpportunityCurrency } from "@/lib/currency";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 import { getContactUsHref } from "@/lib/siteContentSettings";
+import { LINKABLE_ROUTES } from "../../../../lib/site-experience";
 
 export default function Navbar() {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { t, language, setLanguage } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const { currency, setCurrency } = useCurrency();
   const { data: settings } = useSiteContentSettings();
-  useEffect(() => { setMobileOpen(false); }, [location]);
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileOpen(false); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [mobileOpen]);
-  const contact = getContactUsHref(settings?.brand);
+  const nav = settings.experience.navigation;
+  const contact = getContactUsHref(settings.brand);
   const contactLabel = language === "ar" ? contact.labelAr : contact.labelEn;
-  const languageLabel = language === "ar" ? "اللغة" : "Language";
+  const siteName = language === "ar" ? settings.brand.siteNameAr : settings.brand.siteNameEn;
+  const languageLabel = language === "ar" ? "English" : "العربية";
   const languageOptions = [
     { value: "ar" as const, label: "العربية" },
     { value: "en" as const, label: "English" },
   ];
-  const navLinks = [
-    { href: "/", label: t("nav.home") },
-    { href: "/knowledge-center", label: t("nav.knowledge") },
-    { href: "/about", label: t("nav.about") },
-    { href: "/participant-portal", label: t("nav.participant"), highlight: true },
-    { href: "/coordinator", label: t("nav.coordinator") },
-    { href: "/special-requests", label: t("nav.requests") },
-  ];
+  const links = nav.items.filter((i) => i.visible).map((i) => ({ href: LINKABLE_ROUTES[i.route], label: i.label[language] || i.label.ar, highlight: i.highlight, route: i.route }));
+  const isActive = (href: string) => (href === "/" ? location === "/" : location === href || location.startsWith(`${href}/`));
 
   return (
-    <nav aria-label={language === "ar" ? "التنقل الرئيسي" : "Main navigation"} className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-2 sm:gap-4">
-          {/* Zone 1: Logo & Brand (Always at reading start: Right in RTL, Left in LTR) */}
-          <Link href="/" data-testid="link-logo" className="flex shrink-0 items-center gap-2">
-            <BrandLogo
-              src={settings?.brand.logoUrl}
-              animationEnabled={settings?.brand.logoAnimationEnabled}
-              alt={settings?.brand.siteNameAr || settings?.brand.siteNameEn || "SRMA Research Academy"}
-              className="h-10 w-14 max-h-10 max-w-14 rounded-lg border border-[#0C3156]/15 bg-white object-contain"
-            />
-            <span className="max-w-[9rem] truncate text-base font-black tracking-tight text-[#0C3156] sm:max-w-[13rem] lg:max-w-24 xl:max-w-28">
-              {(language === "ar" ? settings?.brand.siteNameAr : settings?.brand.siteNameEn) || "SRMA"}
-            </span>
-          </Link>
+    <header className="sticky top-0 z-50 px-3 pt-3 sm:px-5" data-testid="site-navbar">
+      <nav className="m-pill-nav mx-auto flex h-16 max-w-[1240px] items-center justify-between gap-3 px-3 shadow-[0_10px_30px_-24px_rgba(20,35,31,.5)] sm:px-4">
+        <Link href="/" data-testid="link-logo" className="flex min-w-0 items-center gap-2.5">
+          {settings.brand.logoUrl && <img src={settings.brand.logoUrl} alt={siteName || ""} className="h-10 w-10 shrink-0 rounded-[30%] object-cover" />}
+          <span className="flex min-w-0 flex-col leading-tight">
+            <span className="m-display truncate text-lg font-bold text-[color:var(--m-primary)]">{siteName || "Misbar"}</span>
+            {nav.showTagline && nav.tagline[language] && <span className="hidden truncate text-[11px] text-[color:var(--m-muted)] sm:block">{nav.tagline[language]}</span>}
+          </span>
+        </Link>
 
-          {/* Zone 2: Navigation links (Center, Desktop) */}
-          <div className="hidden lg:flex items-center gap-0.5 justify-center flex-1 min-w-0">
-            {navLinks.map((link) => {
-              const isActive = location === link.href;
-              return (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  data-testid={`link-nav-${link.href.replace("/", "") || "home"}`}
-                  aria-current={isActive ? "page" : undefined}
-                   className={`px-2 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap ${
-                    isActive
-                      ? "bg-[#0C3156] text-white"
-                      : link.highlight
-                      ? "text-[#117b59] hover:bg-[#e6f5ef]"
-                      : "text-slate-700 hover:bg-slate-100 hover:text-[#0C3156]"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* Zone 3: Actions & Controls (Always at reading end: Left in RTL, Right in LTR) */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-            <div className="hidden xl:block">
-              <InstallAppButton className="flex items-center gap-1.5 rounded-full border border-[#117b59]/25 bg-[#f3fbf8] px-3 py-2 text-xs font-black text-[#117b59] transition hover:bg-[#e6f5ef]" />
-            </div>
-
-            <a
-              href={contact.href}
-              target={contact.isExternal ? "_blank" : undefined}
-              rel={contact.isExternal ? "noopener noreferrer" : undefined}
-              data-testid="link-nav-contact"
-              className="hidden xl:inline-flex items-center gap-1.5 rounded-full bg-[#117b59] px-3.5 py-2 text-xs font-black text-white shadow-sm transition hover:bg-[#0c6549]"
-            >
-              <MessageCircle size={14} />
-              <span>{contactLabel}</span>
-            </a>
-
-            <CurrencyToggle
-              currency={currency}
-              onSelect={setCurrency}
-              triggerClassName="hidden lg:inline-flex"
-            />
-
-            <LanguageMenu
-              language={language}
-              label={languageLabel}
-              options={languageOptions}
-              onSelect={setLanguage}
-              triggerClassName="hidden lg:inline-flex"
-            />
-
-            {/* Mobile hamburger */}
-            <button
-              data-testid="button-mobile-menu"
-              className="lg:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              aria-expanded={mobileOpen}
-              aria-controls="mobile-nav-panel"
-              aria-label={language === "ar" ? (mobileOpen ? "إغلاق القائمة" : "فتح القائمة") : (mobileOpen ? "Close menu" : "Open menu")}
-            >
-              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile menu */}
-      {mobileOpen && (
-        <div id="mobile-nav-panel" className="lg:hidden max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-slate-100 bg-white px-4 pb-4 pt-2 shadow-lg">
-          {navLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              data-testid={`link-mobile-${link.href.replace("/", "") || "home"}`}
-              aria-current={location === link.href ? "page" : undefined}
-              className={`block rounded-lg px-3 py-3 text-sm font-semibold ${location === link.href ? "bg-[#0C3156] text-white" : "text-slate-700 hover:bg-slate-50 hover:text-[#0C3156]"}`}
-              onClick={() => setMobileOpen(false)}
-            >
+        <div className="hidden flex-1 items-center justify-center gap-0.5 lg:flex">
+          {links.map((link) => (
+            <Link key={link.route} href={link.href} data-active={isActive(link.href)} data-highlight={link.highlight} data-testid={`link-nav-${link.route}`} className="m-nav-link">
               {link.label}
             </Link>
           ))}
-          <div className="px-3 pt-3">
-            <a
-              href={contact.href}
-              target={contact.isExternal ? "_blank" : undefined}
-              rel={contact.isExternal ? "noopener noreferrer" : undefined}
-              data-testid="link-nav-contact-mobile"
-              className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#117b59] px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#0c6549]"
-            >
-              <MessageCircle size={16} />
-              {contactLabel}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          {nav.showInstall && (
+            <div className="hidden 2xl:block">
+              <InstallAppButton className="m-btn m-btn-ghost m-btn-sm" />
+            </div>
+          )}
+          {nav.showCurrency && <CurrencyToggle currency={currency} onSelect={setCurrency} triggerClassName="hidden sm:inline-flex" />}
+          {nav.showLanguage && (
+            <button type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")} data-testid="button-language-toggle" className="m-btn m-btn-ghost m-btn-sm !hidden sm:!inline-flex">
+              <Languages size={14} />{languageLabel}
+            </button>
+          )}
+          {nav.showContactButton && (
+            <a href={contact.href} target={contact.isExternal ? "_blank" : undefined} rel={contact.isExternal ? "noopener noreferrer" : undefined} data-testid="link-nav-contact" className="m-btn m-btn-primary m-btn-sm !hidden md:!inline-flex">
+              <MessageCircle size={14} />{contactLabel}
             </a>
-            <CurrencyToggle
-              currency={currency}
-              onSelect={(next) => { setCurrency(next); setMobileOpen(false); }}
-              triggerClassName="mb-2 flex w-full"
-              mobile
-            />
-            <LanguageMenu
-              language={language}
-              label={languageLabel}
-              options={languageOptions}
-              onSelect={(nextLanguage) => { setLanguage(nextLanguage); setMobileOpen(false); }}
-              triggerClassName="mb-2 flex w-full"
-              mobile
-            />
-            <InstallAppButton className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#e6f5ef] px-4 py-3 text-sm font-black text-[#117b59]" />
+          )}
+          <button data-testid="button-mobile-menu" className="rounded-full p-2 text-[color:var(--m-primary)] hover:bg-[color:var(--m-primary-soft)] lg:hidden" onClick={() => setMobileOpen(!mobileOpen)} aria-label={language === "ar" ? "القائمة" : "Menu"}>
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+      </nav>
+
+      {mobileOpen && (
+        <div className="m-card m-rise mx-auto mt-2 max-w-[1240px] p-3 lg:hidden">
+          <div className="grid gap-1">
+            {links.map((link) => (
+              <Link key={link.route} href={link.href} data-active={isActive(link.href)} data-testid={`link-mobile-${link.route}`} className="m-nav-link !py-3 text-base" onClick={() => setMobileOpen(false)}>
+                {link.label}
+              </Link>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-2 border-t border-[color:var(--m-line)] pt-3">
+            {nav.showContactButton && (
+              <a href={contact.href} target={contact.isExternal ? "_blank" : undefined} rel={contact.isExternal ? "noopener noreferrer" : undefined} data-testid="link-nav-contact-mobile" className="m-btn m-btn-primary w-full">
+                <MessageCircle size={16} />{contactLabel}
+              </a>
+            )}
+            {nav.showCurrency && <CurrencyToggle currency={currency} onSelect={(next) => { setCurrency(next); setMobileOpen(false); }} triggerClassName="flex w-full" mobile />}
+            {nav.showLanguage && (
+              <LanguageMenu language={language} label={language === "ar" ? "اللغة" : "Language"} options={languageOptions} onSelect={(next) => { setLanguage(next); setMobileOpen(false); }} triggerClassName="flex w-full" mobile />
+            )}
+            {nav.showInstall && <InstallAppButton className="m-btn m-btn-ghost w-full" />}
           </div>
         </div>
       )}
-    </nav>
+    </header>
   );
 }
 
@@ -197,7 +120,7 @@ export function LanguageMenu({
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        className={`${mobile ? "w-full" : ""} inline-flex items-center justify-center gap-1.5 rounded-full border border-[#0C3156]/20 px-3 py-2 text-xs font-black text-[#0C3156] transition hover:bg-[#0C3156] hover:text-white`}
+        className={`${mobile ? "w-full" : ""} inline-flex items-center justify-center gap-1.5 m-btn m-btn-ghost m-btn-sm`}
         aria-label={label}
       >
         <Languages size={15} />
@@ -205,7 +128,7 @@ export function LanguageMenu({
         <ChevronDown size={14} className={isOpen ? "rotate-180 transition-transform" : "transition-transform"} />
       </button>
       {isOpen && (
-        <div role="menu" className={`absolute z-[60] mt-2 min-w-36 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg ${mobile ? "inset-x-0" : "end-0"}`}>
+        <div role="menu" className={`absolute z-[60] mt-2 min-w-36 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl ${mobile ? "left-0 right-0" : "right-0"}`}>
         {options.map((option) => (
           <button
             type="button"
@@ -214,7 +137,7 @@ export function LanguageMenu({
             onClick={() => { onSelect(option.value); setIsOpen(false); }}
             role="menuitemradio"
             aria-checked={language === option.value}
-            className="flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-start text-sm font-bold text-slate-700 transition hover:bg-[#e6f5ef] hover:text-[#117b59] focus:bg-[#e6f5ef] focus:text-[#117b59]"
+            className="flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-right text-sm font-bold text-slate-700 transition hover:bg-[#e6f5ef] hover:text-[#117b59] focus:bg-[#e6f5ef] focus:text-[#117b59]"
           >
             {option.label}
             {language === option.value && <Check size={15} className="text-[#117b59]" />}
@@ -242,7 +165,7 @@ export function CurrencyToggle({
       <div
         className={`${
           mobile ? "w-full justify-center" : ""
-        } inline-flex items-center rounded-full border border-[#0C3156]/20 bg-slate-100 p-0.5 shadow-2xs`}
+        } inline-flex items-center rounded-full border border-[color:var(--m-line)] bg-[color:var(--m-primary-soft)] p-0.5 shadow-2xs`}
       >
         <button
           type="button"
@@ -257,7 +180,7 @@ export function CurrencyToggle({
           }`}
           title="Saudi Riyal (SAR)"
         >
-          SAR
+           SAR
         </button>
         <button
           type="button"
@@ -272,7 +195,7 @@ export function CurrencyToggle({
           }`}
           title="US Dollar (USD)"
         >
-          USD
+           USD
         </button>
       </div>
     </div>

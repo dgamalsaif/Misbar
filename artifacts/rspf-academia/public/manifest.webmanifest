@@ -1,26 +1,15 @@
 {
-  "name": "SRMA Research Academy",
-  "short_name": "SRMA",
-  "description": "منصة SRMA Research Academy للفرص البحثية والتدريب الطبي.",
+  "name": "مسبار | Misbar",
+  "short_name": "Misbar",
+  "description": "مسبار — فرص بحثية طبية للأطباء بالعربية والإنجليزية.",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f7fa",
-  "theme_color": "#0d765c",
+  "background_color": "#f3f1e7",
+  "theme_color": "#0b5145",
   "icons": [
-    {
-      "src": "srma-logo.jpg",
-      "sizes": "1080x1080",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
+    { "src": "misbar-logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }

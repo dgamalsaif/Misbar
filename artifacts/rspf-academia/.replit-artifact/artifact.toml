@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "SRMA Research Academy"
+title = "Misbar | مسبار"
 version = "1.0.0"
 id = "artifacts/rspf-academia"
 router = "path"

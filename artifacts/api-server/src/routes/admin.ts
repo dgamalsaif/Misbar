@@ -111,7 +111,7 @@ router.post("/admin/coordinators/:id/reset-access-code", requireOwner, async (re
     res.status(400).json({ error: "رقم المنسق غير صحيح." });
     return;
   }
-  const accessCode = `SRMA-${randomBytes(3).toString("hex").toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`;
+  const accessCode = `MISBAR-${randomBytes(3).toString("hex").toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`;
   const [updated] = await db.update(coordinatorsTable)
     .set({ accessCodeHash: accessCodeHash(accessCode) })
     .where(eq(coordinatorsTable.id, id))
