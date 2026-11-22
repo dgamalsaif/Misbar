@@ -20,22 +20,55 @@ export default function ResearchDetail() {
   const params = useParams<{ id: string }>();
   const [research, setResearch] = useState<ResearchOpportunity | null>(null);
   const [allResearch, setAllResearch] = useState<ResearchOpportunity[]>([]);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "notFound" | "error">("loading");
+  const [retryCount, setRetryCount] = useState(0);
+  const [loadTargetId, setLoadTargetId] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const { currency, setCurrency } = useCurrency();
-  const { data: contentSettings = DEFAULT_SITE_CONTENT_SETTINGS } = useSiteContentSettings();
+  const {
+    data: contentSettings = DEFAULT_SITE_CONTENT_SETTINGS,
+    isFetched: siteSettingsFetched,
+    isError: siteSettingsError,
+  } = useSiteContentSettings();
   const { toast } = useToast();
 
-  const loadResearch = () => {
-    apiFetch("/api/programs", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("programs unavailable")))
-      .then((data: ResearchOpportunity[]) => {
-        setAllResearch(data);
-        setResearch(data.find((item) => item.id === parseInt(params.id || "0")) || null);
-      })
-      .catch(() => { setAllResearch([]); setResearch(null); });
-  };
-
   useEffect(() => {
+    const targetId = Number(params.id || 0);
+    let active = true;
+    let inFlight = false;
+
+    setLoadTargetId(targetId);
+    setResearch(null);
+    setAllResearch([]);
+    setLoadState("loading");
+
+    if (!Number.isInteger(targetId) || targetId < 1) {
+      setLoadState("notFound");
+      return () => { active = false; };
+    }
+
+    const loadResearch = async () => {
+      if (!active || inFlight) return;
+      inFlight = true;
+      try {
+        const response = await apiFetch("/api/programs", { cache: "no-store" });
+        if (!response.ok) throw new Error("Programs unavailable");
+        const data = await response.json() as ResearchOpportunity[];
+        if (!active) return;
+        setAllResearch(data);
+        const match = data.find((item) => item.id === targetId) || null;
+        setResearch(match);
+        setLoadState(match ? "ready" : "notFound");
+      } catch {
+        if (active) {
+          // Keep already-rendered data if a background refresh temporarily fails.
+          setLoadState((current) => current === "ready" || current === "notFound" ? current : "error");
+        }
+      } finally {
+        inFlight = false;
+      }
+    };
+
     loadResearch();
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") loadResearch();
@@ -44,19 +77,45 @@ export default function ResearchDetail() {
     const timer = window.setInterval(() => { if (!document.hidden) loadResearch(); }, 10000);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
+      active = false;
       window.removeEventListener("focus", loadResearch);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [params.id]);
+  }, [params.id, retryCount]);
 
-  if (!research) {
+  const targetId = Number(params.id || 0);
+  const currentLoadState = loadTargetId === targetId ? loadState : "loading";
+  if (!research || research.id !== targetId) {
+    if (currentLoadState === "loading") {
+      return (
+        <div className="flex min-h-[60vh] items-center justify-center px-4" role="status" aria-live="polite">
+          <div className="flex items-center gap-3 rounded-2xl border border-[color:var(--m-line)] bg-[color:var(--m-surface)] px-5 py-4 text-[color:var(--m-muted)] shadow-sm">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-[color:var(--m-primary)] border-t-transparent" aria-hidden="true" />
+            <span>{localize("جارٍ تحميل تفاصيل الفرصة البحثية…", "Loading opportunity details…")}</span>
+          </div>
+        </div>
+      );
+    }
+    if (currentLoadState === "error") {
+      return (
+        <div className="flex min-h-[60vh] items-center justify-center px-4" dir={direction}>
+          <div className="max-w-md rounded-3xl border border-[color:var(--m-line)] bg-[color:var(--m-surface)] p-7 text-center shadow-sm">
+            <h2 className="text-xl font-bold text-[color:var(--m-ink)]">{localize("تعذر تحميل الفرصة", "Could not load this opportunity")}</h2>
+            <p className="mt-2 text-sm leading-6 text-[color:var(--m-muted)]">{localize("تحقق من اتصالك بالإنترنت ثم أعد المحاولة.", "Check your connection and try again.")}</p>
+            <button type="button" onClick={() => setRetryCount((count) => count + 1)} className="mt-5 rounded-xl bg-[color:var(--m-primary)] px-5 py-2.5 font-bold text-white">
+              {localize("إعادة المحاولة", "Try again")}
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center px-4" dir={direction}>
         <div className="text-center">
-          <div className="text-5xl mb-4">🔍</div>
-          <h2 className="text-xl font-bold text-slate-700 mb-3">{localize("الفرصة البحثية غير موجودة", "Research opportunity not found")}</h2>
-          <Link href="/participant-portal" className="text-[#0C3156] font-semibold hover:underline inline-flex items-center gap-1">
+          <p className="mb-3 text-sm font-bold tracking-widest text-[color:var(--m-gold)]">404</p>
+          <h2 className="mb-3 text-xl font-bold text-[color:var(--m-ink)]">{localize("الفرصة البحثية غير موجودة أو لم تعد متاحة للعامة", "This opportunity was not found or is no longer public")}</h2>
+          <Link href="/participant-portal" className="inline-flex items-center gap-1 font-semibold text-[color:var(--m-primary)] hover:underline">
             <ArrowLeft size={16} /> {t("common.backToOpportunities")}
           </Link>
         </div>
@@ -141,7 +200,21 @@ export default function ResearchDetail() {
     handleCopyLink();
   };
 
-  if (contentSettings.showOpportunityDetails === false) {
+  if (!siteSettingsFetched && !siteSettingsError) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4" role="status" aria-live="polite">
+        <div className="flex items-center gap-3 rounded-2xl border border-[color:var(--m-line)] bg-[color:var(--m-surface)] px-5 py-4 text-[color:var(--m-muted)] shadow-sm">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-[color:var(--m-primary)] border-t-transparent" aria-hidden="true" />
+          <span>{localize("جارٍ التحقق من إعدادات عرض التفاصيل…", "Checking public detail settings…")}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (contentSettings.showOpportunityDetails === false || siteSettingsError) {
+    const privacyMessage = siteSettingsError
+      ? localize("تعذر التحقق من إعدادات العرض الآن؛ أُخفيت التفاصيل مؤقتاً حفاظاً على الخصوصية.", "Public display settings could not be confirmed, so details are hidden temporarily for privacy.")
+      : localize("أخفى مالك الموقع تفاصيل هذه الفرصة عن العرض العام. يمكنك التسجيل أو العودة إلى قائمة الفرص.", "The site owner has hidden this opportunity's details from public view. You can register or return to the opportunities list.");
     return (
       <>
         <PageSeo pathname={`/research/${research.id}`} language={language} title={pageSeoTitle} description={pageSeoDescription} image={oppImageUrl} />
@@ -149,6 +222,10 @@ export default function ResearchDetail() {
           <section className="mx-auto max-w-3xl space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
             <p className="text-sm font-bold text-[#0C3156]" lang="en" dir="ltr">SRMA Research Academy · RES-2026-{research.id}</p>
             <h1 className="text-left text-xl font-black leading-relaxed text-slate-900 sm:text-2xl" lang="en" dir="ltr">{title}</h1>
+            <p className="rounded-xl border border-[color:var(--m-line)] bg-[color:var(--m-bg)] px-4 py-3 text-sm leading-6 text-[color:var(--m-muted)]" role="status">
+              <Lock size={15} className="me-1 inline-block align-text-bottom text-[color:var(--m-gold)]" />
+              {privacyMessage}
+            </p>
             {research.status === "open"
               ? <Link href={getOpportunityRegistrationPath(research.id)} className="block rounded-xl bg-[#0C3156] px-5 py-3 text-center font-bold text-white" data-testid="button-detail-register">{t("common.registerNow")}</Link>
               : <p className="text-slate-500">{localize("التسجيل مغلق", "Registration closed")}</p>}

@@ -126,6 +126,54 @@
   --color-gray-700: var(--color-slate-700);
   --color-gray-800: var(--color-slate-800);
   --color-gray-900: var(--color-slate-900);
+  --color-slate-950: color-mix(in oklab, var(--m-ink) 88%, black);
+  --color-gray-300: var(--color-slate-300);
+  --color-gray-400: var(--color-slate-400);
+  --color-gray-700: var(--color-slate-700);
+  --color-gray-800: var(--color-slate-800);
+  --color-gray-950: var(--color-slate-950);
+  --color-zinc-50: var(--color-slate-50);
+  --color-zinc-100: var(--color-slate-100);
+  --color-zinc-200: var(--color-slate-200);
+  --color-zinc-300: var(--color-slate-300);
+  --color-zinc-400: var(--color-slate-400);
+  --color-zinc-500: var(--color-slate-500);
+  --color-zinc-600: var(--color-slate-600);
+  --color-zinc-700: var(--color-slate-700);
+  --color-zinc-800: var(--color-slate-800);
+  --color-zinc-900: var(--color-slate-900);
+  --color-neutral-50: var(--color-slate-50);
+  --color-neutral-100: var(--color-slate-100);
+  --color-neutral-200: var(--color-slate-200);
+  --color-neutral-300: var(--color-slate-300);
+  --color-neutral-400: var(--color-slate-400);
+  --color-neutral-500: var(--color-slate-500);
+  --color-neutral-600: var(--color-slate-600);
+  --color-neutral-700: var(--color-slate-700);
+  --color-neutral-800: var(--color-slate-800);
+  --color-neutral-900: var(--color-slate-900);
+  /* Legacy portals used blue and cyan as brand colors; bind those scales to the active owner palette. */
+  --color-blue-50: var(--color-emerald-50);
+  --color-blue-100: var(--color-emerald-100);
+  --color-blue-200: color-mix(in oklab, var(--m-primary) 25%, var(--m-surface));
+  --color-blue-300: color-mix(in oklab, var(--m-primary) 42%, var(--m-surface));
+  --color-blue-400: color-mix(in oklab, var(--m-primary) 62%, var(--m-surface));
+  --color-blue-500: color-mix(in oklab, var(--m-primary) 80%, var(--m-surface));
+  --color-blue-600: var(--m-primary);
+  --color-blue-700: color-mix(in oklab, var(--m-primary) 88%, black);
+  --color-blue-800: color-mix(in oklab, var(--m-primary) 75%, black);
+  --color-blue-900: color-mix(in oklab, var(--m-primary) 60%, black);
+  --color-sky-50: var(--color-blue-50);
+  --color-sky-100: var(--color-blue-100);
+  --color-sky-200: var(--color-blue-200);
+  --color-sky-500: var(--color-blue-500);
+  --color-sky-600: var(--color-blue-600);
+  --color-sky-700: var(--color-blue-700);
+  --color-indigo-50: var(--color-blue-50);
+  --color-indigo-100: var(--color-blue-100);
+  --color-indigo-500: var(--color-blue-500);
+  --color-indigo-600: var(--color-blue-600);
+  --color-indigo-700: var(--color-blue-700);
 }
 
 /* Legacy hard-coded brand hex utilities -> theme variables */
@@ -168,12 +216,36 @@
   body {
     @apply antialiased;
     font-family: var(--m-font-body);
+    font-size: 1rem;
     background-color: var(--m-bg);
     color: var(--m-ink);
   }
-  h1, h2, h3, .m-display { font-family: var(--m-font-heading); letter-spacing: -0.01em; }
+  button, input, textarea, select { font: inherit; }
+  h1, h2, h3, h4, .m-display { font-family: var(--m-font-heading); letter-spacing: -0.01em; }
   h1:not(.m-h1), h2:not(.m-h2), h3:not(.m-h1):not(.m-h2) { scale: var(--m-heading-scale, 1); transform-origin: center; }
   [role="dialog"], [data-radix-popper-content-wrapper] > * { font-family: var(--m-font-body); }
+  ::selection { background: color-mix(in oklab, var(--m-gold) 34%, transparent); color: var(--m-ink); }
+}
+
+/* Shared owner-theme coverage for legacy public, portal, owner and dialog surfaces. */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select) {
+  color: var(--m-ink);
+}
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select)::placeholder {
+  color: color-mix(in oklab, var(--m-ink) 48%, var(--m-bg));
+  opacity: 1;
+}
+:where(input, textarea, select, button, a):focus-visible {
+  outline-color: var(--m-primary);
+}
+[role="dialog"] {
+  color: var(--m-ink);
+}
+html[data-card-style="elevated"] [role="dialog"] {
+  box-shadow: 0 28px 80px -40px color-mix(in oklab, var(--m-ink) 60%, transparent);
+}
+html[data-card-style="outline"] [role="dialog"] {
+  border: 1px solid var(--m-line);
 }
 
 .srma-protected-image,

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, Eye, EyeOff, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Check, Eye, EyeOff, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import type { SiteContentSettings } from "@/lib/siteContentSettings";
 import { useExperienceDraft } from "@/lib/experience-draft";
 import { FONT_FAMILIES } from "@/components/ThemeSync";
 import {
   ADMIN_VIEW_IDS, BACKGROUND_PATTERNS, BODY_FONTS, BUTTON_STYLES, CARD_STYLES, DEFAULT_EXPERIENCE_SETTINGS, DENSITIES,
-  EXPERIENCE_LIMITS, HEADING_FONTS, LINKABLE_ROUTE_IDS, RADIUS_SCALES, ROUTE_IDS, ROUTE_LABELS, THEME_PRESETS, THEME_PRESET_VALUES,
+  EXPERIENCE_LIMITS, HEADING_FONTS, LINKABLE_ROUTE_IDS, RADIUS_SCALES, ROUTE_IDS, ROUTE_LABELS, THEME_PRESET_VALUES,
   ANNOUNCEMENT_TONES, checkExperienceSettings,
   type BiText, type ExperienceSettings, type HomeSectionId, type LinkableRouteId, type NavItem, type RouteId, type TextCard,
 } from "../../../../lib/site-experience";
@@ -38,6 +38,19 @@ const ROUTE_OPTION_LABEL: Record<LinkableRouteId, string> = {
 };
 const PUBLIC_SEO_ROUTES: RouteId[] = ROUTE_IDS.filter((r) => !["admin", "adminSubmissions", "coordinatorDashboard", "coordinatorSubmissions", "ownerAdmin", "signIn", "signUp"].includes(r));
 
+const PRESET_PRESENTATION = {
+  misbar: { label: "هوية مسبار", note: "أخضر عميق ولمسات نحاسية", mood: "متوازن وأصيل" },
+  oasis: { label: "واحة", note: "هدوء أخضر ولمعان ذهبي", mood: "هادئ ومنفتح" },
+  sandstone: { label: "رمال هادئة", note: "دفء حجري ومساحات عاجية", mood: "دافئ ومطمئن" },
+  nightClinic: { label: "عيادة هادئة", note: "أخضر سريري ولمسات ذهبية", mood: "مركّز ومعاصر" },
+  royalSapphire: { label: "ياقوت ملكي", note: "أزرق أرشيفي وتفاصيل شامخة", mood: "رصين وأكاديمي" },
+  velvetBurgundy: { label: "مخمل عنّابي", note: "عنّابي غني ولمسات برونزية", mood: "ثقافي وأنيق" },
+  midnightGold: { label: "ذهب منتصف الليل", note: "كحلي عميق ولمسات ذهبية", mood: "رصين وكلاسيكي" },
+  pearlBronze: { label: "لؤلؤ وبرونز", note: "لؤلؤ دافئ ونحاس معتّق", mood: "ناعم ومميز" },
+  custom: { label: "ألوان مخصصة", note: "ابنِ لوحة مسبار الخاصة بك", mood: "على ذوقك" },
+} as const;
+
+const PRESET_ORDER = ["misbar", "royalSapphire", "velvetBurgundy", "midnightGold", "pearlBronze", "oasis", "sandstone", "nightClinic", "custom"] as const;
 const inputCls = "w-full rounded-xl border border-[color:var(--m-line)] bg-[color:var(--m-bg)] px-3 py-2 text-sm outline-none focus:border-[color:var(--m-primary)]";
 const labelCls = "mb-1 block text-xs font-semibold text-[color:var(--m-muted)]";
 
@@ -186,7 +199,13 @@ export default function ExperienceControlPanel({ settings, onChange }: Props) {
   const { draft, setDraft } = useExperienceDraft();
   const previewing = draft !== null;
   const x = settings.experience;
-  const set = (next: ExperienceSettings) => onChange({ ...settings, experience: next });
+  const set = (next: ExperienceSettings) => onChange({
+    ...settings,
+    primaryColor: next.theme.primary,
+    accentColor: next.theme.gold,
+    cardBackgroundColor: next.theme.surface,
+    experience: next,
+  });
   const check = useMemo(() => checkExperienceSettings(x), [x]);
 
   // Keep the in-memory preview in sync while previewing. Never persisted, tab-local only.
@@ -241,19 +260,67 @@ export default function ExperienceControlPanel({ settings, onChange }: Props) {
 
       {tab === "theme" && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card title="الألوان" hint="تطبق على الصفحات العامة والبوابات ولوحة الإدارة والنوافذ المنبثقة.">
-            <Select label="قالب جاهز" value={th.preset} options={THEME_PRESETS} render={(v) => ({ misbar: "مسبار (أخضر وذهبي)", oasis: "واحة", sandstone: "حجر رملي", nightClinic: "عيادة ليلية", custom: "مخصص" }[v])}
-              onChange={(v) => set({ ...x, theme: v === "custom" ? { ...th, preset: v } : { ...th, preset: v, ...THEME_PRESET_VALUES[v] } })} />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {(["primary", "gold", "ink", "background", "surface"] as const).map((k) => (
-                <label key={k} className="block">
-                  <span className={labelCls}>{{ primary: "الأساسي", gold: "الذهبي", ink: "النص", background: "الخلفية", surface: "البطاقات" }[k]}</span>
-                  <div className="flex items-center gap-2">
-                    <input type="color" value={th[k]} onChange={(e) => set({ ...x, theme: { ...th, preset: "custom", [k]: e.target.value } })} className="h-9 w-10 cursor-pointer rounded border border-[color:var(--m-line)]" data-testid={`input-color-${k}`} />
-                    <input value={th[k]} dir="ltr" onChange={(e) => set({ ...x, theme: { ...th, preset: "custom", [k]: e.target.value } })} className={inputCls} />
-                  </div>
-                </label>
-              ))}
+          <Card title="اختر هوية مسبار" hint="قارن اللوحات بصرياً، ثم خصّص الألوان يدوياً. ينطبق الاختيار على الصفحات والبوابات ولوحات المالك.">
+            <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="قوالب الهوية البصرية">
+              {PRESET_ORDER.map((preset) => {
+                const colors = preset === "custom" ? th : THEME_PRESET_VALUES[preset];
+                const item = PRESET_PRESENTATION[preset];
+                const selected = th.preset === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => set({ ...x, theme: preset === "custom" ? { ...th, preset } : { ...th, preset, ...THEME_PRESET_VALUES[preset] } })}
+                    className={`group relative overflow-hidden rounded-2xl border p-3 text-right transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--m-primary)] ${selected ? "border-[color:var(--m-primary)] shadow-[0_8px_24px_-16px_var(--m-primary)] ring-1 ring-[color:var(--m-primary)]" : "border-[color:var(--m-line)] hover:border-[color:var(--m-gold)]"}`}
+                    style={{ backgroundColor: colors.surface, color: colors.ink }}
+                    data-testid={`button-theme-preset-${preset}`}
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span>
+                        <span className="block text-sm font-extrabold">{item.label}</span>
+                        <span className="mt-1 block text-[11px] leading-5 opacity-70">{item.note}</span>
+                      </span>
+                      <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${selected ? "text-white" : "border"}`} style={{ backgroundColor: selected ? colors.primary : "transparent", borderColor: colors.primary, color: selected ? colors.surface : colors.primary }}>
+                        {selected ? <Check size={14} strokeWidth={2.5} /> : null}
+                      </span>
+                    </span>
+                    <span className="mt-3 flex items-center justify-between gap-3">
+                      <span className="flex items-center -space-x-1.5 rtl:space-x-reverse" aria-label="ألوان القالب">
+                        {[colors.primary, colors.gold, colors.ink, colors.background, colors.surface].map((color, index) => (
+                          <span key={`${color}-${index}`} className="h-5 w-5 rounded-full border-2" style={{ backgroundColor: color, borderColor: colors.surface }} />
+                        ))}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold opacity-65"><Sparkles size={11} />{item.mood}</span>
+                    </span>
+                    <span className="mt-3 block overflow-hidden rounded-xl border text-right" style={{ borderColor: `${colors.primary}25`, backgroundColor: colors.background }}>
+                      <span className="flex items-center justify-between px-2.5 py-2">
+                          <span className="text-[10px] font-extrabold" style={{ color: colors.primary }}>مسبار</span>
+                        <span className="h-1.5 w-8 rounded-full" style={{ backgroundColor: colors.gold }} />
+                      </span>
+                      <span className="mx-2.5 mb-2 block rounded-lg p-2" style={{ backgroundColor: colors.surface }}>
+                        <span className="block h-1.5 w-2/3 rounded-full opacity-80" style={{ backgroundColor: colors.ink }} />
+                        <span className="mt-1.5 flex items-center justify-between">
+                          <span className="h-1 w-1/3 rounded-full opacity-30" style={{ backgroundColor: colors.ink }} />
+                          <span className="rounded-full px-2 py-1 text-[8px] font-bold" style={{ backgroundColor: colors.primary, color: colors.surface }}>استكشف الفرص</span>
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-1 sm:grid-cols-3">
+                {(["primary", "gold", "ink", "background", "surface"] as const).map((k) => (
+                  <label key={k} className="block">
+                    <span className={labelCls}>{{ primary: "الأساسي", gold: "الذهبي", ink: "النص", background: "الخلفية", surface: "البطاقات" }[k]}</span>
+                    <div className="flex items-center gap-2">
+                      <input type="color" value={th[k]} onChange={(e) => set({ ...x, theme: { ...th, preset: "custom", [k]: e.target.value } })} className="h-9 w-10 cursor-pointer rounded border border-[color:var(--m-line)]" data-testid={`input-color-${k}`} />
+                      <input value={th[k]} dir="ltr" onChange={(e) => set({ ...x, theme: { ...th, preset: "custom", [k]: e.target.value } })} className={inputCls} />
+                    </div>
+                  </label>
+                ))}
             </div>
           </Card>
           <Card title="الخطوط والمقاسات">

@@ -301,7 +301,7 @@ export default function ParticipantPortal() {
                         data-protected="research"
                         className={`protected-research-content research-card relative overflow-hidden select-none ${isSpecialtyScroll ? "w-[min(88vw,390px)] shrink-0 snap-start" : ""} rounded-2xl border border-slate-200 p-5 shadow-sm transition-shadow hover:shadow-md`}
                         style={{
-                          backgroundColor: contentSettings.cardBackgroundColor,
+                          backgroundColor: "var(--m-surface)",
                           userSelect: "none",
                           WebkitUserSelect: "none",
                         }}
@@ -352,7 +352,7 @@ export default function ParticipantPortal() {
 
                         {contentSettings.visibleParticipantCardParts.includes("seats") && <><div className="mb-1">
                           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: `linear-gradient(to left, ${contentSettings.primaryColor}, ${contentSettings.accentColor})` }} />
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "linear-gradient(to left, var(--m-primary), var(--m-gold))" }} />
                           </div>
                         </div>
                         <p className="mb-2 text-start text-xs text-slate-500">{localize(`تبقى ${opp.seatsLeft} مقاعد فقط من أصل ${opp.totalSeats}`, `Only ${opp.seatsLeft} seats remain out of ${opp.totalSeats}`)}</p>
@@ -386,7 +386,7 @@ export default function ParticipantPortal() {
                               data-testid={`button-register-${opp.id}`}
                               onClick={() => openModal(opp)}
                               className="flex-1 text-white font-bold py-3 rounded-xl transition-all text-sm shadow-sm hover:opacity-95 flex items-center justify-center gap-1.5"
-                              style={{ backgroundColor: contentSettings.primaryColor }}
+                              style={{ backgroundColor: "var(--m-primary)" }}
                             >
                               <span>{t("common.registerNow")}</span>
                             </button>
@@ -394,7 +394,7 @@ export default function ParticipantPortal() {
                               href={`/research/${opp.id}`}
                               data-testid={`button-detail-${opp.id}`}
                               className="flex items-center justify-center gap-1 border font-bold px-4 py-3 rounded-xl transition-colors text-sm bg-white hover:bg-slate-50"
-                              style={{ borderColor: `${contentSettings.primaryColor}35`, color: contentSettings.primaryColor }}
+                              style={{ borderColor: "color-mix(in oklab, var(--m-primary) 24%, transparent)", color: "var(--m-primary)" }}
                             >
                               <span>{t("common.details")}</span>
                               <ChevronLeft size={14} />
