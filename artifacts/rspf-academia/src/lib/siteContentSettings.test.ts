@@ -2,7 +2,9 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
   DEFAULT_SITE_CONTENT_SETTINGS,
+  getPwaIconUrl,
   getOrderedRegistrationFields,
+  normalizeSiteContentSettings,
   type RegistrationFieldSetting,
 } from "./siteContentSettings";
 
@@ -34,5 +36,36 @@ test("unknown saved field ids are dropped and empty settings fall back to defaul
   assert.deepEqual(
     getOrderedRegistrationFields(null).map((f) => f.id),
     DEFAULT_SITE_CONTENT_SETTINGS.registrationFields.map((f) => f.id),
+  );
+});
+
+test("app icon size is saved independently and produces versioned PWA icon URLs", () => {
+  const settings = normalizeSiteContentSettings({
+    brand: { ...DEFAULT_SITE_CONTENT_SETTINGS.brand, appIconDisplaySize: 88 },
+  });
+  assert.equal(settings.brand.appIconDisplaySize, 88);
+  assert.equal(
+    getPwaIconUrl(192, settings.brand),
+    `/api/pwa-icon/192.png?v=${encodeURIComponent(`${settings.brand.appIconUrl}|88|${settings.brand.appThemeColor}`)}`,
+  );
+  assert.equal(normalizeSiteContentSettings({ brand: { appIconDisplaySize: 200 } }).brand.appIconDisplaySize, 100);
+  assert.equal(normalizeSiteContentSettings({ brand: { appIconDisplaySize: 12 } }).brand.appIconDisplaySize, 30);
+});
+
+test("PWA icon URLs change when the uploaded icon or display treatment changes", () => {
+  const base = DEFAULT_SITE_CONTENT_SETTINGS.brand;
+  const original = getPwaIconUrl(180, base);
+
+  assert.notEqual(
+    getPwaIconUrl(180, { ...base, appIconUrl: "/api/site-app-icon/11111111-1111-4111-8111-111111111111" }),
+    original,
+  );
+  assert.notEqual(
+    getPwaIconUrl(180, { ...base, appIconDisplaySize: base.appIconDisplaySize + 1 }),
+    original,
+  );
+  assert.notEqual(
+    getPwaIconUrl(180, { ...base, appThemeColor: "#123456" }),
+    original,
   );
 });

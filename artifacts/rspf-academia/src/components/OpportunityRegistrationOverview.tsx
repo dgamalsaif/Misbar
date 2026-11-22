@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { BookOpen, CalendarDays, Clock3, GraduationCap, LibraryBig, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import OpportunityMedia from "@/components/OpportunityMedia";
-import OpportunityPrice from "@/components/OpportunityPrice";
+import { OpportunityFeeSummary } from "@/components/OpportunityPrice";
 import { useLanguage } from "@/lib/i18n";
 import { getResearchStatusLabel } from "@/lib/opportunityPricing";
 import type { ResearchOpportunity } from "@/lib/researchData";
@@ -29,10 +29,16 @@ function Fact({ icon, label, children }: { icon: ReactNode; label: string; child
 
 export default function OpportunityRegistrationOverview({ opportunity, showDetails, brandName }: Props) {
   const { direction, language, localize } = useLanguage();
-  const englishTitle = getEnglishOpportunityTitle(opportunity);
-  const code = `RES-2026-${opportunity.id}`;
   const vis = (f: Parameters<typeof isFieldVisible>[1]) => isFieldVisible(opportunity, f);
+  const titleVisible = vis("title");
+  const englishTitle = titleVisible
+    ? getEnglishOpportunityTitle(opportunity)
+    : localize("عنوان البحث مخفي من الإدارة", "Research title hidden by the administrator");
+  const code = `RES-2026-${opportunity.id}`;
   const specialty = vis("specialty") ? localize(opportunity.specialtyAr, opportunity.specialtyEn, opportunity.specialty) : "";
+  const original = opportunity.priceOriginalSar;
+  const discounted = opportunity.priceDiscountedSar;
+  const hasPrice = vis("price") && (typeof original === "number" || typeof discounted === "number");
 
   const header = (
     <div className="p-5 sm:p-7">
@@ -71,6 +77,11 @@ export default function OpportunityRegistrationOverview({ opportunity, showDetai
       <section aria-labelledby="opp-overview-title" className={shell} dir={direction} data-testid="section-opportunity-overview-minimal">
         <OpportunityMedia research={opportunity} className="h-56 w-full" />
         <div className="border-s-4 border-[#117b59]">{header}</div>
+        {hasPrice && (
+          <div className="border-t border-emerald-100 p-5 sm:p-7">
+            <OpportunityFeeSummary originalSar={original} discountedSar={discounted} includedServices={opportunity.includedServices} />
+          </div>
+        )}
       </section>
     );
   }
@@ -87,9 +98,6 @@ export default function OpportunityRegistrationOverview({ opportunity, showDetai
   const first = typeof opportunity.firstAuthorSeatsLeft === "number" ? opportunity.firstAuthorSeatsLeft : undefined;
   const co = typeof opportunity.coAuthorSeatsLeft === "number" ? opportunity.coAuthorSeatsLeft : undefined;
   const hasSeats = vis("seats") && typeof opportunity.seatsLeft === "number" && typeof opportunity.totalSeats === "number";
-  const original = opportunity.priceOriginalSar;
-  const discounted = opportunity.priceDiscountedSar;
-  const hasPrice = vis("price") && typeof original === "number" || typeof discounted === "number";
   const created = opportunity.createdAt ? new Date(opportunity.createdAt) : null;
   const dateText = vis("createdAt") && created && !Number.isNaN(created.getTime())
     ? created.toLocaleDateString(language === "ar" ? "ar-SA" : "en-GB", { year: "numeric", month: "long", day: "numeric" })
@@ -188,9 +196,10 @@ export default function OpportunityRegistrationOverview({ opportunity, showDetai
         )}
 
         {hasPrice && (
-          <OpportunityPrice
-            originalSar={original ?? discounted}
-            discountedSar={discounted ?? original}
+        <OpportunityFeeSummary
+            originalSar={original}
+            discountedSar={discounted}
+            includedServices={opportunity.includedServices}
           />
         )}
       </div>

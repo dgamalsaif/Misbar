@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download, Smartphone, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
-import { DEFAULT_SITE_CONTENT_SETTINGS } from "@/lib/siteContentSettings";
+import { DEFAULT_SITE_CONTENT_SETTINGS, getPwaIconUrl } from "@/lib/siteContentSettings";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -19,7 +19,7 @@ export default function InstallAppButton({ className = "" }: { className?: strin
   const { direction, language, localize } = useLanguage();
   const { data: settings = DEFAULT_SITE_CONTENT_SETTINGS } = useSiteContentSettings();
   const appName = settings.brand.appNameAr || settings.brand.appNameEn || settings.brand.siteNameAr || "Misbar";
-  const appIcon = settings.brand.appIconUrl || settings.brand.logoUrl;
+  const appIcon = getPwaIconUrl(192, settings.brand);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -88,6 +88,17 @@ export default function InstallAppButton({ className = "" }: { className?: strin
               <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center gap-2 text-[#117b59]"><Smartphone size={18} /><h3 className="text-sm font-black">{localize("أضف التطبيق إلى جهازك", "Add the app to your device")}</h3></div>
                 <p className="mt-2 text-xs leading-6 text-slate-600">{language === "ar" ? <>من قائمة المتصفح اختر <strong>«تثبيت التطبيق»</strong> أو <strong>«إضافة إلى الشاشة الرئيسية»</strong>. قد يظهر خيار التثبيت بعد فتح الموقع من Chrome أو Edge مرة أخرى.</> : <>From your browser menu, choose <strong>“Install app”</strong> or <strong>“Add to Home Screen.”</strong> The install option may appear after reopening the site in Chrome or Edge.</>}</p>
+                <div className="mt-3 space-y-2 border-t border-slate-200 pt-3 text-xs leading-5 text-slate-600">
+                  <p>{language === "ar"
+                    ? <><strong>Android:</strong> افتح الموقع أو التطبيق المثبّت مجدداً وانتظر تحديثه. إذا بقيت الأيقونة القديمة، أزل الاختصار أو التطبيق وأعد تثبيته؛ قد يؤخر المشغّل تحديث الأيقونة.</>
+                    : <><strong>Android:</strong> Reopen the site or installed app and allow it to update. If the old icon remains, remove the shortcut or app and install it again; the launcher may delay icon updates.</>}</p>
+                  <p>{language === "ar"
+                    ? <><strong>iPhone:</strong> يلتقط Safari الأيقونة عند الإضافة وقد يحتفظ بها. احذف الاختصار القديم، ثم افتح الموقع في Safari واختر «إضافة إلى الشاشة الرئيسية» من قائمة المشاركة.</>
+                    : <><strong>iPhone:</strong> Safari captures the icon when you add it and may keep that copy. Delete the old shortcut, open the site in Safari, then choose “Add to Home Screen” from Share.</>}</p>
+                  <p className="text-slate-500">{language === "ar"
+                    ? "قد يختلف شكل القص: iPhone يستخدم زوايا مستديرة، بينما قد يقصّ Android الأيقونة إلى دائرة أو شكل يحدده المشغّل. اترك الشعار المهم في منتصف الصورة."
+                    : "Icon cropping can differ: iPhone uses rounded corners, while Android may use a circle or launcher-specific mask. Keep important artwork centered."}</p>
+                </div>
               </div>
             )}
           </section>

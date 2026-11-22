@@ -11,5 +11,14 @@ test("display switches are independent and default to showing information", () =
   assert.equal(isFieldVisible(opportunity, "specialty"), true);
   assert.equal(getPublicImageUrl(opportunity), opportunity.imageUrl);
   assert.equal(getPublicImageUrl({ ...opportunity, hiddenFields: ["image"] }), undefined);
+  assert.equal(getPublicImageUrl({ ...opportunity, hiddenFields: ["title"] }), undefined);
   assert.deepEqual(normalizeHiddenFields(["price", "price", "unknown"]), ["price"]);
+});
+
+test("new opportunities hide title, specialty, and preview until the owner enables them", () => {
+  const defaults = normalizeHiddenFields(undefined);
+  assert.equal(isFieldVisible({ hiddenFields: defaults }, "title"), false);
+  assert.equal(isFieldVisible({ hiddenFields: defaults }, "specialty"), false);
+  assert.equal(isFieldVisible({ hiddenFields: defaults }, "preview"), false);
+  assert.equal(isFieldVisible({ hiddenFields: defaults }, "price"), true);
 });

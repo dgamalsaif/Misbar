@@ -96,7 +96,7 @@ export interface BrandContactSettings {
   logoAnimationEnabled: boolean;
   socialShareImageUrl?: string;
   socialShareImageVersion?: string;
-  appNameAr: string; appNameEn: string; appShortName: string; appIconUrl: string; appThemeColor: string;
+  appNameAr: string; appNameEn: string; appShortName: string; appIconUrl: string; appIconDisplaySize: number; appThemeColor: string;
   phone: string; whatsapp: string; participantWhatsapp: string; coordinatorWhatsapp: string; whatsappChannelUrl: string; email: string;
   telegramUsername: string; instagramUsername: string; xUsername: string; linkedinUsername: string;
   facebookUrl: string; tiktokUrl: string; youtubeUrl: string; snapchatUrl: string;
@@ -150,6 +150,16 @@ export interface BrandContactSettings {
 }
 export type SocialIconId = "whatsapp" | "telegram" | "instagram" | "x" | "linkedin" | "facebook" | "tiktok" | "youtube" | "snapchat" | "email" | "phone";
 export type FloatingIconPosition = "bottom-left" | "bottom-right" | "middle-left" | "middle-right";
+export type PwaIconSize = 32 | 180 | 192 | 512;
+
+export function getPwaIconUrl(
+  size: PwaIconSize,
+  brand: Pick<BrandContactSettings, "appIconUrl" | "appIconDisplaySize" | "appThemeColor">,
+): string {
+  const version = encodeURIComponent([brand.appIconUrl, brand.appIconDisplaySize, brand.appThemeColor].join("|"));
+  return `/api/pwa-icon/${size}.png?v=${version}`;
+}
+
 export const SOCIAL_ICON_OPTIONS: { id: SocialIconId; label: string }[] = [
   { id: "whatsapp", label: "واتساب" }, { id: "telegram", label: "تيليجرام" },
   { id: "instagram", label: "إنستجرام" }, { id: "x", label: "X" },
@@ -307,7 +317,7 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
   coordinatorFormDescription: "أدخل بيانات الطالب كما تظهر في مستنداته الأكاديمية.",
   coordinatorFormDescriptionEn: "Enter the student's details exactly as they appear in their academic documents.",
   participantTitleLanguage: "english",
-  coordinatorTitleLanguage: "arabic",
+  coordinatorTitleLanguage: "english",
   primaryColor: "#065634",
   accentColor: "#d4af37",
   cardBackgroundColor: "#ffffff",
@@ -336,7 +346,7 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
   brand: {
     siteNameAr: "مسبار", siteNameEn: "Misbar", logoUrl: "/misbar-logo.svg",
     logoAnimationEnabled: false,
-    appNameAr: "مسبار", appNameEn: "Misbar", appShortName: "Misbar", appIconUrl: "/misbar-logo.svg", appThemeColor: "#0b5145",
+    appNameAr: "مسبار", appNameEn: "Misbar", appShortName: "Misbar", appIconUrl: "/misbar-logo.svg", appIconDisplaySize: 72, appThemeColor: "#0b5145",
     phone: "+966562159258", whatsapp: "966562159258", participantWhatsapp: "966562159258", coordinatorWhatsapp: "966562159258", whatsappChannelUrl: "", email: "srmaacademy@gmail.com", telegramUsername: "SRMAAcademy", instagramUsername: "", xUsername: "", linkedinUsername: "",
     facebookUrl: "", tiktokUrl: "", youtubeUrl: "", snapchatUrl: "",
     publicSocialIcons: ["whatsapp", "telegram"], participantSocialIcons: ["whatsapp", "telegram"], coordinatorSocialIcons: ["whatsapp", "telegram"],
@@ -443,6 +453,9 @@ export function normalizeSiteContentSettings(input: unknown): SiteContentSetting
   (["siteNameAr", "siteNameEn", "appNameAr", "appNameEn", "appShortName", "logoUrl", "appIconUrl", "appThemeColor"] as const).forEach((k) => {
     (brand as unknown as Record<string, unknown>)[k] = migrateExact(brandIn[k], LEGACY_BRAND_MAP);
   });
+  brand.appIconDisplaySize = typeof brandIn.appIconDisplaySize === "number" && Number.isFinite(brandIn.appIconDisplaySize)
+    ? Math.min(100, Math.max(30, Math.round(brandIn.appIconDisplaySize)))
+    : D.brand.appIconDisplaySize;
   brand.opportunityInquiryLabelAr = migrateExact(brand.opportunityInquiryLabelAr, LEGACY_PAGE_TEXT) as string;
   brand.opportunityInquiryLabelEn = migrateExact(brand.opportunityInquiryLabelEn, LEGACY_PAGE_TEXT) as string;
   const pages = { ...D.pages } as Record<PublicPageId, PublicPageContent>;
