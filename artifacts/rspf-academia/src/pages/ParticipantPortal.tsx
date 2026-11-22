@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronDown, ChevronUp, Lock, Flame, ChevronLeft, ChevronRight, MessageCircle, ExternalLink, Send, Phone, LayoutGrid, SlidersHorizontal, Copy, Mail, Check } from "lucide-react";
 import { Link } from "wouter";
 import { ResearchOpportunity } from "@/lib/researchData";
@@ -62,33 +62,42 @@ export default function ParticipantPortal() {
   }, [adminDisplayMode]);
 
   const [loadState, setLoadState] = useState<"loading" | "error" | "ready">("loading");
+  const requestInFlight = useRef(false);
+  const hasLoadedOpportunities = useRef(false);
 
-  const refreshOpportunities = () => {
-    setLoadState("loading");
-    apiFetch("/api/programs", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("programs unavailable")))
-      .then((data: ResearchOpportunity[]) => {
-        const available = data.filter((item) => item.status === "open" && (item.category || "active") === "active");
-        setOpportunities(uniqueResearchOpportunities(available));
-        setLoadState("ready");
-      })
-      .catch(() => setLoadState("error"));
-  };
+  const refreshOpportunities = useCallback(async () => {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
+    if (!hasLoadedOpportunities.current) setLoadState("loading");
+    try {
+      const response = await apiFetch("/api/programs", { cache: "no-store" });
+      if (!response.ok) throw new Error("programs unavailable");
+      const data: unknown = await response.json();
+      if (!Array.isArray(data)) throw new Error("Unexpected opportunities response");
+      const available = (data as ResearchOpportunity[])
+        .filter((item) => item.status === "open" && (item.category || "active") === "active");
+      setOpportunities(uniqueResearchOpportunities(available));
+      hasLoadedOpportunities.current = true;
+      setLoadState("ready");
+    } catch {
+      if (!hasLoadedOpportunities.current) setLoadState("error");
+    } finally {
+      requestInFlight.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    refreshOpportunities();
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") refreshOpportunities();
-    };
-    window.addEventListener("focus", refreshOpportunities);
-    const timer = window.setInterval(() => { if (!document.hidden) refreshOpportunities(); }, 10000);
+    void refreshOpportunities();
+    const refreshWhenVisible = () => { if (!document.hidden) void refreshOpportunities(); };
+    window.addEventListener("focus", refreshWhenVisible);
+    const timer = window.setInterval(refreshWhenVisible, 10000);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
-      window.removeEventListener("focus", refreshOpportunities);
+      window.removeEventListener("focus", refreshWhenVisible);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, []);
+  }, [refreshOpportunities]);
 
   const toggleExpand = (id: number) => {
     setExpandedCards((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
