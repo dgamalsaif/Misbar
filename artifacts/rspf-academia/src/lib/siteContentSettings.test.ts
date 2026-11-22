@@ -193,4 +193,26 @@ test("invoice settings default to unpaid and only accept safe image URLs", () =>
   assert.equal(normalized.invoiceSettings.numberPrefix, "Misbar2026");
   assert.equal(normalized.invoiceSettings.logoUrl, "");
   assert.equal(normalized.invoiceSettings.stampUrl, "/api/site-brand-logo/11111111-1111-4111-8111-111111111111");
+  assert.match(normalized.invoiceSettings.applicabilityNoteAr, /الترقية/);
+});
+
+test("watermark settings are owner-customizable and normalized within safe bounds", () => {
+  const normalized = normalizeSiteContentSettings({
+    watermarkSettings: {
+      enabled: false,
+      textAr: "  مسبار & شركاؤه  ",
+      textEn: "MISBAR",
+      color: "url(javascript:alert(1))",
+      opacity: 0.9,
+      fontSize: 40,
+      angle: -80,
+    },
+  });
+  assert.equal(normalized.watermarkSettings.enabled, false);
+  assert.equal(normalized.watermarkSettings.textAr, "مسبار & شركاؤه");
+  assert.equal(normalized.watermarkSettings.textEn, "MISBAR");
+  assert.equal(normalized.watermarkSettings.color, DEFAULT_SITE_CONTENT_SETTINGS.watermarkSettings.color);
+  assert.equal(normalized.watermarkSettings.opacity, 0.3);
+  assert.equal(normalized.watermarkSettings.fontSize, 28);
+  assert.equal(normalized.watermarkSettings.angle, -45);
 });

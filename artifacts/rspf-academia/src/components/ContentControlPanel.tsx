@@ -3,6 +3,7 @@ import { useState, useRef, useId } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import SiteShareImageSettings from "@/components/SiteShareImageSettings";
 import InvoiceSettingsPanel from "@/components/InvoiceSettingsPanel";
+import WatermarkSettingsPanel from "@/components/WatermarkSettingsPanel";
 import { buildOpportunityInquiryLinks, getSelectedInquiryChannels, getInquiryOwnTarget } from "@/lib/siteContentSettings";
 import { CARD_PARTS, OPPORTUNITY_FIELDS, OpportunityDisplayMode, OpportunityFieldId, RegistrationFieldSetting, SiteContentSettings, SpecialtyOption, JournalOption, PublicPageId, BrandContactSettings, PublicPageContent, SOCIAL_ICON_OPTIONS, SocialIconId, FloatingIconPosition, ForwardingType, OpportunityInquiryChannel, ContactUsType, AcademicDegreeOption, DEFAULT_ACADEMIC_DEGREE_SETTINGS, DEFAULT_RESEARCH_EXPERIENCE_SETTINGS, DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS } from "@/lib/siteContentSettings";
 import ExperienceControlPanel from "@/components/ExperienceControlPanel";
@@ -287,6 +288,10 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
           onChange={(invoiceSettings) => update("invoiceSettings", invoiceSettings)}
           onBusyChange={setInvoiceAssetsUploading}
         />
+      </Panel>
+
+      <Panel title="العلامة المائية للفرص" icon={ShieldCheck}>
+        <WatermarkSettingsPanel settings={settings.watermarkSettings} onChange={(watermarkSettings) => update("watermarkSettings", watermarkSettings)} />
       </Panel>
 
       <div className="grid gap-6 xl:grid-cols-12">
