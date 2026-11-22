@@ -9,6 +9,8 @@ export interface ResearchOpportunityImportRow {
   titleEn?: string;
   specialtyAr?: string;
   specialtyEn?: string;
+  country?: string;
+  applicationDeadline?: string;
   seatsLeft?: number | string;
   status?: string;
   descriptionAr?: string;
@@ -57,6 +59,8 @@ export async function importResearchOpportunities(rows: ResearchOpportunityImpor
       const specialtyAr = text(row.specialtyAr);
       const specialtyEn = text(row.specialtyEn);
       const title = titleEn || titleAr;
+      const country = text(row.country).slice(0, 120);
+      const applicationDeadline = text(row.applicationDeadline);
       const key = importKey(title, specialtyEn || specialtyAr);
       const seatsLeft = wholeNumber(row.seatsLeft, TOTAL_SEATS);
       if (!title || !specialtyAr || !specialtyEn) {
@@ -65,6 +69,10 @@ export async function importResearchOpportunities(rows: ResearchOpportunityImpor
       }
       if (seatsLeft === null) {
         rejected.push({ row: rowNumber, reason: "المقاعد المتبقية يجب أن تكون رقماً صحيحاً بين 0 و15." });
+        return [];
+      }
+      if (applicationDeadline && !isValidDateOnly(applicationDeadline)) {
+        rejected.push({ row: rowNumber, reason: "موعد إغلاق التسجيل يجب أن يكون تاريخاً صحيحاً بصيغة YYYY-MM-DD." });
         return [];
       }
       if (existingKeys.has(key) || seenKeys.has(key)) {
@@ -86,6 +94,8 @@ export async function importResearchOpportunities(rows: ResearchOpportunityImpor
         titleEn: titleEn || title,
         specialtyAr,
         specialtyEn,
+        country,
+        applicationDeadline: applicationDeadline || null,
         descriptionAr: text(row.descriptionAr),
         descriptionEn: text(row.descriptionEn),
         seatsLeft,
@@ -155,6 +165,13 @@ function nonNegativeAmount(value: unknown, fallback: number) {
   if (value === "" || value === undefined || value === null) return fallback;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function isValidDateOnly(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
 }
 
 export { importKey };

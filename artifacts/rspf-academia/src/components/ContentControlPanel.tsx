@@ -39,7 +39,14 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
   const [appIconPreviewError, setAppIconPreviewError] = useState(false);
   const appIconFileInput = useRef<HTMLInputElement>(null);
   const update = <K extends keyof SiteContentSettings>(key: K, value: SiteContentSettings[K]) => {
-    const next = { ...latestSettings.current, [key]: value };
+    const next: SiteContentSettings = { ...latestSettings.current, [key]: value };
+    if (key === "primaryColor" && typeof value === "string") {
+      next.experience = { ...next.experience, theme: { ...next.experience.theme, preset: "custom", primary: value } };
+    } else if (key === "accentColor" && typeof value === "string") {
+      next.experience = { ...next.experience, theme: { ...next.experience.theme, preset: "custom", gold: value } };
+    } else if (key === "cardBackgroundColor" && typeof value === "string") {
+      next.experience = { ...next.experience, theme: { ...next.experience.theme, preset: "custom", surface: value } };
+    }
     latestSettings.current = next;
     onChange(next);
   };
@@ -1696,7 +1703,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
           </Panel>
 
           <Panel title="حقول التسجيل" icon={SlidersHorizontal}>
-            <p className="mb-5 text-sm leading-6 text-slate-500">يمكنك تغيير التسمية والنص المساعد واللون، وتحديد ظهور الحقل وإلزاميته بشكل مستقل للمشترك والمنسق. الأسهم تغيّر ترتيب الحقول في النموذج.</p>
+            <p className="mb-5 text-sm leading-6 text-slate-500">يمكنك تغيير التسمية والنص المساعد واللون، وتحديد ظهور الحقل وإلزاميته بشكل مستقل للمشترك والمنسق. اختيار الدولة ومفتاح الاتصال ورقم واتساب إلزامية للمشارك والمنسق؛ يظهر اختيار الدولة قبل المدينة ثم رقم واتساب مع مفتاحها المحدد. الأسهم تغيّر ترتيب الحقول الأخرى.</p>
             <div className="space-y-4">
               {settings.registrationFields.map((field, index) => (
                 <article key={field.id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
@@ -1719,10 +1726,10 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                     <div><label className="mb-2 block text-xs font-bold text-slate-500">اللون</label><input type="color" value={field.color} onChange={(event) => updateField(index, { color: event.target.value })} className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1" /></div>
                   </div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <AudienceToggle label="إظهار للمشترك" active={field.showParticipant} onClick={() => updateField(index, { showParticipant: !field.showParticipant })} />
-                    <AudienceToggle label="إلزامي للمشترك" active={field.requiredParticipant} onClick={() => updateField(index, { requiredParticipant: !field.requiredParticipant })} />
-                    <AudienceToggle label="إظهار للمنسق" active={field.showCoordinator} onClick={() => updateField(index, { showCoordinator: !field.showCoordinator })} />
-                    <AudienceToggle label="إلزامي للمنسق" active={field.requiredCoordinator} onClick={() => updateField(index, { requiredCoordinator: !field.requiredCoordinator })} />
+                    <AudienceToggle label="إظهار للمشترك" active={field.showParticipant} disabled={field.id === "country" || field.id === "whatsapp"} onClick={() => updateField(index, { showParticipant: !field.showParticipant })} />
+                    <AudienceToggle label="إلزامي للمشترك" active={field.requiredParticipant} disabled={field.id === "country" || field.id === "whatsapp"} onClick={() => updateField(index, { requiredParticipant: !field.requiredParticipant })} />
+                    <AudienceToggle label="إظهار للمنسق" active={field.showCoordinator} disabled={field.id === "country" || field.id === "whatsapp"} onClick={() => updateField(index, { showCoordinator: !field.showCoordinator })} />
+                    <AudienceToggle label="إلزامي للمنسق" active={field.requiredCoordinator} disabled={field.id === "country" || field.id === "whatsapp"} onClick={() => updateField(index, { requiredCoordinator: !field.requiredCoordinator })} />
                   </div>
                 </article>
               ))}
@@ -2007,9 +2014,10 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
         <div className="space-y-6 xl:col-span-4">
           <Panel title="ألوان الواجهة" icon={Palette}>
             <div className="space-y-4">
-              <ColorField label="اللون الرئيسي" value={settings.primaryColor} onChange={(value) => update("primaryColor", value)} />
-              <ColorField label="لون الإجراءات" value={settings.accentColor} onChange={(value) => update("accentColor", value)} />
-              <ColorField label="خلفية البطاقة" value={settings.cardBackgroundColor} onChange={(value) => update("cardBackgroundColor", value)} />
+              <p className="text-xs leading-5 text-slate-500">تتزامن هذه الألوان مع الهوية البصرية العامة وتظهر على بقية صفحات الموقع.</p>
+              <ColorField label="اللون الرئيسي" value={settings.experience.theme.primary} onChange={(value) => update("primaryColor", value)} />
+              <ColorField label="لون الإجراءات" value={settings.experience.theme.gold} onChange={(value) => update("accentColor", value)} />
+              <ColorField label="خلفية البطاقة" value={settings.experience.theme.surface} onChange={(value) => update("cardBackgroundColor", value)} />
             </div>
           </Panel>
            <Panel title="عرض الفرص حسب التخصص" icon={SlidersHorizontal}>
@@ -2098,8 +2106,8 @@ function TextArea({ label, value, onChange, placeholder }: { label: string; valu
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"><label className="text-sm font-bold text-slate-700">{label}</label><div className="flex items-center gap-2"><span className="font-mono text-xs text-slate-500">{value}</span><input type="color" value={value} onChange={(event) => onChange(event.target.value)} className="h-9 w-10 rounded-lg border border-slate-200 bg-white p-1" /></div></div>;
 }
-function AudienceToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-bold transition ${active ? "border-emerald-200 bg-[#e6f5ef] text-[#117b59]" : "border-slate-200 bg-white text-slate-500"}`}><span>{label}</span>{active ? <Eye size={16} /> : <EyeOff size={16} />}</button>;
+function AudienceToggle({ label, active, onClick, disabled = false }: { label: string; active: boolean; onClick: () => void; disabled?: boolean }) {
+  return <button type="button" onClick={onClick} disabled={disabled} className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-70 ${active ? "border-emerald-200 bg-[#e6f5ef] text-[#117b59]" : "border-slate-200 bg-white text-slate-500"}`}><span>{label}</span>{active ? <Eye size={16} /> : <EyeOff size={16} />}</button>;
 }
 function CardParts({ title, audience, settings, onToggle, onMove }: { title: string; audience: "participant" | "coordinator"; settings: SiteContentSettings; onToggle: (audience: "participant" | "coordinator", part: string) => void; onMove: (audience: "participant" | "coordinator", index: number, direction: -1 | 1) => void }) {
   const order = audience === "participant" ? settings.participantCardOrder : settings.coordinatorCardOrder;

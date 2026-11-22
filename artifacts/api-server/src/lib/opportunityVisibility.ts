@@ -18,7 +18,7 @@ export async function getOpportunityVisibility(ids: number[], reader: Pick<typeo
     const value = byId.get(id);
     const hiddenFields = Array.isArray(value?.hiddenFields)
       ? value.hiddenFields.filter((field): field is string =>
-        typeof field === "string" && (["title", "preview", "image", "code", "specialty", "status", "description", "price", "journal", "indexedIn", "duration", "supervisor", "createdAt", "seats", "benefits"] as string[]).includes(field))
+        typeof field === "string" && (["title", "preview", "image", "code", "specialty", "country", "deadline", "status", "description", "price", "journal", "indexedIn", "duration", "supervisor", "createdAt", "seats", "benefits"] as string[]).includes(field))
       : [];
     // Existing records predate explicit title/privacy switches. Keep their
     // other choices, but require the owner to opt in before publishing titles.

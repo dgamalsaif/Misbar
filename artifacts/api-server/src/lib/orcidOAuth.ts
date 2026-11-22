@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+export { normalizeOrcidId } from "../../../../lib/orcid-id";
+
 export const ORCID_STATE_TTL_MS = 5 * 60 * 1000;
 
 export interface OrcidStatePayload {
@@ -122,15 +124,4 @@ export function verifyOrcidStateToken(
   } catch {
     return null;
   }
-}
-
-export function normalizeOrcidId(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const compact = value
-    .trim()
-    .replace(/^https?:\/\/orcid\.org\//i, "")
-    .replace(/[\s-]/g, "")
-    .toUpperCase();
-  if (!/^\d{15}[\dX]$/.test(compact)) return null;
-  return compact.match(/.{4}/g)?.join("-") ?? null;
 }

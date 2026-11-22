@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, Lock, Flame, ChevronLeft, ChevronRight, MessageCircle, ExternalLink, Send, Phone, LayoutGrid, SlidersHorizontal, Copy, Mail, Check } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { ChevronDown, ChevronUp, Lock, Flame, ChevronLeft, ChevronRight, MessageCircle, ExternalLink, Send, Phone, LayoutGrid, SlidersHorizontal, Copy, Mail, Check, Search, X, CalendarDays, MapPin } from "lucide-react";
 import { Link } from "wouter";
 import { ResearchOpportunity } from "@/lib/researchData";
 import RegistrationModal from "@/components/RegistrationModal";
@@ -15,6 +15,8 @@ import { ProtectedResearchWatermark, AntiCaptureResearchTitle } from "@/componen
 import { getEnglishOpportunityTitle, getOpportunityShareText } from "@/lib/opportunityDisplay";
 import { isFieldVisible } from "@/lib/opportunityVisibility";
 import { apiFetch } from "@/lib/api";
+import { filterOpportunities, type OpportunityFeeFilter } from "@/lib/opportunityFilters";
+import { COUNTRIES } from "@/components/CountrySelector";
 
 export default function ParticipantPortal() {
   const { direction, language, localize, t } = useLanguage();
@@ -54,7 +56,13 @@ export default function ParticipantPortal() {
   const [opportunities, setOpportunities] = useState<ResearchOpportunity[]>([]);
   const { currency, setCurrency } = useCurrency();
   const { data: contentSettings } = useSiteContentSettings();
+  const showOpportunityDetails = contentSettings.showOpportunityDetails !== false;
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
+  const [opportunitySearch, setOpportunitySearch] = useState("");
+  const [feeFilter, setFeeFilter] = useState<OpportunityFeeFilter>("all");
+  const [minimumSeats, setMinimumSeats] = useState<number | null>(null);
+  const [countryFilter, setCountryFilter] = useState<string | null>(null);
+  const [deadlineWithinDays, setDeadlineWithinDays] = useState<number | null>(null);
   const [displayMode, setDisplayMode] = useState<"grid" | "scroll">(contentSettings.opportunityDisplayMode || "grid");
   const adminDisplayMode = contentSettings.opportunityDisplayMode;
   useEffect(() => {
@@ -62,33 +70,42 @@ export default function ParticipantPortal() {
   }, [adminDisplayMode]);
 
   const [loadState, setLoadState] = useState<"loading" | "error" | "ready">("loading");
+  const requestInFlight = useRef(false);
+  const hasLoadedOpportunities = useRef(false);
 
-  const refreshOpportunities = () => {
-    setLoadState("loading");
-    apiFetch("/api/programs", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("programs unavailable")))
-      .then((data: ResearchOpportunity[]) => {
-        const available = data.filter((item) => item.status === "open" && (item.category || "active") === "active");
-        setOpportunities(uniqueResearchOpportunities(available));
-        setLoadState("ready");
-      })
-      .catch(() => setLoadState("error"));
-  };
+  const refreshOpportunities = useCallback(async () => {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
+    if (!hasLoadedOpportunities.current) setLoadState("loading");
+    try {
+      const response = await apiFetch("/api/programs", { cache: "no-store" });
+      if (!response.ok) throw new Error("programs unavailable");
+      const data: unknown = await response.json();
+      if (!Array.isArray(data)) throw new Error("Unexpected opportunities response");
+      const available = (data as ResearchOpportunity[])
+        .filter((item) => item.status === "open" && (item.category || "active") === "active");
+      setOpportunities(uniqueResearchOpportunities(available));
+      hasLoadedOpportunities.current = true;
+      setLoadState("ready");
+    } catch {
+      if (!hasLoadedOpportunities.current) setLoadState("error");
+    } finally {
+      requestInFlight.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    refreshOpportunities();
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") refreshOpportunities();
-    };
-    window.addEventListener("focus", refreshOpportunities);
-    const timer = window.setInterval(() => { if (!document.hidden) refreshOpportunities(); }, 10000);
+    void refreshOpportunities();
+    const refreshWhenVisible = () => { if (!document.hidden) void refreshOpportunities(); };
+    window.addEventListener("focus", refreshWhenVisible);
+    const timer = window.setInterval(refreshWhenVisible, 10000);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
-      window.removeEventListener("focus", refreshOpportunities);
+      window.removeEventListener("focus", refreshWhenVisible);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, []);
+  }, [refreshOpportunities]);
 
   const toggleExpand = (id: number) => {
     setExpandedCards((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -102,26 +119,50 @@ export default function ParticipantPortal() {
   const participantDescription = language === "en" ? contentSettings.pages.participant.descriptionEn : contentSettings.pages.participant.descriptionAr;
   const contactHref = getContactUsHref(contentSettings.brand);
 
-  const visibleSpecialtyOpportunities = opportunities.filter((opportunity) => isFieldVisible(opportunity, "specialty"));
+  const visibleSpecialtyOpportunities = showOpportunityDetails ? opportunities.filter((opportunity) => isFieldVisible(opportunity, "specialty")) : [];
   const specialtyOptions = buildSpecialtyOptions([], visibleSpecialtyOpportunities);
   const displaySpecialty = (opportunity: ResearchOpportunity) => {
     const canonical = canonicalSpecialty(opportunity.specialtyAr || opportunity.specialty, opportunity.specialtyEn || opportunity.specialty);
     return specialtyOptions.find((option) => option.id === canonical.id) || canonical;
   };
   const visibleOpportunities = opportunities.filter((opportunity) =>
-    !selectedSpecialty || !isFieldVisible(opportunity, "specialty") || specialtyMatches(opportunity, selectedSpecialty));
+    !showOpportunityDetails || !selectedSpecialty || !isFieldVisible(opportunity, "specialty") || specialtyMatches(opportunity, selectedSpecialty));
+  const filteredOpportunities = filterOpportunities(visibleOpportunities, {
+    query: opportunitySearch,
+    fee: feeFilter,
+    minimumSeats,
+    country: showOpportunityDetails ? countryFilter : null,
+    deadlineWithinDays: showOpportunityDetails ? deadlineWithinDays : null,
+    includeDetails: showOpportunityDetails,
+  });
+  const hasActiveFilters = Boolean((showOpportunityDetails && selectedSpecialty) || opportunitySearch.trim() || feeFilter !== "all" || minimumSeats !== null || (showOpportunityDetails && countryFilter) || (showOpportunityDetails && deadlineWithinDays !== null));
+  const hasVisiblePrices = opportunities.some((opportunity) => isFieldVisible(opportunity, "price"));
+  const hasVisibleSeatCounts = showOpportunityDetails && opportunities.some((opportunity) => isFieldVisible(opportunity, "seats"));
+  const countryOptions = showOpportunityDetails ? [...new Set(opportunities
+    .filter((opportunity) => isFieldVisible(opportunity, "country"))
+    .map((opportunity) => opportunity.country?.trim() || "")
+    .filter(Boolean))].sort((a, b) => a.localeCompare(b)) : [];
+  const hasVisibleDeadlines = showOpportunityDetails && opportunities.some((opportunity) => isFieldVisible(opportunity, "deadline") && Boolean(opportunity.applicationDeadline));
+  const resetFilters = () => {
+    setSelectedSpecialty(null);
+    setOpportunitySearch("");
+    setFeeFilter("all");
+    setMinimumSeats(null);
+    setCountryFilter(null);
+    setDeadlineWithinDays(null);
+  };
   const groupedOpportunities = specialtyOptions
     .map((option) => {
       const specialty = option.nameEn || option.nameAr;
       return {
         id: option.id,
         label: localize(option.nameAr, option.nameEn),
-        items: visibleOpportunities.filter((opportunity) => specialtyMatches(opportunity, specialty)),
+        items: filteredOpportunities.filter((opportunity) => specialtyMatches(opportunity, specialty)),
       };
     })
     .filter((group) => group.items.length > 0);
   const groupedOpportunityIds = new Set(groupedOpportunities.flatMap((group) => group.items.map((opportunity) => opportunity.id)));
-  const ungroupedOpportunities = visibleOpportunities.filter((opportunity) => !groupedOpportunityIds.has(opportunity.id));
+  const ungroupedOpportunities = filteredOpportunities.filter((opportunity) => !groupedOpportunityIds.has(opportunity.id));
   if (ungroupedOpportunities.length > 0) {
     groupedOpportunities.push({
       id: "other-specialties",
@@ -181,7 +222,7 @@ export default function ParticipantPortal() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="bg-[#0C3156]/8 text-[#0C3156] text-xs font-bold px-3 py-1.5 rounded-full border border-[#0C3156]/12">
-                     {localize(`${visibleOpportunities.length} فرصة متاحة`, `${visibleOpportunities.length} opportunities available`)}
+                      {localize(`${filteredOpportunities.length} فرصة متاحة`, `${filteredOpportunities.length} opportunities available`)}
                   </span>
                   {/* View Mode Toggle: Grid or Carousel */}
                   <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
@@ -216,12 +257,97 @@ export default function ParticipantPortal() {
                   </div>
                 </div>
               </div>
-              <SpecialtyFilter
+              {showOpportunityDetails && <SpecialtyFilter
                 options={specialtyOptions}
                 selectedSpecialty={selectedSpecialty}
                 onSelect={setSelectedSpecialty}
                 className="mb-5"
-              />
+              />}
+              <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" data-testid="section-opportunity-search" aria-label={localize("البحث المتقدم في الفرص", "Advanced opportunity search")}>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <label className="relative md:col-span-2">
+                    <span className="mb-1.5 block text-xs font-bold text-slate-600">{localize("بحث عام", "Search")}</span>
+                    <Search size={16} className="pointer-events-none absolute start-3 top-[2.45rem] -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                    <input
+                      type="search"
+                      value={opportunitySearch}
+                      onChange={(event) => setOpportunitySearch(event.target.value)}
+                      data-testid="input-opportunity-search"
+                      placeholder={localize("ابحث في المعلومات التي أتاحها المالك", "Search information made public by the owner")}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pe-3 ps-10 text-sm outline-none transition focus:border-[#117b59] focus:bg-white focus:ring-2 focus:ring-[#117b59]/15"
+                    />
+                  </label>
+                  {hasVisiblePrices && (
+                    <label>
+                      <span className="mb-1.5 block text-xs font-bold text-slate-600">{localize("الرسوم", "Fees")}</span>
+                      <select
+                        value={feeFilter}
+                        onChange={(event) => setFeeFilter(event.target.value as OpportunityFeeFilter)}
+                        data-testid="select-opportunity-fee"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-[#117b59] focus:bg-white focus:ring-2 focus:ring-[#117b59]/15"
+                      >
+                        <option value="all">{localize("كل الرسوم", "Any fees")}</option>
+                        <option value="free">{localize("مجانية", "Free")}</option>
+                        <option value="paid">{localize("مدفوعة", "Paid")}</option>
+                      </select>
+                    </label>
+                  )}
+                  {hasVisibleSeatCounts && (
+                    <label>
+                      <span className="mb-1.5 block text-xs font-bold text-slate-600">{localize("المقاعد المتاحة على الأقل", "Minimum available seats")}</span>
+                      <select
+                        value={minimumSeats ?? ""}
+                        onChange={(event) => setMinimumSeats(event.target.value ? Number(event.target.value) : null)}
+                        data-testid="select-opportunity-seats"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-[#117b59] focus:bg-white focus:ring-2 focus:ring-[#117b59]/15"
+                      >
+                        <option value="">{localize("أي عدد", "Any number")}</option>
+                        <option value="1">{localize("مقعد واحد فأكثر", "1 or more")}</option>
+                        <option value="3">{localize("3 مقاعد فأكثر", "3 or more")}</option>
+                        <option value="5">{localize("5 مقاعد فأكثر", "5 or more")}</option>
+                      </select>
+                    </label>
+                  )}
+                  <label>
+                    <span className="mb-1.5 block text-xs font-bold text-slate-600">{localize("بلد الفرصة", "Opportunity country")}</span>
+                    <select
+                      value={showOpportunityDetails ? countryFilter || "" : ""}
+                      onChange={(event) => setCountryFilter(event.target.value || null)}
+                      disabled={!showOpportunityDetails || countryOptions.length === 0}
+                      data-testid="select-opportunity-country-filter"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-[#117b59] focus:bg-white focus:ring-2 focus:ring-[#117b59]/15 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <option value="">{localize("كل البلدان", "All countries")}</option>
+                      {countryOptions.length === 0 && <option value="" disabled>{localize("لم تُحدد بلدان الفرص بعد", "No opportunity countries added yet")}</option>}
+                      {countryOptions.map((country) => <option key={country} value={country}>{localizeOpportunityCountry(country, language)}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="mb-1.5 block text-xs font-bold text-slate-600">{localize("موعد الإغلاق", "Closing date")}</span>
+                    <select
+                      value={showOpportunityDetails ? deadlineWithinDays ?? "" : ""}
+                      onChange={(event) => setDeadlineWithinDays(event.target.value ? Number(event.target.value) : null)}
+                      disabled={!showOpportunityDetails || !hasVisibleDeadlines}
+                      data-testid="select-opportunity-deadline-filter"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-[#117b59] focus:bg-white focus:ring-2 focus:ring-[#117b59]/15 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <option value="">{localize("أي موعد", "Any date")}</option>
+                      {!hasVisibleDeadlines && <option value="" disabled>{localize("لم تُحدد مواعيد بعد", "No deadlines added yet")}</option>}
+                      <option value="7">{localize("خلال 7 أيام", "Within 7 days")}</option>
+                      <option value="30">{localize("خلال 30 يوماً", "Within 30 days")}</option>
+                      <option value="90">{localize("خلال 90 يوماً", "Within 90 days")}</option>
+                    </select>
+                  </label>
+                  {hasActiveFilters && (
+                    <button type="button" onClick={resetFilters} data-testid="button-reset-opportunity-filters" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50">
+                      <X size={15} />{localize("مسح الفلاتر", "Clear filters")}
+                    </button>
+                  )}
+                </div>
+                {(feeFilter !== "all" || minimumSeats !== null || (showOpportunityDetails && (countryFilter || deadlineWithinDays !== null))) && <p className="mt-2 text-xs text-slate-500">{localize("تُطبق الفلاتر فقط على المعلومات التي أتاح مالك الفرصة ظهورها.", "Filters only use information made public by the opportunity owner.")}</p>}
+                {showOpportunityDetails && countryOptions.length === 0 && <p className="mt-2 text-xs text-slate-500">{localize("سيظهر فلتر البلد بعد أن يحدد المالك بلداً للفرص.", "The country filter becomes available when the owner assigns countries to opportunities.")}</p>}
+                {showOpportunityDetails && !hasVisibleDeadlines && <p className="mt-2 text-xs text-slate-500">{localize("سيظهر فلتر الموعد بعد أن يحدد المالك موعد إغلاق لفرصة واحدة على الأقل.", "The deadline filter becomes available when the owner adds a closing date to an opportunity.")}</p>}
+              </section>
               {loadState === "loading" && opportunities.length === 0 ? (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" data-testid="portal-loading">
                   {[0, 1, 2].map((i) => <div key={i} className="h-72 animate-pulse rounded-2xl border border-slate-200 bg-white motion-reduce:animate-none" />)}
@@ -231,10 +357,11 @@ export default function ParticipantPortal() {
                   <p className="font-bold text-slate-800">{localize("تعذر تحميل الفرص البحثية حالياً.", "We could not load research opportunities.")}</p>
                   <button type="button" onClick={refreshOpportunities} data-testid="button-portal-retry" className="mt-4 rounded-xl bg-[#0C3156] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a2847]">{localize("إعادة المحاولة", "Retry")}</button>
                 </div>
-              ) : visibleOpportunities.length === 0 ? (
+              ) : filteredOpportunities.length === 0 ? (
                 <div className="text-center py-16 text-slate-400">
-                  <p className="font-medium">{selectedSpecialty ? localize("لا توجد فرص متاحة في هذا التخصص حالياً", "There are currently no opportunities in this specialty.") : localize("لا توجد فرص متاحة حالياً", "There are currently no opportunities available.")}</p>
-                  <p className="text-sm mt-1">{selectedSpecialty ? localize("اختر كل التخصصات لعرض جميع الفرص.", "Choose all specialties to view every opportunity.") : localize("تواصل معنا ليصلك إشعار عند فتح دراسة جديدة.", "Contact us to be notified when a new study opens.")}</p>
+                  <p className="font-medium">{hasActiveFilters ? localize("لا توجد فرص تطابق معايير البحث الحالية.", "No opportunities match these search filters.") : localize("لا توجد فرص متاحة حالياً", "There are currently no opportunities available.")}</p>
+                  <p className="text-sm mt-1">{hasActiveFilters ? localize("جرّب تعديل الفلاتر أو مسحها.", "Try changing or clearing the filters.") : localize("تواصل معنا ليصلك إشعار عند فتح دراسة جديدة.", "Contact us to be notified when a new study opens.")}</p>
+                  {hasActiveFilters && <button type="button" onClick={resetFilters} className="mt-3 rounded-xl bg-[#0C3156] px-4 py-2 text-sm font-bold text-white hover:bg-[#0a2847]">{localize("مسح الفلاتر", "Clear filters")}</button>}
                 </div>
               ) : (
                 <div className="space-y-10">
@@ -292,7 +419,7 @@ export default function ParticipantPortal() {
                         data-protected="research"
                         className={`protected-research-content research-card relative overflow-hidden select-none ${isSpecialtyScroll ? "w-[min(88vw,390px)] shrink-0 snap-start" : ""} rounded-2xl border border-slate-200 p-5 shadow-sm transition-shadow hover:shadow-md`}
                         style={{
-                          backgroundColor: contentSettings.cardBackgroundColor,
+                          backgroundColor: "var(--m-surface)",
                           userSelect: "none",
                           WebkitUserSelect: "none",
                         }}
@@ -330,6 +457,12 @@ export default function ParticipantPortal() {
                         {isFieldVisible(opp, "price") && <div className="mb-4"><OpportunityFeeSummary originalSar={opp.priceOriginalSar} discountedSar={opp.priceDiscountedSar} includedServices={opp.includedServices} currency={currency} onCurrencyChange={setCurrency} compact /></div>}
                          {contentSettings.showOpportunityDetails !== false && <>
                          <div className="mb-4"><OpportunityMedia research={opp} className="aspect-[4/3] min-h-[172px]" /></div>
+                         {(isFieldVisible(opp, "country") && opp.country || isFieldVisible(opp, "deadline") && opp.applicationDeadline) && (
+                           <div className="mb-3 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+                             {isFieldVisible(opp, "country") && opp.country && <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-1.5"><MapPin size={13} />{localizeOpportunityCountry(opp.country, language)}</span>}
+                             {isFieldVisible(opp, "deadline") && opp.applicationDeadline && <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-1.5"><CalendarDays size={13} />{localize("آخر موعد:", "Deadline:")} {formatOpportunityDeadline(opp.applicationDeadline, language)}</span>}
+                           </div>
+                         )}
 
                         <div className="mb-4 space-y-2 text-start text-sm leading-6 text-slate-600">
                           {contentSettings.participantCardOrder.filter((part) => contentSettings.visibleParticipantCardParts.includes(part) && !["specialty", "seats", "benefits"].includes(part)).map((part) => {
@@ -343,7 +476,7 @@ export default function ParticipantPortal() {
 
                         {contentSettings.visibleParticipantCardParts.includes("seats") && <><div className="mb-1">
                           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: `linear-gradient(to left, ${contentSettings.primaryColor}, ${contentSettings.accentColor})` }} />
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "linear-gradient(to left, var(--m-primary), var(--m-gold))" }} />
                           </div>
                         </div>
                         <p className="mb-2 text-start text-xs text-slate-500">{localize(`تبقى ${opp.seatsLeft} مقاعد فقط من أصل ${opp.totalSeats}`, `Only ${opp.seatsLeft} seats remain out of ${opp.totalSeats}`)}</p>
@@ -377,7 +510,7 @@ export default function ParticipantPortal() {
                               data-testid={`button-register-${opp.id}`}
                               onClick={() => openModal(opp)}
                               className="flex-1 text-white font-bold py-3 rounded-xl transition-all text-sm shadow-sm hover:opacity-95 flex items-center justify-center gap-1.5"
-                              style={{ backgroundColor: contentSettings.primaryColor }}
+                              style={{ backgroundColor: "var(--m-primary)" }}
                             >
                               <span>{t("common.registerNow")}</span>
                             </button>
@@ -385,7 +518,7 @@ export default function ParticipantPortal() {
                               href={`/research/${opp.id}`}
                               data-testid={`button-detail-${opp.id}`}
                               className="flex items-center justify-center gap-1 border font-bold px-4 py-3 rounded-xl transition-colors text-sm bg-white hover:bg-slate-50"
-                              style={{ borderColor: `${contentSettings.primaryColor}35`, color: contentSettings.primaryColor }}
+                              style={{ borderColor: "color-mix(in oklab, var(--m-primary) 24%, transparent)", color: "var(--m-primary)" }}
                             >
                               <span>{t("common.details")}</span>
                               <ChevronLeft size={14} />
@@ -511,4 +644,18 @@ function normalizeResearchTitle(value: string) {
     .toLocaleLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
+}
+
+function localizeOpportunityCountry(value: string, language: string) {
+  const country = COUNTRIES.find((item) => item.name === value || item.nameEn.toLocaleLowerCase() === value.toLocaleLowerCase());
+  return country ? (language === "ar" ? country.name : country.nameEn) : value;
+}
+
+function formatOpportunityDeadline(value: string, language: string) {
+  const date = new Date(`${value}T12:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(language === "ar" ? "ar" : "en", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(date);
 }

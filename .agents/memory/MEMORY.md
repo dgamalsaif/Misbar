@@ -10,6 +10,8 @@
 - [Coordinator permissions](coordinator-permissions.md) — coordinators only add/remove their students; owner-only editing and confirmed rejected-registration deletion.
 - [Communication and bulk management](communication-and-bulk-management.md) — multiple inquiry methods, independent current post-registration contact, and bulk alongside individual opportunity edits.
 - [Persistence test isolation](persistence-test-isolation.md) — inject transaction/read doubles; global database method overrides may not isolate imported helpers.
-- [Public content policy](public-content-policy.md) — keep real tools and admin content; do not restore fabricated promotional sections or conceal empty/error states with invented data.
+- [Public content policy](public-content-policy.md) — keep Misbar's own managed content; don't import data or branding from separate visual references, and use honest states instead of filler.
 - [Image cache invalidation](image-cache-invalidation.md) — persist cache versions after validation; successful deletion can conceal a replacement-cache defect.
 - [Site link preview images](site-share-images.md) — owner-selected logo/image, honest GIF limits, and crawler-side versioning on Pages.
+- [Theme preset normalization](theme-preset-normalization.md) — legacy palette migrations must not rewrite valid user-selected themes; test every preset round-trip.
+- [Opportunity search rules](opportunity-search.md) — country means the opportunity's location; closing date stays optional, and filters must honor owner visibility.

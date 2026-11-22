@@ -9,6 +9,10 @@ test("display switches are independent and default to showing information", () =
   assert.equal(isFieldVisible(opportunity, "price"), false);
   assert.equal(isFieldVisible(opportunity, "image"), true);
   assert.equal(isFieldVisible(opportunity, "specialty"), true);
+  assert.equal(isFieldVisible(opportunity, "country"), true);
+  assert.equal(isFieldVisible(opportunity, "deadline"), true);
+  assert.equal(isFieldVisible({ hiddenFields: ["country", "deadline"] }, "country"), false);
+  assert.equal(isFieldVisible({ hiddenFields: ["country", "deadline"] }, "deadline"), false);
   assert.equal(getPublicImageUrl(opportunity), opportunity.imageUrl);
   assert.equal(getPublicImageUrl({ ...opportunity, hiddenFields: ["image"] }), undefined);
   assert.equal(getPublicImageUrl({ ...opportunity, hiddenFields: ["title"] }), undefined);

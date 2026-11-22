@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Shield, X, CheckCircle2, Loader2, UserRound, Mail, Phone, Building2, Menu, Home, BookOpen, Info, GraduationCap, UsersRound, FileText, Download, Cookie, MessageCircle } from "lucide-react";
+import { Shield, X, CheckCircle2, Loader2, Mail, Phone, Building2, Menu, Home, BookOpen, Info, GraduationCap, UsersRound, FileText, Download, Cookie, MessageCircle } from "lucide-react";
 import CountrySelector from "@/components/CountrySelector";
+import OrcidConnectButton from "@/components/OrcidConnectButton";
 import FloatingButtons from "@/components/FloatingButtons";
 import { CoordinatorPortalSettings, DEFAULT_COORDINATOR_PORTAL_SETTINGS, PortalNavIcon } from "@/lib/coordinatorPortalSettings";
 import Footer from "@/components/Footer";
@@ -10,6 +11,7 @@ import { LanguageMenu } from "@/components/Navbar";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 import { apiFetch } from "@/lib/api";
 import BrandLogo from "@/components/BrandLogo";
+import { normalizeOrcidId } from "@/lib/orcid";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -372,17 +374,17 @@ export default function CoordinatorPortal() {
         {/* 3 Value Pillars */}
         <section className="mt-12 pt-8 border-t border-slate-200 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-slate-200/90 bg-white p-5 text-start space-y-2 shadow-2xs">
-            <span className="text-2xl">⚡</span>
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#e7f3ef] text-[#117b59]" aria-hidden="true"><CheckCircle2 size={19} /></span>
             <h3 className="text-sm font-black text-slate-900">{localize("حجز وتسجيل فوري", "Instant Seat Reservations")}</h3>
             <p className="text-xs text-slate-600 leading-relaxed">{localize("تحديث فوري لعدد المقاعد المتاحة مع تثبيت مقاعد الطلاب تلقائياً فور الإرسال.", "Real-time updates on seat availability with automatic seat reservation upon submission.")}</p>
           </div>
           <div className="rounded-2xl border border-slate-200/90 bg-white p-5 text-start space-y-2 shadow-2xs">
-            <span className="text-2xl">💳</span>
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700" aria-hidden="true"><Building2 size={19} /></span>
             <h3 className="text-sm font-black text-slate-900">{localize("شفافية المستحقات المالية", "Financial Transparency")}</h3>
             <p className="text-xs text-slate-600 leading-relaxed">{localize("لوحة تفصيلية توضح كل دفعة، تاريخ السداد، وقيمة العمولات المعتمدة لك.", "Detailed panel showing every payment, transaction date, and approved commissions.")}</p>
           </div>
           <div className="rounded-2xl border border-slate-200/90 bg-white p-5 text-start space-y-2 shadow-2xs">
-            <span className="text-2xl">📑</span>
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600" aria-hidden="true"><FileText size={19} /></span>
             <h3 className="text-sm font-black text-slate-900">{localize("تقارير وكشوفات رسمية", "Official Reports & Records")}</h3>
             <p className="text-xs text-slate-600 leading-relaxed">{localize("تصدير وطباعة كشوفات بأسماء الطلاب وتخصصاتهم وحالات النشر بكل سهولة.", "Export and print rosters of student names, specialties, and publication statuses easily.")}</p>
           </div>
@@ -445,10 +447,12 @@ function CoordinatorRequestModal({ onClose }: CoordinatorRequestModalProps) {
   const siteName = isEnglish ? siteContent?.brand.siteNameEn || "Research Academy" : siteContent?.brand.siteNameAr || "أكاديمية الأبحاث";
   const coordinatorWhatsapp = siteContent?.brand.coordinatorWhatsapp || siteContent?.brand.whatsapp || "966562159258";
   const [form, setForm] = useState({
-    fullName: "",
+    firstName: "",
+    familyName: "",
     phone: "",
     email: "",
     affiliation: "",
+    orcid: "",
     country: isEnglish ? "Saudi Arabia" : "المملكة العربية السعودية",
     dialCode: "+966",
   });
@@ -459,20 +463,26 @@ function CoordinatorRequestModal({ onClose }: CoordinatorRequestModalProps) {
 
   const submitRequest = async (event: React.FormEvent) => {
     event.preventDefault();
-    setLoading(true);
     setError("");
+    const normalizedOrcid = form.orcid.trim() ? normalizeOrcidId(form.orcid) : "";
+    if (form.orcid.trim() && !normalizedOrcid) {
+      setError(isEnglish ? "Enter a valid ORCID iD in the format 0000-0000-0000-0000." : "يرجى إدخال معرّف ORCID صحيح بصيغة 0000-0000-0000-0000.");
+      return;
+    }
+    setLoading(true);
+    const fullName = `${form.firstName.trim()} ${form.familyName.trim()}`.trim();
     try {
       const response = await fetch("/api/service-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName: form.fullName,
+          fullName,
           phone: `${form.dialCode} ${form.phone}`.trim(),
           email: form.email,
           serviceType: isEnglish ? "Research coordinator accreditation request" : "طلب اعتماد منسق بحثي",
           details: isEnglish
-            ? `I would like to join ${siteName} as a research coordinator. Affiliation: ${form.affiliation}. Country: ${form.country}`
-            : `أرغب في الانضمام كمنسق للأبحاث العلمية في ${siteName}. جهة الانتساب: ${form.affiliation}. الدولة: ${form.country}`,
+            ? `I would like to join ${siteName} as a research coordinator. Affiliation: ${form.affiliation}. Country: ${form.country}${normalizedOrcid ? `. ORCID iD: ${normalizedOrcid}` : ""}`
+            : `أرغب في الانضمام كمنسق للأبحاث العلمية في ${siteName}. جهة الانتساب: ${form.affiliation}. الدولة: ${form.country}${normalizedOrcid ? `. معرّف ORCID: ${normalizedOrcid}` : ""}`,
           fileLink: "",
         }),
       });
@@ -482,8 +492,8 @@ function CoordinatorRequestModal({ onClose }: CoordinatorRequestModalProps) {
       setRequestNumber(number);
       const message = encodeURIComponent(
         isEnglish
-          ? `New research coordinator accreditation request\n\nName: ${form.fullName}\nPhone: ${form.dialCode} ${form.phone}\nEmail: ${form.email}\nAffiliation: ${form.affiliation}\nCountry: ${form.country}\nRequest number: ${number}`
-          : `طلب اعتماد منسق بحثي جديد\n\nالاسم: ${form.fullName}\nالهاتف: ${form.dialCode} ${form.phone}\nالبريد: ${form.email}\nجهة الانتساب: ${form.affiliation}\nالدولة: ${form.country}\nرقم الطلب: ${number}`
+          ? `New research coordinator accreditation request\n\nName: ${fullName}\nPhone: ${form.dialCode} ${form.phone}\nEmail: ${form.email}\nAffiliation: ${form.affiliation}\nCountry: ${form.country}${normalizedOrcid ? `\nORCID iD: ${normalizedOrcid}` : ""}\nRequest number: ${number}`
+          : `طلب اعتماد منسق بحثي جديد\n\nالاسم: ${fullName}\nالهاتف: ${form.dialCode} ${form.phone}\nالبريد: ${form.email}\nجهة الانتساب: ${form.affiliation}\nالدولة: ${form.country}${normalizedOrcid ? `\nمعرّف ORCID: ${normalizedOrcid}` : ""}\nرقم الطلب: ${number}`
       );
       const waUrl = `https://wa.me/${coordinatorWhatsapp.replace(/\D/g, "")}?text=${message}`;
       setWhatsAppUrl(waUrl);
@@ -543,8 +553,28 @@ function CoordinatorRequestModal({ onClose }: CoordinatorRequestModalProps) {
               <p className="mt-2 text-sm leading-6 text-slate-500">{isEnglish ? "Enter your details and we will send your request directly to SRMA administration for review." : "أدخل بياناتك، وسنرسل طلبك مباشرة إلى إدارة SRMA للمراجعة."}</p>
             </div>
             <form onSubmit={submitRequest} className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {[
+                  { key: "firstName", label: isEnglish ? "First name" : "الاسم الأول", placeholder: isEnglish ? "Ahmed" : "أحمد", autoComplete: "given-name" },
+                  { key: "familyName", label: isEnglish ? "Family name" : "اسم العائلة", placeholder: isEnglish ? "Mohammed" : "محمد", autoComplete: "family-name" },
+                ].map(({ key, label, placeholder, autoComplete }) => (
+                  <div key={key}>
+                    <label htmlFor={`coordinator-${key}`} className="mb-1.5 block text-right text-sm font-semibold text-[#263447]">{label}</label>
+                    <input
+                      id={`coordinator-${key}`}
+                      data-testid={`input-coordinator-${key}`}
+                      required
+                      type="text"
+                      autoComplete={autoComplete}
+                      placeholder={placeholder}
+                      value={form[key as "firstName" | "familyName"]}
+                      onChange={(event) => setForm({ ...form, [key]: event.target.value })}
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-right text-sm outline-none transition focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/15"
+                    />
+                  </div>
+                ))}
+              </div>
               {[
-                { key: "fullName", label: isEnglish ? "Full name" : "الاسم الكامل", placeholder: isEnglish ? "Dr. Ahmed Mohammed" : "د. أحمد محمد", icon: UserRound, type: "text" },
                 { key: "email", label: isEnglish ? "Email address" : "البريد الإلكتروني", placeholder: "name@example.com", icon: Mail, type: "email" },
                 { key: "affiliation", label: isEnglish ? "Affiliation" : "جهة الانتساب", placeholder: isEnglish ? "University or hospital" : "الجامعة أو المستشفى", icon: Building2, type: "text" },
               ].map(({ key, label, placeholder, icon: Icon, type }) => (
@@ -564,21 +594,23 @@ function CoordinatorRequestModal({ onClose }: CoordinatorRequestModalProps) {
                       dir={key === "email" || key === "phone" ? "ltr" : undefined}
                     />
                   </div>
+                  {key === "affiliation" && <p className="mt-1.5 text-right text-xs leading-5 text-slate-500">{isEnglish ? "Your affiliation: the university, hospital, or organization where you work or study." : "جهة الانتساب: الجامعة أو المستشفى أو المؤسسة التي تعمل أو تدرس فيها."}</p>}
                 </div>
               ))}
               <div>
-                <label htmlFor="coordinator-phone" className="mb-1.5 block text-right text-sm font-semibold text-[#263447]">{isEnglish ? "WhatsApp number" : "رقم واتساب"}</label>
-                <div className="relative">
-                  <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    id="coordinator-phone"
-                    data-testid="input-coordinator-phone"
-                    required type="tel" placeholder="5X XXX XXXX" value={form.phone}
-                    onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                    dir="ltr"
-                    className="w-full rounded-xl border border-slate-200 py-3 pr-10 pl-4 text-left text-sm outline-none transition focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/15"
-                  />
-                </div>
+                <label htmlFor="coordinator-orcid" className="mb-1.5 block text-right text-sm font-semibold text-[#263447]">{isEnglish ? "ORCID iD (optional)" : "معرّف ORCID (اختياري)"}</label>
+                <input
+                  id="coordinator-orcid"
+                  data-testid="input-coordinator-orcid"
+                  type="text"
+                  placeholder="0000-0000-0000-0000"
+                  value={form.orcid}
+                  onChange={(event) => setForm({ ...form, orcid: event.target.value })}
+                  dir="ltr"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-left text-sm outline-none transition focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/15"
+                />
+                <p className="mt-1.5 text-right text-xs leading-5 text-slate-500">{isEnglish ? "ORCID stands for Open Researcher and Contributor ID. It is a persistent identifier that distinguishes researchers and connects their scholarly work." : "ORCID اختصار لمعرّف الباحث والمساهم المفتوح؛ وهو رقم دائم يميّز الباحث ويربطه بأعماله العلمية."}</p>
+                <OrcidConnectButton onLinked={(orcid) => setForm((previous) => ({ ...previous, orcid }))} />
               </div>
               <CountrySelector
                 country={form.country}
@@ -586,8 +618,26 @@ function CoordinatorRequestModal({ onClose }: CoordinatorRequestModalProps) {
                 dialCode={form.dialCode}
                 onDialCodeChange={(dialCode) => setForm((previous) => ({ ...previous, dialCode }))}
                 id="coordinator"
+                compact
                 required
               />
+              <div>
+                <label htmlFor="coordinator-phone" className="mb-1.5 block text-right text-sm font-semibold text-[#263447]">{isEnglish ? "WhatsApp number" : "رقم واتساب"}</label>
+                <div className="flex gap-2" dir="ltr">
+                  <span aria-label={isEnglish ? "Selected country calling code" : "مفتاح الدولة المختارة"} className="flex min-w-16 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-[#117b59]">{form.dialCode}</span>
+                  <div className="relative min-w-0 flex-1">
+                    <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      id="coordinator-phone"
+                      data-testid="input-coordinator-phone"
+                      required type="tel" placeholder="5X XXX XXXX" value={form.phone}
+                      onChange={(event) => setForm({ ...form, phone: event.target.value })}
+                      dir="ltr"
+                      className="w-full rounded-xl border border-slate-200 py-3 pr-10 pl-4 text-left text-sm outline-none transition focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/15"
+                    />
+                  </div>
+                </div>
+              </div>
               {error && <p data-testid="status-coordinator-request-error" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-right text-sm text-red-600">{error}</p>}
               <button type="submit" disabled={loading} data-testid="button-submit-coordinator-request" className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#117b59] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(17,123,89,0.16)] transition hover:bg-[#0c6549] disabled:opacity-60">
                 {loading ? <><Loader2 size={17} className="animate-spin" /> {isEnglish ? "Sending request..." : "جارٍ إرسال الطلب..."}</> : (isEnglish ? "Send accreditation request" : "إرسال طلب الاعتماد")}

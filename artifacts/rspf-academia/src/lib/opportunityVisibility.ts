@@ -6,6 +6,8 @@ export const OPPORTUNITY_DISPLAY_FIELDS = [
   { id: "image", label: "الصورة" },
   { id: "code", label: "رمز الفرصة" },
   { id: "specialty", label: "التخصص" },
+  { id: "country", label: "بلد الفرصة" },
+  { id: "deadline", label: "موعد إغلاق التسجيل" },
   { id: "status", label: "الحالة" },
   { id: "description", label: "الوصف" },
   { id: "price", label: "السعر" },

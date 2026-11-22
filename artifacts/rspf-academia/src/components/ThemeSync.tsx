@@ -26,6 +26,15 @@ function hexToHsl(hex: string): string {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+function mixHex(first: string, second: string, firstWeight: number): string {
+  const a = first.match(/[a-f\d]{2}/gi) || [];
+  const b = second.match(/[a-f\d]{2}/gi) || [];
+  const channels = a.map((value, index) =>
+    Math.round(parseInt(value, 16) * firstWeight + parseInt(b[index] || "00", 16) * (1 - firstWeight)),
+  );
+  return `#${channels.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
 const RADIUS = { sharp: "0.375rem", soft: "1rem", round: "1.5rem" } as const;
 const BUTTON_RADIUS = { pill: "999px", rounded: "0.85rem", square: "0.3rem" } as const;
 const DENSITY = { compact: "0.8", comfortable: "1", airy: "1.2" } as const;
@@ -42,15 +51,27 @@ export default function ThemeSync() {
     set("--m-ink", theme.ink);
     set("--m-bg", theme.background);
     set("--m-surface", theme.surface);
+    const border = hexToHsl(mixHex(theme.ink, theme.background, 0.13));
+    const cardBorder = hexToHsl(mixHex(theme.ink, theme.surface, 0.12));
     set("--primary", hexToHsl(theme.primary));
     set("--ring", hexToHsl(theme.primary));
     set("--background", hexToHsl(theme.background));
     set("--foreground", hexToHsl(theme.ink));
     set("--card", hexToHsl(theme.surface));
     set("--popover", hexToHsl(theme.surface));
+    set("--border", border);
+    set("--input", border);
+    set("--card-border", cardBorder);
+    set("--popover-border", cardBorder);
+    set("--primary-foreground", hexToHsl(theme.surface));
+    set("--secondary", hexToHsl(mixHex(theme.primary, theme.background, 0.09)));
     set("--card-foreground", hexToHsl(theme.ink));
     set("--popover-foreground", hexToHsl(theme.ink));
     set("--secondary-foreground", hexToHsl(theme.ink));
+    set("--muted", hexToHsl(mixHex(theme.ink, theme.background, 0.045)));
+    set("--muted-foreground", hexToHsl(mixHex(theme.ink, theme.background, 0.63)));
+    set("--accent", hexToHsl(mixHex(theme.gold, theme.surface, 0.2)));
+    set("--accent-foreground", hexToHsl(theme.ink));
     set("--m-radius", RADIUS[theme.radius]);
     set("--radius", RADIUS[theme.radius]);
     set("--m-btn-radius", BUTTON_RADIUS[theme.buttonStyle]);
