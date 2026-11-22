@@ -299,12 +299,15 @@ function createInMemoryDb() {
 }
 
 const isProduction = process.env.NODE_ENV === "production";
+const isReplitWorkspace = Boolean(process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS);
 let activePool: any = null;
-let postgresDb: any = null;
-const inMemoryDb: any = createInMemoryDb();
-let useInMemory = false;
+let postgresDb: NodePgDatabase<typeof schema> | null = null;
 
-if (process.env.DATABASE_URL) {
+if (isReplitWorkspace) {
+  console.warn("[DB] Database connections are disabled in the Replit workspace; production uses Render PostgreSQL.");
+} else if (!isProduction) {
+  console.warn("[DB] Database connections are disabled outside production.");
+} else if (process.env.DATABASE_URL) {
   try {
     const connectionConfig = getPostgresConnectionConfig(process.env.DATABASE_URL);
     const parsed = new URL(connectionConfig.connectionString!);
@@ -321,8 +324,7 @@ if (process.env.DATABASE_URL) {
       if (isProduction) {
         console.error(`[FATAL] PostgreSQL connection verification failed in production on host "${safeHost}":`, err.message);
       } else {
-        console.warn("[DB] PostgreSQL connection check failed, switching to resilient in-memory database:", err.message);
-        useInMemory = true;
+        console.warn("[DB] PostgreSQL connection verification failed; database endpoints remain unavailable:", err.message);
       }
     });
   } catch (err: any) {
@@ -331,15 +333,13 @@ if (process.env.DATABASE_URL) {
       throw err;
     }
     console.warn("[DB] Failed to initialize Postgres connection pool:", err.message);
-    useInMemory = true;
   }
 } else {
   if (isProduction) {
     console.error("[FATAL] DATABASE_URL is strictly required in production mode. Startup aborted.");
     throw new Error("DATABASE_URL is required in production");
   }
-  useInMemory = true;
-  console.warn("[AI Studio] DATABASE_URL not configured — using in-memory mock database");
+  console.warn("[DB] DATABASE_URL is not configured; database endpoints remain unavailable in this environment.");
 }
 
 // Graceful pool closure on process termination
@@ -356,7 +356,7 @@ process.once("SIGINT", handleProcessShutdown);
 
 export async function checkDatabaseReadiness(): Promise<{ ready: boolean; host: string }> {
   if (!activePool) {
-    return { ready: !isProduction && useInMemory, host: useInMemory ? "in-memory-mock" : "disconnected" };
+    return { ready: false, host: "disconnected" };
   }
   try {
     await activePool.query("SELECT 1 AS database_ready");
@@ -373,38 +373,10 @@ export async function checkDatabaseReadiness(): Promise<{ ready: boolean; host: 
 export const pool = activePool;
 export const db: NodePgDatabase<typeof schema> = new Proxy({}, {
   get(_target, prop) {
-    if (useInMemory || !postgresDb) {
-      return inMemoryDb[prop];
+    if (!postgresDb) {
+      throw new Error("PostgreSQL is unavailable. Configure the existing Render DATABASE_URL on the API service.");
     }
-    const targetVal = postgresDb[prop];
-    if (typeof targetVal !== "function") {
-      return targetVal;
-    }
-    return (...args: any[]) => {
-      try {
-        const result = targetVal.apply(postgresDb, args);
-        if (result && typeof result.then === "function") {
-          return result.catch((err: any) => {
-            const msg = String(err.message || "");
-            const code = err.code || "";
-            const isConnErr = code === "EAI_AGAIN" || code === "ENOTFOUND" || code === "ECONNREFUSED" || code === "ETIMEDOUT" || msg.includes("Failed query") || msg.includes("getaddrinfo");
-            if (isConnErr && !isProduction) {
-              console.warn("[DB] PostgreSQL call failed with connection error, falling back to in-memory store in development:", msg);
-              useInMemory = true;
-              return inMemoryDb[prop](...args);
-            }
-            throw err;
-          });
-        }
-        return result;
-      } catch (err: any) {
-        if (!isProduction) {
-          console.warn("[DB] Sync error on PostgreSQL call, falling back to in-memory store in development:", err.message);
-          useInMemory = true;
-          return inMemoryDb[prop](...args);
-        }
-        throw err;
-      }
-    };
+    const targetVal = Reflect.get(postgresDb, prop, postgresDb);
+    return typeof targetVal === "function" ? targetVal.bind(postgresDb) : targetVal;
   }
 }) as NodePgDatabase<typeof schema>;

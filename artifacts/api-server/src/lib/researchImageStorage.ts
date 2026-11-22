@@ -1,6 +1,4 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { logger } from "./logger";
@@ -19,11 +17,6 @@ const IMAGE_DISPLAY_URL_TTL_SECONDS = 2 * 60;
 const IMAGE_UPLOAD_URL_TTL_SECONDS = 60;
 const IMAGE_UPLOAD_TOKEN_TTL_SECONDS = 24 * 60 * 60; // 24 hours to prevent expiration while editing
 
-const LOCAL_STORAGE_DIRS = [
-  path.resolve(process.cwd(), ".srma_image_store"),
-  "/tmp/srma_image_store",
-];
-
 type SignedMethod = "GET" | "PUT";
 
 export async function uploadResearchImage(input: {
@@ -36,49 +29,25 @@ export async function uploadResearchImage(input: {
   const filename = objectPath.slice(IMAGE_PATH_PREFIX.length);
   const r2 = getR2Storage();
 
-  if (process.env["NODE_ENV"] === "production" && !r2) {
-    throw new ResearchImageStorageError("أضف بيانات Cloudflare R2 إلى إعدادات الخادم لحفظ الصور بشكل دائم.");
+  if (!r2) {
+    throw new ResearchImageStorageError("يجب إعداد Cloudflare R2 على خادم Render قبل حفظ الصور.");
   }
 
-  // 1. Keep a local fallback for development and recovery
-  let storedLocally = false;
-  for (const dir of LOCAL_STORAGE_DIRS) {
-    try {
-      await mkdir(dir, { recursive: true });
-      await writeFile(path.join(dir, filename), input.data);
-      await writeFile(path.join(dir, `${filename}.meta`), JSON.stringify({ contentType }));
-      storedLocally = true;
-    } catch (fsErr) {
-      logger.warn({ err: fsErr, dir }, "Failed writing to local fallback storage directory");
-    }
-  }
-
-  // 2. Upload to Cloudflare R2 if configured
-  let storedInR2 = false;
-  if (r2) {
-    const objectName = `${r2.prefix}/research-images/${filename}`;
-    try {
-      await r2.client.send(new PutObjectCommand({
-        Bucket: r2.bucket,
-        Key: objectName,
-        Body: input.data,
-        ContentType: contentType,
-      }));
-      storedInR2 = true;
-      logger.info({ objectName }, "Successfully uploaded research image to R2");
-    } catch (r2Err: any) {
-      logger.warn(
-        { err: r2Err?.message || r2Err, status: r2Err?.$metadata?.httpStatusCode },
-        "R2 upload encountered an error; local fallback is only used outside production.",
-      );
-      if (process.env["NODE_ENV"] === "production") {
-        throw new ResearchImageStorageError("تعذر حفظ الصورة في Cloudflare R2. تحقق من إعدادات التخزين ثم أعد المحاولة.");
-      }
-    }
-  }
-
-  if (!storedLocally && !storedInR2) {
-    throw new ResearchImageStorageError("تعذر حفظ ملف الصورة على الخادم. تحقق من إعدادات التخزين ثم أعد المحاولة.");
+  const objectName = `${r2.prefix}/research-images/${filename}`;
+  try {
+    await r2.client.send(new PutObjectCommand({
+      Bucket: r2.bucket,
+      Key: objectName,
+      Body: input.data,
+      ContentType: contentType,
+    }));
+    logger.info({ objectName }, "Successfully uploaded research image to R2");
+  } catch (r2Err: any) {
+    logger.warn(
+      { err: r2Err?.message || r2Err, status: r2Err?.$metadata?.httpStatusCode },
+      "R2 upload failed.",
+    );
+    throw new ResearchImageStorageError("تعذر حفظ الصورة في Cloudflare R2. تحقق من إعدادات التخزين ثم أعد المحاولة.");
   }
 
   return {
@@ -92,45 +61,29 @@ export async function uploadResearchImage(input: {
 export async function getResearchImageBytes(objectPath: string): Promise<{ data: Buffer; contentType: string } | null> {
   assertResearchImagePath(objectPath);
   const filename = objectPath.slice(IMAGE_PATH_PREFIX.length);
-
-  // 1. Check local storage directories
-  for (const dir of LOCAL_STORAGE_DIRS) {
-    try {
-      const localFilePath = path.join(dir, filename);
-      const data = await readFile(localFilePath);
-      let contentType = "image/jpeg";
-      try {
-        const meta = JSON.parse(await readFile(path.join(dir, `${filename}.meta`), "utf8"));
-        if (meta?.contentType) contentType = meta.contentType;
-      } catch {}
-      return { data, contentType };
-    } catch {}
-  }
-
-  // 2. Fetch from R2 if configured
   const r2 = getR2Storage();
-  if (r2) {
-    try {
-      const objectName = `${r2.prefix}/research-images/${filename}`;
-      const response = await r2.client.send(new GetObjectCommand({
-        Bucket: r2.bucket,
-        Key: objectName,
-      }));
-      if (response.Body) {
-        const stream = response.Body as any;
-        const chunks: Uint8Array[] = [];
-        for await (const chunk of stream) {
-          chunks.push(chunk);
-        }
-        const data = Buffer.concat(chunks);
-        const contentType = response.ContentType || "image/jpeg";
-        return { data, contentType };
+  if (!r2) return null;
+
+  try {
+    const objectName = `${r2.prefix}/research-images/${filename}`;
+    const response = await r2.client.send(new GetObjectCommand({
+      Bucket: r2.bucket,
+      Key: objectName,
+    }));
+    if (response.Body) {
+      const stream = response.Body as any;
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
       }
-    } catch (err: any) {
-      const isMissing = err?.name === "NoSuchKey" || err?.$metadata?.httpStatusCode === 404;
-      if (!isMissing) {
-        logger.warn({ message: err?.message, name: err?.name }, "Could not fetch image from R2");
-      }
+      const data = Buffer.concat(chunks);
+      const contentType = response.ContentType || "image/jpeg";
+      return { data, contentType };
+    }
+  } catch (err: any) {
+    const isMissing = err?.name === "NoSuchKey" || err?.$metadata?.httpStatusCode === 404;
+    if (!isMissing) {
+      logger.warn({ message: err?.message, name: err?.name }, "Could not fetch image from R2");
     }
   }
 
@@ -300,11 +253,19 @@ async function signObjectUrl({
     return getSignedUrl(r2.client, command, { expiresIn: ttlSeconds });
   }
 
-  // When Cloudflare R2 is not configured, image bytes are served directly from local resilient storage
+  // Images are never served from local storage; R2 must be configured.
   return null;
 }
 
 function getR2Storage() {
+  if (
+    process.env["NODE_ENV"] !== "production" ||
+    process.env["REPLIT_DEV_DOMAIN"] ||
+    process.env["REPLIT_DOMAINS"]
+  ) {
+    return null;
+  }
+
   const accountId = process.env["R2_ACCOUNT_ID"]?.trim();
   const accessKeyId = process.env["R2_ACCESS_KEY_ID"]?.trim();
   const secretAccessKey = process.env["R2_SECRET_ACCESS_KEY"]?.trim();
