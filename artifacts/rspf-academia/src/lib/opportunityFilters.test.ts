@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import type { ResearchOpportunity } from "./researchData";
-import { filterOpportunities } from "./opportunityFilters";
+import { filterOpportunities, uniqueResearchOpportunities } from "./opportunityFilters";
 
 function opportunity(overrides: Partial<ResearchOpportunity> = {}): ResearchOpportunity {
   return {
@@ -51,6 +51,51 @@ test("search matches Arabic and English text only when the matching field is pub
   assert.deepEqual(filterOpportunities([hidden], { query: "Heart Health", fee: "all", minimumSeats: null, country: null, deadlineWithinDays: null }), []);
 });
 
+test("specialty search only matches visible specialties", () => {
+  const visible = opportunity({ id: 1 });
+  const hidden = opportunity({
+    id: 2,
+    specialty: "",
+    specialtyAr: "",
+    specialtyEn: "",
+    hiddenFields: ["specialty"],
+  });
+
+  assert.deepEqual(
+    filterOpportunities([visible, hidden], {
+      query: "القلب",
+      queryField: "specialty",
+      fee: "all",
+      minimumSeats: null,
+      country: null,
+      deadlineWithinDays: null,
+    }).map((item) => item.id),
+    [1],
+  );
+  assert.deepEqual(
+    filterOpportunities([visible], {
+      query: "Medical Journal",
+      queryField: "specialty",
+      fee: "all",
+      minimumSeats: null,
+      country: null,
+      deadlineWithinDays: null,
+    }),
+    [],
+  );
+});
+
+test("opportunities with hidden titles remain distinct, while duplicate ids are removed", () => {
+  const hiddenTitle = { title: "", titleAr: "", titleEn: "", hiddenFields: ["title", "specialty"] };
+  const rows = [
+    opportunity({ id: 1, ...hiddenTitle }),
+    opportunity({ id: 2, ...hiddenTitle }),
+    opportunity({ id: 2, ...hiddenTitle, status: "seats_full" }),
+  ];
+
+  assert.deepEqual(uniqueResearchOpportunities(rows).map((item) => item.id), [1, 2]);
+});
+
 test("fee filters omit opportunities whose owners hide their fees", () => {
   const free = opportunity({ id: 1, priceOriginalSar: 500, priceDiscountedSar: 0 });
   const paid = opportunity({ id: 2 });
@@ -59,6 +104,22 @@ test("fee filters omit opportunities whose owners hide their fees", () => {
   assert.deepEqual(filterOpportunities([free, paid, hiddenPrice], { query: "", fee: "free", minimumSeats: null, country: null, deadlineWithinDays: null }).map((item) => item.id), [1]);
   assert.deepEqual(filterOpportunities([free, paid, hiddenPrice], { query: "", fee: "paid", minimumSeats: null, country: null, deadlineWithinDays: null }).map((item) => item.id), [2]);
   assert.equal(filterOpportunities([free, paid, hiddenPrice], { query: "", fee: "all", minimumSeats: null, country: null, deadlineWithinDays: null }).length, 3);
+});
+
+test("price sorting reorders visible prices without moving hidden-price opportunities", () => {
+  const expensive = opportunity({ id: 1, priceOriginalSar: 1800, priceDiscountedSar: 1500 });
+  const hiddenPrice = opportunity({ id: 2, priceOriginalSar: 100, priceDiscountedSar: 50, hiddenFields: ["price"] });
+  const affordable = opportunity({ id: 3, priceOriginalSar: 700, priceDiscountedSar: 400 });
+  const filters = { query: "", fee: "all" as const, minimumSeats: null, country: null, deadlineWithinDays: null };
+
+  assert.deepEqual(
+    filterOpportunities([expensive, hiddenPrice, affordable], { ...filters, priceSort: "asc" }).map((item) => item.id),
+    [3, 2, 1],
+  );
+  assert.deepEqual(
+    filterOpportunities([expensive, hiddenPrice, affordable], { ...filters, priceSort: "desc" }).map((item) => item.id),
+    [1, 2, 3],
+  );
 });
 
 test("seat filters respect owner visibility and minimum thresholds", () => {

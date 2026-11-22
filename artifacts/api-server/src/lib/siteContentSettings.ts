@@ -192,6 +192,7 @@ export interface SiteContentSettings {
   cardBackgroundColor: string;
   opportunityDisplayMode: OpportunityDisplayMode;
   showOpportunityDetails: boolean;
+  opportunityFilterVisibility: OpportunityFilterVisibility;
   participantCardOrder: string[];
   coordinatorCardOrder: string[];
   visibleParticipantCardParts: string[];
@@ -205,6 +206,14 @@ export interface SiteContentSettings {
   registrationFields: RegistrationFieldSetting[];
   brand: BrandContactSettings;
   pages: Record<PublicPageId, PublicPageContent>;
+}
+
+export interface OpportunityFilterVisibility {
+  searchBySpecialty: boolean;
+  country: boolean;
+  seats: boolean;
+  deadline: boolean;
+  price: boolean;
 }
 
 export const SITE_CONTENT_KEY = "site-content";
@@ -305,6 +314,13 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
   cardBackgroundColor: "#ffffff",
   opportunityDisplayMode: "grid",
   showOpportunityDetails: true,
+  opportunityFilterVisibility: {
+    searchBySpecialty: true,
+    country: true,
+    seats: true,
+    deadline: true,
+    price: true,
+  },
   participantCardOrder: [...PARTS],
   coordinatorCardOrder: ["specialty", "supervisor", "seats", "duration", "journal", "benefits", "description"],
   visibleParticipantCardParts: [...PARTS],
@@ -418,6 +434,9 @@ export function sanitizeSiteContentSettings(value: unknown): SiteContentSettings
   value = migrateLegacySiteIdentity(value);
   if (!value || typeof value !== "object" || Array.isArray(value)) return DEFAULT_SITE_CONTENT_SETTINGS;
   const input = value as Record<string, unknown>;
+  const rawFilterVisibility = input.opportunityFilterVisibility && typeof input.opportunityFilterVisibility === "object" && !Array.isArray(input.opportunityFilterVisibility)
+    ? input.opportunityFilterVisibility as Record<string, unknown>
+    : {};
   const text = (key: keyof SiteContentSettings, max = 600) => typeof input[key] === "string"
     ? (input[key] as string).trim().slice(0, max)
     : DEFAULT_SITE_CONTENT_SETTINGS[key] as string;
@@ -631,6 +650,13 @@ type BrandTextKey = { [K in keyof BrandContactSettings]-?: BrandContactSettings[
     showOpportunityDetails: typeof input.showOpportunityDetails === "boolean"
       ? input.showOpportunityDetails
       : DEFAULT_SITE_CONTENT_SETTINGS.showOpportunityDetails,
+    opportunityFilterVisibility: {
+      searchBySpecialty: typeof rawFilterVisibility.searchBySpecialty === "boolean" ? rawFilterVisibility.searchBySpecialty : DEFAULT_SITE_CONTENT_SETTINGS.opportunityFilterVisibility.searchBySpecialty,
+      country: typeof rawFilterVisibility.country === "boolean" ? rawFilterVisibility.country : DEFAULT_SITE_CONTENT_SETTINGS.opportunityFilterVisibility.country,
+      seats: typeof rawFilterVisibility.seats === "boolean" ? rawFilterVisibility.seats : DEFAULT_SITE_CONTENT_SETTINGS.opportunityFilterVisibility.seats,
+      deadline: typeof rawFilterVisibility.deadline === "boolean" ? rawFilterVisibility.deadline : DEFAULT_SITE_CONTENT_SETTINGS.opportunityFilterVisibility.deadline,
+      price: typeof rawFilterVisibility.price === "boolean" ? rawFilterVisibility.price : DEFAULT_SITE_CONTENT_SETTINGS.opportunityFilterVisibility.price,
+    },
     visibleCoordinatorCardParts: parts("visibleCoordinatorCardParts"),
     requiredOpportunityFields,
     specialtyOptions,

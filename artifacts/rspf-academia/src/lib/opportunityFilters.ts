@@ -2,13 +2,16 @@ import type { ResearchOpportunity } from "./researchData";
 import { isFieldVisible } from "./opportunityVisibility";
 
 export type OpportunityFeeFilter = "all" | "free" | "paid";
+export type OpportunityPriceSort = "none" | "asc" | "desc";
 
 export interface OpportunitySearchFilters {
   query: string;
+  queryField?: "all" | "specialty";
   fee: OpportunityFeeFilter;
   minimumSeats: number | null;
   country: string | null;
   deadlineWithinDays: number | null;
+  priceSort?: OpportunityPriceSort;
   includeDetails?: boolean;
 }
 
@@ -19,9 +22,12 @@ export function filterOpportunities(
 ): ResearchOpportunity[] {
   const query = normalizeSearchText(filters.query);
 
-  return opportunities.filter((opportunity) => {
-    if (query && !getVisibleSearchText(opportunity, filters.includeDetails !== false).some((value) => normalizeSearchText(value).includes(query))) {
-      return false;
+  const filtered = opportunities.filter((opportunity) => {
+    if (query) {
+      const searchableText = filters.queryField === "specialty"
+        ? getVisibleSpecialtySearchText(opportunity, filters.includeDetails !== false)
+        : getVisibleSearchText(opportunity, filters.includeDetails !== false);
+      if (!searchableText.some((value) => normalizeSearchText(value).includes(query))) return false;
     }
 
     if (filters.country) {
@@ -48,6 +54,36 @@ export function filterOpportunities(
 
     return true;
   });
+
+  if (!filters.priceSort || filters.priceSort === "none") return filtered;
+  const sortable = filtered
+    .map((opportunity, index) => ({ opportunity, index, price: getVisiblePrice(opportunity) }))
+    .filter((entry): entry is { opportunity: ResearchOpportunity; index: number; price: number } => entry.price !== null)
+    .sort((a, b) => {
+      const difference = filters.priceSort === "asc" ? a.price - b.price : b.price - a.price;
+      return difference || a.index - b.index;
+    });
+  let sortedIndex = 0;
+  return filtered.map((opportunity) => (
+    getVisiblePrice(opportunity) === null ? opportunity : sortable[sortedIndex++].opportunity
+  ));
+}
+
+export function uniqueResearchOpportunities(opportunities: ResearchOpportunity[]): ResearchOpportunity[] {
+  const seenIds = new Set<number>();
+  return opportunities.filter((opportunity) => {
+    if (seenIds.has(opportunity.id)) return false;
+    seenIds.add(opportunity.id);
+    return true;
+  });
+}
+
+function getVisiblePrice(opportunity: ResearchOpportunity): number | null {
+  if (!isFieldVisible(opportunity, "price")) return null;
+  const rawPrice = opportunity.priceDiscountedSar ?? opportunity.priceOriginalSar;
+  if (rawPrice === undefined || rawPrice === null) return null;
+  const price = Number(rawPrice);
+  return Number.isFinite(price) ? price : null;
 }
 
 function getVisibleSearchText(opportunity: ResearchOpportunity, includeDetails: boolean): string[] {
@@ -63,6 +99,11 @@ function getVisibleSearchText(opportunity: ResearchOpportunity, includeDetails: 
   if (isFieldVisible(opportunity, "country")) values.push(opportunity.country || "");
   if (isFieldVisible(opportunity, "deadline")) values.push(opportunity.applicationDeadline || "");
   return values.filter(Boolean);
+}
+
+function getVisibleSpecialtySearchText(opportunity: ResearchOpportunity, includeDetails: boolean): string[] {
+  if (!includeDetails || !isFieldVisible(opportunity, "specialty")) return [];
+  return [opportunity.specialty, opportunity.specialtyAr || "", opportunity.specialtyEn || ""].filter(Boolean);
 }
 
 function dateDifferenceInDays(value: string, today: string): number | null {
