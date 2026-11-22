@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: orcid
+    description: ORCID account authorization for registration
 paths:
   /healthz:
     get:
@@ -24,6 +26,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /orcid/start:
+    get:
+      operationId: startOrcidAuthorization
+      tags: [orcid]
+      summary: Start ORCID account authorization
+      description: Starts the ORCID OAuth flow and redirects the participant to ORCID.
+      responses:
+        "302":
+          description: Redirect to ORCID authorization
+        "400":
+          description: The request did not originate from an approved Misbar site origin
+        "200":
+          description: A popup response explaining that ORCID authorization is not configured
+          content:
+            text/html:
+              schema:
+                type: string
+  /orcid/callback:
+    get:
+      operationId: completeOrcidAuthorization
+      tags: [orcid]
+      summary: Complete ORCID account authorization
+      description: Exchanges the OAuth code and returns the ORCID iD to the registration popup.
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 4096
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 4096
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 4096
+      responses:
+        "200":
+          description: Popup page posts the authorization result to the registration form
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: OAuth state is missing, expired, or invalid
 components:
   schemas:
     HealthStatus:
