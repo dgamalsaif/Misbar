@@ -184,6 +184,7 @@ export interface SiteContentSettings {
   cardBackgroundColor: string;
   opportunityDisplayMode: OpportunityDisplayMode;
   showOpportunityDetails: boolean;
+  opportunityFilterVisibility: OpportunityFilterVisibility;
   participantCardOrder: string[];
   coordinatorCardOrder: string[];
   visibleParticipantCardParts: string[];
@@ -198,6 +199,14 @@ export interface SiteContentSettings {
   brand: BrandContactSettings;
   pages: Record<PublicPageId, PublicPageContent>;
   experience: ExperienceSettings;
+}
+
+export interface OpportunityFilterVisibility {
+  searchBySpecialty: boolean;
+  country: boolean;
+  seats: boolean;
+  deadline: boolean;
+  price: boolean;
 }
 
 export const CARD_PARTS = [
@@ -323,6 +332,13 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
   cardBackgroundColor: "#fbfaf5",
   opportunityDisplayMode: "grid",
   showOpportunityDetails: true,
+  opportunityFilterVisibility: {
+    searchBySpecialty: true,
+    country: true,
+    seats: true,
+    deadline: true,
+    price: true,
+  },
   participantCardOrder: ["description", "specialty", "seats", "duration", "supervisor", "journal", "benefits"],
   coordinatorCardOrder: ["specialty", "supervisor", "seats", "duration", "journal", "benefits", "description"],
   visibleParticipantCardParts: ["description", "specialty", "seats", "duration", "supervisor", "journal", "benefits"],
@@ -525,10 +541,25 @@ export function normalizeSiteContentSettings(input: unknown): SiteContentSetting
     academicDegreeSettings: raw.academicDegreeSettings || D.academicDegreeSettings,
     researchExperienceSettings: raw.researchExperienceSettings || D.researchExperienceSettings,
     feeAndTaskAgreementSettings: raw.feeAndTaskAgreementSettings || D.feeAndTaskAgreementSettings,
+    opportunityFilterVisibility: normalizeOpportunityFilterVisibility(raw.opportunityFilterVisibility),
     brand,
     pages,
     experience: sanitizeExperienceSettings(raw.experience),
   } as SiteContentSettings;
+}
+
+function normalizeOpportunityFilterVisibility(value: unknown): OpportunityFilterVisibility {
+  const input = value && typeof value === "object" && !Array.isArray(value)
+    ? value as Partial<OpportunityFilterVisibility>
+    : {};
+  const defaults = DEFAULT_SITE_CONTENT_SETTINGS.opportunityFilterVisibility;
+  return {
+    searchBySpecialty: typeof input.searchBySpecialty === "boolean" ? input.searchBySpecialty : defaults.searchBySpecialty,
+    country: typeof input.country === "boolean" ? input.country : defaults.country,
+    seats: typeof input.seats === "boolean" ? input.seats : defaults.seats,
+    deadline: typeof input.deadline === "boolean" ? input.deadline : defaults.deadline,
+    price: typeof input.price === "boolean" ? input.price : defaults.price,
+  };
 }
 
 export function getContactUsHref(brand?: BrandContactSettings): { href: string; isExternal: boolean; labelAr: string; labelEn: string } {

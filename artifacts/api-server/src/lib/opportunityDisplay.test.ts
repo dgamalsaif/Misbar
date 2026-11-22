@@ -22,6 +22,22 @@ test("the global details setting preserves false and true through JSON saves", (
   assert.equal(sanitizeSiteContentSettings({ showOpportunityDetails: "false" }).showOpportunityDetails, true);
 });
 
+test("participant opportunity filter visibility survives saved-settings normalization", () => {
+  const saved = sanitizeSiteContentSettings({
+    opportunityFilterVisibility: { searchBySpecialty: false, country: true, price: false },
+  });
+  const loaded = sanitizeSiteContentSettings(JSON.parse(JSON.stringify(saved)));
+
+  assert.deepEqual(loaded.opportunityFilterVisibility, {
+    searchBySpecialty: false,
+    country: true,
+    seats: true,
+    deadline: true,
+    price: false,
+  });
+  assert.equal(sanitizeSiteContentSettings({}).opportunityFilterVisibility.searchBySpecialty, true);
+});
+
 test("old title-language settings cannot bring back Arabic research titles", () => {
   assert.equal(DEFAULT_SITE_CONTENT_SETTINGS.participantTitleLanguage, "english");
   assert.equal(DEFAULT_SITE_CONTENT_SETTINGS.coordinatorTitleLanguage, "english");

@@ -102,6 +102,10 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
     const current = settings[key];
     update(key, current.includes(part) ? current.filter((item) => item !== part) : [...current, part]);
   };
+  const toggleOpportunityFilter = (key: keyof SiteContentSettings["opportunityFilterVisibility"]) => {
+    const current = settings.opportunityFilterVisibility;
+    update("opportunityFilterVisibility", { ...current, [key]: !current[key] });
+  };
   const movePart = (audience: "participant" | "coordinator", index: number, direction: -1 | 1) => {
     const key = audience === "participant" ? "participantCardOrder" : "coordinatorCardOrder";
     const order = [...settings[key]];
@@ -2033,6 +2037,31 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                <option value="scroll">شريط تمرير أفقي</option>
              </select>
            </Panel>
+            <Panel title="فلاتر بوابة المشارك" icon={SlidersHorizontal}>
+              <p className="mb-4 text-xs leading-5 text-slate-500">اختر الفلاتر التي تظهر للزوار. لا يعرض الفلتر أي معلومة أخفاها إعداد الفرصة نفسه.</p>
+              <div className="space-y-2">
+                {([
+                  ["searchBySpecialty", "البحث حسب التخصص"],
+                  ["country", "فلتر بلد الفرصة"],
+                  ["seats", "فلتر المقاعد المتاحة"],
+                  ["deadline", "فلتر موعد الإغلاق"],
+                  ["price", "الرسوم وترتيب السعر (آخر الفلاتر)"],
+                ] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="switch"
+                    aria-checked={settings.opportunityFilterVisibility[key]}
+                    data-testid={`switch-opportunity-filter-${key}`}
+                    onClick={() => toggleOpportunityFilter(key)}
+                    className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm font-bold transition ${settings.opportunityFilterVisibility[key] ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 bg-slate-50 text-slate-700"}`}
+                  >
+                    <span>{label}</span>
+                    {settings.opportunityFilterVisibility[key] ? <Eye size={17} aria-hidden="true" /> : <EyeOff size={17} aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            </Panel>
           <Panel title="إظهار تفاصيل جميع الفرص البحثية" icon={Eye}>
             <p className="mb-4 text-sm leading-6 text-slate-600">مفتاح موحد للموقع العام وصفحات الفرص والتسجيل. عند الإخفاء يبقى العنوان الإنجليزي ورقم الفرصة والتسجيل متاحًا، وتختفي الصورة والتخصص والوصف وبقية التفاصيل من الصفحة. معاينة الرابط تبقى بعنوان الفرصة وصورتها.</p>
             <button
@@ -2057,7 +2086,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
 }
 
 function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Palette; children: React.ReactNode }) {
-  const [open, setOpen] = useState(title.includes("هوية") || title === "إظهار تفاصيل جميع الفرص البحثية");
+  const [open, setOpen] = useState(title.includes("هوية") || title === "إظهار تفاصيل جميع الفرص البحثية" || title === "فلاتر بوابة المشارك");
   return (
     <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 outline-none transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 sm:px-5 [&::-webkit-details-marker]:hidden">

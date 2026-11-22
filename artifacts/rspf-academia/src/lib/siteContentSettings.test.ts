@@ -158,3 +158,19 @@ test("legacy default colors migrate to the refreshed palette while custom colors
   assert.equal(custom.experience.theme.primary, "#1c6491");
   assert.equal(custom.experience.theme.gold, "#cb4772");
 });
+
+test("participant opportunity filter visibility is configurable and defaults on", () => {
+  assert.deepEqual(DEFAULT_SITE_CONTENT_SETTINGS.opportunityFilterVisibility, {
+    searchBySpecialty: true,
+    country: true,
+    seats: true,
+    deadline: true,
+    price: true,
+  });
+  assert.deepEqual(
+    normalizeSiteContentSettings({
+      opportunityFilterVisibility: { searchBySpecialty: false, country: true, price: false },
+    }).opportunityFilterVisibility,
+    { searchBySpecialty: false, country: true, seats: true, deadline: true, price: false },
+  );
+});
