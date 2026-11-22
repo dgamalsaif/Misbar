@@ -25,6 +25,12 @@ The user chose not to migrate images away from Cloudflare R2.
 
 **How to apply:** preserve Pages for the frontend and the API-only routed Worker; do not replace them with a Worker Static Assets/custom-domain deployment. Only use authorized external connections for the requested work; do not provision services or run unrelated migrations. Verify the actual Render database target before applying the authorized additive registration-schema update, preserving existing answers and records. Request connection credentials through the secure secrets flow, never chat. Do not replace the database or image storage without an explicit request.
 
+The user explicitly chose to disable local in-memory database and local image-storage fallbacks in the Replit preview, and to prevent any database connection from that workspace.
+
+**Why:** the user does not want any database or persistent image storage hosted by or connected to Replit.
+
+**How to apply:** never connect from the Replit workspace to any database, even if `DATABASE_URL` is present; readiness must remain unavailable instead of using mock memory. Missing Cloudflare R2 credentials must block uploads and return no locally stored image. Do not delete any pre-existing workspace files without separate approval. The preview's database-backed features will not work.
+
 Local API build success is not proof of a clean Render dependency installation.
 
 **Why:** the imported workspace's existing npm-installed dependencies allowed local builds while Render's pnpm installation missed a build plugin. A locally generated lockfile also was not present in Render's GitHub checkout.

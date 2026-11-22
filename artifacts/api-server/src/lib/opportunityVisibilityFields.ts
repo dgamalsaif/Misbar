@@ -1,6 +1,6 @@
 export const OPPORTUNITY_DISPLAY_FIELDS = [
   "title", "preview",
-  "image", "code", "specialty", "status", "description", "price", "journal",
+  "image", "code", "specialty", "country", "deadline", "status", "description", "price", "journal",
   "indexedIn", "duration", "supervisor", "createdAt", "seats", "benefits",
 ] as const;
 

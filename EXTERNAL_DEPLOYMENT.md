@@ -1,6 +1,6 @@
 # SRMA external deployment
 
-Production is hosted externally. Replit is used only to prepare the project; no Replit database, hosting, or managed authentication connection is required.
+Production is hosted externally. Replit is used only to prepare the project; no Replit database, hosting, or managed authentication connection is used. Database connections are disabled in the Replit workspace even if a `DATABASE_URL` is present there.
 
 - Cloudflare Pages: React frontend
 - Cloudflare `srma-api-proxy` Worker: same-origin `/api/*` proxy and research share previews
@@ -54,7 +54,7 @@ Create a private bucket named `srma-research-images`, then create an R2 API toke
 - `R2_BUCKET=srma-research-images`
 - `R2_PRIVATE_PREFIX=production`
 
-When all four required R2 values exist, the API uses R2. `R2_BUCKET` by itself does not enable R2. Development may use the local fallback; production rejects uploads without R2 credentials rather than saving a broken image reference. Render's filesystem is not durable across redeploys, so configure all three R2 credentials on the Render service for production image persistence.
+The production API uses R2 only when all three credentials and the bucket are configured. `R2_BUCKET` by itself does not enable R2. Development and Replit-preview processes never connect to R2, and there is no local image-storage fallback in any environment; uploads require R2, and image reads return unavailable when R2 is not configured. Render's filesystem is not durable across redeploys, so configure all three R2 credentials on the Render service for production image persistence.
 
 
 ## 3. Cloudflare Pages frontend and routed Worker

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, index, jsonb, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -80,6 +80,8 @@ export const researchProgramsTable = pgTable("research_programs", {
   titleEn: text("title_en").notNull().default(""),
   specialtyAr: text("specialty_ar").notNull().default(""),
   specialtyEn: text("specialty_en").notNull().default(""),
+  country: text("country").notNull().default(""),
+  applicationDeadline: date("application_deadline", { mode: "string" }),
   descriptionAr: text("description_ar").notNull().default(""),
   descriptionEn: text("description_en").notNull().default(""),
   seatsLeft: integer("seats_left").notNull().default(0),

@@ -14,3 +14,4 @@
 - [Image cache invalidation](image-cache-invalidation.md) — persist cache versions after validation; successful deletion can conceal a replacement-cache defect.
 - [Site link preview images](site-share-images.md) — owner-selected logo/image, honest GIF limits, and crawler-side versioning on Pages.
 - [Theme preset normalization](theme-preset-normalization.md) — legacy palette migrations must not rewrite valid user-selected themes; test every preset round-trip.
+- [Opportunity search rules](opportunity-search.md) — country means the opportunity's location; closing date stays optional, and filters must honor owner visibility.

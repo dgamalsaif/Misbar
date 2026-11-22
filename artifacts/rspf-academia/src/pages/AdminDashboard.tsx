@@ -16,6 +16,7 @@ import { DEFAULT_SITE_CONTENT_SETTINGS, OpportunityFieldId, SiteContentSettings,
 import Footer from "@/components/Footer";
 import ResearchImagePicker from "@/components/ResearchImagePicker";
 import OpportunityMedia from "@/components/OpportunityMedia";
+import { OPPORTUNITY_COUNTRIES } from "@/lib/opportunityCountries";
 import SpecialtyFilter, { buildSpecialtyOptions, specialtyMatches } from "@/components/SpecialtyFilter";
 import OwnerSecurityPanel from "@/components/OwnerSecurityPanel";
 import OwnerDataManagementPanel from "@/components/OwnerDataManagementPanel";
@@ -29,6 +30,8 @@ const EMPTY_FORM: Omit<ResearchOpportunity, "id" | "createdAt"> = {
   specialty: "",
   specialtyAr: "",
   specialtyEn: "",
+  country: "",
+  applicationDeadline: null,
   specialtyColor: "bg-gray-100 text-gray-700",
   title: "",
   titleAr: "",
@@ -268,6 +271,35 @@ function ResearchFormModal({ initial, onSave, onClose, isEdit, requiredFields, s
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2 text-right">Description (English){isRequired("descriptionEn") && " *"}</label>
             <textarea required={isRequired("descriptionEn")} rows={3} value={form.descriptionEn || ""} onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })} className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#117b59]/20 focus:border-[#117b59] resize-none bg-slate-50" dir="ltr" />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="opportunity-country" className="mb-2 block text-right text-sm font-bold text-slate-700">بلد الفرصة</label>
+              <select
+                id="opportunity-country"
+                data-testid="select-opportunity-country"
+                value={form.country || ""}
+                onChange={(event) => setForm({ ...form, country: event.target.value })}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-right text-sm outline-none focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/20"
+              >
+                <option value="">لم يحدد</option>
+                {form.country && !OPPORTUNITY_COUNTRIES.some((country) => country.name === form.country || country.nameEn === form.country) && <option value={form.country}>{form.country}</option>}
+                {OPPORTUNITY_COUNTRIES.map((country) => <option key={country.isoCode} value={country.name}>{country.flag} {country.name}</option>)}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">لن يظهر بلد الفرصة للزوار إذا أخفيته من خيارات العرض أدناه.</p>
+            </div>
+            <div>
+              <label htmlFor="opportunity-deadline" className="mb-2 block text-right text-sm font-bold text-slate-700">آخر موعد للتسجيل (اختياري)</label>
+              <input
+                id="opportunity-deadline"
+                data-testid="input-opportunity-deadline"
+                type="date"
+                value={form.applicationDeadline || ""}
+                onChange={(event) => setForm({ ...form, applicationDeadline: event.target.value || null })}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/20"
+              />
+              <p className="mt-1 text-xs text-slate-500">اتركه فارغاً إذا لم يوجد موعد إغلاق محدد.</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -858,6 +890,8 @@ export default function AdminDashboard() {
   const toPayload = (form: FormData, imageToken: string | null) => ({
     hiddenFields: normalizeHiddenFields(form.hiddenFields),
     category: form.category || "active",
+    country: form.country || "",
+    applicationDeadline: form.applicationDeadline || null,
     titleAr: form.titleAr || form.title,
     titleEn: form.titleEn || form.title,
     specialtyAr: form.specialtyAr || form.specialty,

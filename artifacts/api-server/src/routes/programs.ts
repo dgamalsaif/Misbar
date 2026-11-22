@@ -103,6 +103,8 @@ function toClient(row: typeof researchProgramsTable.$inferSelect, includeOwnerFi
   const imageVersion = row.updatedAt?.getTime?.() ?? row.createdAt.getTime();
   const titleHidden = !includeOwnerFields && hiddenFields.includes("title");
   const specialtyHidden = !includeOwnerFields && hiddenFields.includes("specialty");
+  const countryHidden = !includeOwnerFields && hiddenFields.includes("country");
+  const deadlineHidden = !includeOwnerFields && hiddenFields.includes("deadline");
   const descriptionHidden = !includeOwnerFields && hiddenFields.includes("description");
   const imageHidden = !includeOwnerFields && (hiddenFields.includes("image") || titleHidden);
   const priceHidden = !includeOwnerFields && hiddenFields.includes("price");
@@ -116,6 +118,8 @@ function toClient(row: typeof researchProgramsTable.$inferSelect, includeOwnerFi
     specialty: specialtyHidden ? "" : row.specialtyEn,
     specialtyAr: specialtyHidden ? "" : row.specialtyAr,
     specialtyEn: specialtyHidden ? "" : row.specialtyEn,
+    country: countryHidden ? "" : row.country,
+    applicationDeadline: deadlineHidden ? null : row.applicationDeadline,
     displayOrder: researchCatalogDisplayOrder(row.titleEn),
     description: descriptionHidden ? "" : row.descriptionAr,
     descriptionAr: descriptionHidden ? "" : row.descriptionAr,
@@ -526,6 +530,10 @@ router.post("/programs", requireOwner, async (req, res) => {
     indexedIn: Array.isArray(req.body?.indexedIn) ? req.body.indexedIn.join("|") : req.body?.indexedIn || "",
     benefits: Array.isArray(req.body?.benefits) ? req.body.benefits.join("|") : req.body?.benefits || "",
   }, "create");
+  if (!isValidOptionalDate(body.applicationDeadline)) {
+    res.status(400).json({ error: "موعد إغلاق التسجيل يجب أن يكون تاريخاً صحيحاً بصيغة YYYY-MM-DD." });
+    return;
+  }
   const parsed = insertResearchProgramSchema.safeParse(body);
   if (!parsed.success) {
     res.status(400).json({ error: "بيانات الفرصة غير صحيحة", details: parsed.error.issues });
@@ -598,6 +606,10 @@ router.patch("/programs/:id", requireOwner, async (req, res) => {
     indexedIn: Array.isArray(req.body?.indexedIn) ? req.body.indexedIn.join("|") : req.body?.indexedIn || "",
     benefits: Array.isArray(req.body?.benefits) ? req.body.benefits.join("|") : req.body?.benefits || "",
   }, "update");
+  if (!isValidOptionalDate(body.applicationDeadline)) {
+    res.status(400).json({ error: "موعد إغلاق التسجيل يجب أن يكون تاريخاً صحيحاً بصيغة YYYY-MM-DD." });
+    return;
+  }
   const parsed = insertResearchProgramSchema.partial().safeParse(body);
   if (!parsed.success) {
     res.status(400).json({ error: "بيانات الفرصة غير صحيحة", details: parsed.error.issues });
@@ -770,6 +782,11 @@ async function normalizeProgramPayload(source: Record<string, unknown>, mode: "c
   delete result.coAuthorSeatsLeft;
   delete result.totalSeats;
   delete result.seatsLeft;
+  if (typeof source.country === "string") result.country = source.country.trim().slice(0, 120);
+  if (Object.prototype.hasOwnProperty.call(source, "applicationDeadline") &&
+      (source.applicationDeadline === "" || source.applicationDeadline === undefined)) {
+    result.applicationDeadline = null;
+  }
 
   if (mode === "create") {
     Object.assign(result, {
@@ -792,6 +809,14 @@ async function normalizeProgramPayload(source: Record<string, unknown>, mode: "c
   }
 
   return result;
+}
+
+function isValidOptionalDate(value: unknown): boolean {
+  if (value === undefined || value === null || value === "") return true;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
 }
 
 function numberOrDefault(value: unknown, fallback: number) {

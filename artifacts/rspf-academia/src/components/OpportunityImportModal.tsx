@@ -6,7 +6,7 @@ import { SpecialtyOption } from "@/lib/siteContentSettings";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 
 const IMPORT_COLUMNS = [
-  "category", "titleAr", "titleEn", "specialtyAr", "specialtyEn", "seatsLeft", "status",
+  "category", "titleAr", "titleEn", "specialtyAr", "specialtyEn", "country", "applicationDeadline", "seatsLeft", "status",
   "descriptionAr", "descriptionEn", "journalTarget", "journalIssn", "journalPubmed",
   "journalScopus", "journalWos", "indexedIn", "benefits", "duration", "supervisor",
   "priceOriginalSar", "priceDiscountedSar",
@@ -28,6 +28,8 @@ const EXAMPLE_ROW: ImportRow = {
   titleEn: "Example Ophthalmology Research Opportunity",
   specialtyAr: "طب العيون",
   specialtyEn: "Ophthalmology",
+  country: "المملكة العربية السعودية",
+  applicationDeadline: "",
   seatsLeft: 15,
   status: "open",
   descriptionAr: "وصف مختصر للفرصة البحثية.",
@@ -51,6 +53,8 @@ const COLUMN_LABELS: Record<(typeof IMPORT_COLUMNS)[number], string> = {
   titleEn: "عنوان الفرصة بالإنجليزية / titleEn",
   specialtyAr: "التخصص بالعربية / specialtyAr",
   specialtyEn: "التخصص بالإنجليزية / specialtyEn",
+  country: "بلد الفرصة (اختياري) / country",
+  applicationDeadline: "آخر موعد للتسجيل YYYY-MM-DD / applicationDeadline",
   seatsLeft: "المقاعد المتبقية (0–15) / seatsLeft",
   status: "الحالة / status",
   descriptionAr: "الوصف بالعربية / descriptionAr",
@@ -81,7 +85,7 @@ async function downloadTemplate(siteName: string) {
   guidance.addRows([
     [`${siteName} — Opportunity Import Template`],
     ["التعليمات / Instructions"],
-    ["املأ صفاً واحداً لكل فرصة. العناوين المطلوبة: titleAr, titleEn, specialtyAr, specialtyEn."],
+    ["املأ صفاً واحداً لكل فرصة. العناوين المطلوبة: titleAr, titleEn, specialtyAr, specialtyEn. البلد والموعد النهائي اختياريان."],
     ["إجمالي المقاعد ثابت دائماً على 15. استخدم seatsLeft لتحديد المقاعد المتبقية من 0 إلى 15."],
     ["افصل أكثر من ميزة أو قاعدة بيانات بعلامة |. استخدم الحالات: open, closed, upcoming, seats_full."],
     ["الأنواع المدعومة: active, completed, training, cme. سيُضاف التخصص الجديد تلقائياً."],

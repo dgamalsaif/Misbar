@@ -85,6 +85,13 @@
       "when": 1791145800466,
       "tag": "0011_registration_answers",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795375718559,
+      "tag": "0012_opportunity_search_fields",
+      "breakpoints": true
     }
   ]
 }
