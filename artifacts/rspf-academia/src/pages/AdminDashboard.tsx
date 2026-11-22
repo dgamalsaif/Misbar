@@ -16,7 +16,7 @@ import { DEFAULT_SITE_CONTENT_SETTINGS, OpportunityFieldId, SiteContentSettings,
 import Footer from "@/components/Footer";
 import ResearchImagePicker from "@/components/ResearchImagePicker";
 import OpportunityMedia from "@/components/OpportunityMedia";
-import { COUNTRIES } from "@/components/CountrySelector";
+import { OPPORTUNITY_COUNTRIES } from "@/lib/opportunityCountries";
 import SpecialtyFilter, { buildSpecialtyOptions, specialtyMatches } from "@/components/SpecialtyFilter";
 import OwnerSecurityPanel from "@/components/OwnerSecurityPanel";
 import OwnerDataManagementPanel from "@/components/OwnerDataManagementPanel";
@@ -283,8 +283,8 @@ function ResearchFormModal({ initial, onSave, onClose, isEdit, requiredFields, s
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-right text-sm outline-none focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/20"
               >
                 <option value="">لم يحدد</option>
-                {form.country && !COUNTRIES.some((country) => country.name === form.country || country.nameEn === form.country) && <option value={form.country}>{form.country}</option>}
-                {COUNTRIES.map((country) => <option key={`${country.name}-${country.code}`} value={country.name}>{country.flag} {country.name}</option>)}
+                {form.country && !OPPORTUNITY_COUNTRIES.some((country) => country.name === form.country || country.nameEn === form.country) && <option value={form.country}>{form.country}</option>}
+                {OPPORTUNITY_COUNTRIES.map((country) => <option key={country.isoCode} value={country.name}>{country.flag} {country.name}</option>)}
               </select>
               <p className="mt-1 text-xs text-slate-500">لن يظهر بلد الفرصة للزوار إذا أخفيته من خيارات العرض أدناه.</p>
             </div>

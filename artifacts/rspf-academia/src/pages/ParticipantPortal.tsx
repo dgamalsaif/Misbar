@@ -16,7 +16,7 @@ import { getEnglishOpportunityTitle, getOpportunityShareText } from "@/lib/oppor
 import { isFieldVisible } from "@/lib/opportunityVisibility";
 import { apiFetch } from "@/lib/api";
 import { filterOpportunities, type OpportunityFeeFilter } from "@/lib/opportunityFilters";
-import { COUNTRIES } from "@/components/CountrySelector";
+import { localizeOpportunityCountry } from "@/lib/opportunityCountries";
 
 export default function ParticipantPortal() {
   const { direction, language, localize, t } = useLanguage();
@@ -644,11 +644,6 @@ function normalizeResearchTitle(value: string) {
     .toLocaleLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
-}
-
-function localizeOpportunityCountry(value: string, language: string) {
-  const country = COUNTRIES.find((item) => item.name === value || item.nameEn.toLocaleLowerCase() === value.toLocaleLowerCase());
-  return country ? (language === "ar" ? country.name : country.nameEn) : value;
 }
 
 function formatOpportunityDeadline(value: string, language: string) {
