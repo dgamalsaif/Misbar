@@ -1,6 +1,8 @@
 import type { ResearchOpportunity } from "@/lib/researchData";
 
 export const OPPORTUNITY_DISPLAY_FIELDS = [
+  { id: "title", label: "عنوان البحث" },
+  { id: "preview", label: "معاينة عنوان البحث" },
   { id: "image", label: "الصورة" },
   { id: "code", label: "رمز الفرصة" },
   { id: "specialty", label: "التخصص" },
@@ -18,9 +20,10 @@ export const OPPORTUNITY_DISPLAY_FIELDS = [
 
 export type OpportunityDisplayFieldId = (typeof OPPORTUNITY_DISPLAY_FIELDS)[number]["id"];
 const ALLOWED = new Set<string>(OPPORTUNITY_DISPLAY_FIELDS.map((f) => f.id));
+export const DEFAULT_HIDDEN_OPPORTUNITY_FIELDS: OpportunityDisplayFieldId[] = ["title", "specialty", "preview"];
 
 export function normalizeHiddenFields(value: unknown): string[] {
-  return Array.isArray(value) ? [...new Set(value.filter((v): v is string => typeof v === "string" && ALLOWED.has(v)))] : [];
+  return Array.isArray(value) ? [...new Set(value.filter((v): v is string => typeof v === "string" && ALLOWED.has(v)))] : [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS];
 }
 
 type WithHidden = { hiddenFields?: string[] | null } | null | undefined;
@@ -34,6 +37,6 @@ export function isFieldVisible(opportunity: WithHidden, field: OpportunityDispla
 export function getPublicImageUrl(opportunity: Pick<ResearchOpportunity, "imageUrl" | "hiddenFields">): string | undefined {
   const url = opportunity.imageUrl;
   if (!url) return undefined;
-  if (!isFieldVisible(opportunity, "image")) return undefined;
+  if (!isFieldVisible(opportunity, "image") || !isFieldVisible(opportunity, "title")) return undefined;
   return url;
 }

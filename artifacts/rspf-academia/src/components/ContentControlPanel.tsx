@@ -34,6 +34,10 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoUploadMessage, setLogoUploadMessage] = useState("");
   const logoFileInput = useRef<HTMLInputElement>(null);
+  const [appIconUploading, setAppIconUploading] = useState(false);
+  const [appIconUploadMessage, setAppIconUploadMessage] = useState("");
+  const [appIconPreviewError, setAppIconPreviewError] = useState(false);
+  const appIconFileInput = useRef<HTMLInputElement>(null);
   const update = <K extends keyof SiteContentSettings>(key: K, value: SiteContentSettings[K]) => {
     const next = { ...latestSettings.current, [key]: value };
     latestSettings.current = next;
@@ -151,6 +155,45 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
       if (logoFileInput.current) logoFileInput.current.value = "";
     }
   };
+  const uploadAppIcon = async (file?: File) => {
+    if (!file) return;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setAppIconUploadMessage("اختر صورة PNG أو JPG أو WebP.");
+      if (appIconFileInput.current) appIconFileInput.current.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAppIconUploadMessage("حجم الأيقونة أكبر من 10 ميغابايت.");
+      if (appIconFileInput.current) appIconFileInput.current.value = "";
+      return;
+    }
+    setAppIconUploading(true);
+    setAppIconUploadMessage("");
+    try {
+      const response = await fetch("/api/site-app-icon/upload", {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      const result: unknown = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = result && typeof result === "object" && "error" in result && typeof result.error === "string"
+          ? result.error
+          : "تعذر رفع أيقونة التطبيق.";
+        throw new Error(error);
+      }
+      if (!result || typeof result !== "object" || !("iconUrl" in result) || typeof result.iconUrl !== "string") {
+        throw new Error("لم يصل رابط الأيقونة من الخادم.");
+      }
+      updateBrand("appIconUrl", result.iconUrl);
+      setAppIconUploadMessage("تم رفع الأيقونة. اضغط «حفظ التغييرات» لتطبيقها.");
+    } catch (error) {
+      setAppIconUploadMessage(error instanceof Error ? error.message : "تعذر رفع أيقونة التطبيق. حاول مرة أخرى.");
+    } finally {
+      setAppIconUploading(false);
+      if (appIconFileInput.current) appIconFileInput.current.value = "";
+    }
+  };
   const toggleSocialIcon = (audience: "public" | "participant" | "coordinator", id: SocialIconId) => {
     const key = `${audience}SocialIcons` as const;
     const current = settings.brand[key];
@@ -216,7 +259,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
         </div>
         <div className="flex items-center gap-3">
           {message && <p role="status" aria-live="polite" data-testid="text-content-settings-message" className={`text-sm font-bold ${message.includes("نجاح") ? "text-[#117b59]" : "text-rose-600"}`}>{message}</p>}
-          <button type="button" onClick={onSave} disabled={saving || shareImageBusy || logoUploading} data-testid="button-save-content-settings" className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#117b59] px-5 py-3 font-black text-white shadow-sm transition hover:bg-[#0c6549] disabled:opacity-60">
+          <button type="button" onClick={onSave} disabled={saving || shareImageBusy || logoUploading || appIconUploading} data-testid="button-save-content-settings" className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#117b59] px-5 py-3 font-black text-white shadow-sm transition hover:bg-[#0c6549] disabled:opacity-60">
             <Save size={17} />{saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}
           </button>
         </div>
@@ -302,9 +345,83 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
               <TextField label="اسم التطبيق (عربي)" value={settings.brand.appNameAr} onChange={(v) => updateBrand("appNameAr", v)} />
               <TextField label="App name (English)" value={settings.brand.appNameEn} onChange={(v) => updateBrand("appNameEn", v)} />
               <TextField label="الاسم المختصر للتطبيق" value={settings.brand.appShortName} onChange={(v) => updateBrand("appShortName", v)} />
-              <div>
-                <TextField label="رابط أيقونة التطبيق (PNG مربع موصى به)" value={settings.brand.appIconUrl} onChange={(v) => updateBrand("appIconUrl", v)} />
-                {settings.brand.appIconUrl && <img src={settings.brand.appIconUrl} alt="معاينة أيقونة التطبيق" className="mt-3 h-14 w-14 rounded-2xl border border-slate-200 object-cover" />}
+              <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-black text-slate-800">أيقونة التطبيق المثبّت</h3>
+                    <p className="mt-1 text-xs text-slate-500">هذه الأيقونة مستقلة عن شعار الموقع. ارفع صورة أو استخدم صورة شعار الموقع الحالية.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border border-slate-200 shadow-sm" style={{ backgroundColor: settings.brand.appThemeColor }}>
+                      {settings.brand.appIconUrl && <img key={settings.brand.appIconUrl} src={settings.brand.appIconUrl} alt="معاينة أيقونة التطبيق" onLoad={() => setAppIconPreviewError(false)} onError={() => setAppIconPreviewError(true)} className="object-contain" style={{ width: `${settings.brand.appIconDisplaySize}%`, height: `${settings.brand.appIconDisplaySize}%` }} />}
+                    </div>
+                    <div className="text-xs text-slate-600">
+                      <p className="font-bold">معاينة قبل الحفظ</p>
+                      <p className="mt-1">الحجم الحالي: {settings.brand.appIconDisplaySize}%</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <TextField label="رابط صورة أيقونة التطبيق" value={settings.brand.appIconUrl} onChange={(v) => { setAppIconPreviewError(false); updateBrand("appIconUrl", v); }} />
+                    <p className="mt-1 text-[11px] text-slate-500">استخدم رابطاً من موقع مسبار أو ارفع الصورة من جهازك لحفظها بأمان.</p>
+                  </div>
+                  <div>
+                    <label htmlFor="app-icon-display-size" className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-700">
+                      <span>حجم الصورة داخل الأيقونة</span>
+                      <span className="font-black text-[#117b59]">{settings.brand.appIconDisplaySize}%</span>
+                    </label>
+                    <input
+                      id="app-icon-display-size"
+                      data-testid="input-app-icon-display-size"
+                      type="range"
+                      min={30}
+                      max={100}
+                      step={1}
+                      value={settings.brand.appIconDisplaySize}
+                      onChange={(event) => updateBrand("appIconDisplaySize", Number(event.currentTarget.value))}
+                      className="w-full accent-[#117b59]"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-500"><span>30%</span><span>100%</span></div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    ref={appIconFileInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    aria-label="اختر صورة أيقونة التطبيق"
+                    onChange={(event) => void uploadAppIcon(event.currentTarget.files?.[0])}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => appIconFileInput.current?.click()}
+                    disabled={appIconUploading}
+                    className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+                  >
+                    <Upload size={16} />{appIconUploading ? "جارٍ رفع الأيقونة..." : "رفع أيقونة من الجهاز"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateBrand("appIconUrl", settings.brand.logoUrl || "/misbar-logo.svg")}
+                    disabled={!settings.brand.logoUrl || appIconUploading}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    استخدام شعار الموقع الحالي
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateBrand("appIconUrl", "/misbar-logo.svg")}
+                    disabled={appIconUploading}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    استعادة الأيقونة الافتراضية
+                  </button>
+                </div>
+                {appIconPreviewError && <p className="mt-2 text-xs font-semibold text-rose-700" role="alert">تعذر تحميل معاينة الأيقونة. صحح الرابط أو ارفع صورة من جهازك.</p>}
+                {appIconUploadMessage && <p className="mt-2 text-sm text-slate-600" role="status" aria-live="polite">{appIconUploadMessage}</p>}
+                <p className="mt-2 text-xs leading-5 text-slate-500">PNG أو JPG أو WebP حتى 10 ميغابايت، بأبعاد بين 96 و4096 بكسل. الصورة المربعة أفضل؛ وقد يختلف شكل القناع والقص النهائي حسب نظام الجهاز. احفظ التغييرات بعد الرفع أو التبديل.</p>
               </div>
               <ColorField label="لون التطبيق عند التشغيل" value={settings.brand.appThemeColor} onChange={(v) => updateBrand("appThemeColor", v)} />
 

@@ -95,6 +95,7 @@ export interface BrandContactSettings {
   appNameEn: string;
   appShortName: string;
   appIconUrl: string;
+  appIconDisplaySize: number;
   appThemeColor: string;
   phone: string;
   whatsapp: string;
@@ -297,7 +298,7 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
   coordinatorFormDescription: "أدخل بيانات الطالب كما تظهر في مستنداته الأكاديمية.",
   coordinatorFormDescriptionEn: "Enter the student's details exactly as they appear in their academic documents.",
   participantTitleLanguage: "english",
-  coordinatorTitleLanguage: "arabic",
+  coordinatorTitleLanguage: "english",
   primaryColor: "#0b5145",
   accentColor: "#c69b35",
   cardBackgroundColor: "#ffffff",
@@ -332,6 +333,7 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     appNameEn: "Misbar",
     appShortName: "Misbar",
     appIconUrl: "/misbar-logo.svg",
+    appIconDisplaySize: 72,
     appThemeColor: "#0b5145",
     phone: "+966562159258",
     whatsapp: "966562159258",
@@ -518,6 +520,9 @@ type BrandTextKey = { [K in keyof BrandContactSettings]-?: BrandContactSettings[
       return DEFAULT_SITE_CONTENT_SETTINGS.brand.appIconUrl;
     }
   };
+  const appIconDisplaySize = typeof brandInput.appIconDisplaySize === "number" && Number.isFinite(brandInput.appIconDisplaySize)
+    ? Math.min(100, Math.max(30, Math.round(brandInput.appIconDisplaySize)))
+    : DEFAULT_SITE_CONTENT_SETTINGS.brand.appIconDisplaySize;
   const pagesInput = object("pages");
   const pageIds = Object.keys(DEFAULT_SITE_CONTENT_SETTINGS.pages) as PublicPageId[];
   const pages = Object.fromEntries(pageIds.map((id) => {
@@ -639,6 +644,7 @@ type BrandTextKey = { [K in keyof BrandContactSettings]-?: BrandContactSettings[
       appNameEn: brandText("appNameEn", 160),
       appShortName: brandText("appShortName", 30),
       appIconUrl: safeAppIcon(brandText("appIconUrl", 1000)),
+      appIconDisplaySize,
       appThemeColor: /^#[0-9a-fA-F]{6}$/.test(brandText("appThemeColor", 7)) ? brandText("appThemeColor", 7) : DEFAULT_SITE_CONTENT_SETTINGS.brand.appThemeColor,
       phone: brandText("phone", 40).replace(/[^\d+]/g, ""),
       whatsapp: globalWhatsapp,

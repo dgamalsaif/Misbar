@@ -21,7 +21,7 @@ import OwnerSecurityPanel from "@/components/OwnerSecurityPanel";
 import OwnerDataManagementPanel from "@/components/OwnerDataManagementPanel";
 import OpportunityImportModal from "@/components/OpportunityImportModal";
 import { apiFetch } from "@/lib/api";
-import { OPPORTUNITY_DISPLAY_FIELDS, normalizeHiddenFields } from "@/lib/opportunityVisibility";
+import { DEFAULT_HIDDEN_OPPORTUNITY_FIELDS, OPPORTUNITY_DISPLAY_FIELDS, normalizeHiddenFields } from "@/lib/opportunityVisibility";
 import { useLanguage } from "@/lib/i18n";
 
 const EMPTY_FORM: Omit<ResearchOpportunity, "id" | "createdAt"> = {
@@ -43,8 +43,8 @@ const EMPTY_FORM: Omit<ResearchOpportunity, "id" | "createdAt"> = {
   coAuthorSeats: 14,
   coAuthorSeatsLeft: 14,
   status: "open",
-  priceOriginalSar: 1500,
-  priceDiscountedSar: 1000,
+  priceOriginalSar: 0,
+  priceDiscountedSar: 0,
   journalTarget: "",
   journalIssn: "",
   journalPubmed: "",
@@ -52,16 +52,17 @@ const EMPTY_FORM: Omit<ResearchOpportunity, "id" | "createdAt"> = {
   journalWos: "",
   indexedIn: [],
   benefits: ["", "", ""],
+  includedServices: [],
   duration: "",
   supervisor: "",
   researchGroupUrl: "",
-  hiddenFields: [],
+  hiddenFields: [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS],
 };
 
 type FormData = Omit<ResearchOpportunity, "id" | "createdAt">;
 
 function ResearchFormModal({ initial, onSave, onClose, isEdit, requiredFields, settings }: { initial: FormData; onSave: (data: FormData, imageToken: string | null) => Promise<{ error?: string } | void> | void; onClose: () => void; isEdit: boolean; requiredFields: OpportunityFieldId[]; settings: SiteContentSettings; }) {
-  const [form, setForm] = useState<FormData>({ ...initial, hiddenFields: normalizeHiddenFields(initial.hiddenFields), benefits: [...(initial.benefits || ["", "", ""])] });
+  const [form, setForm] = useState<FormData>({ ...initial, hiddenFields: normalizeHiddenFields(initial.hiddenFields), benefits: [...(initial.benefits || ["", "", ""])], includedServices: [...(initial.includedServices || [])] });
   const [indexedStr, setIndexedStr] = useState((initial.indexedIn || []).join("، "));
   const [benefitsArr, setBenefitsArr] = useState<string[]>(initial.benefits?.length ? [...initial.benefits] : ["", "", ""]);
   const [formError, setFormError] = useState("");
@@ -240,12 +241,23 @@ function ResearchFormModal({ initial, onSave, onClose, isEdit, requiredFields, s
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block text-right text-sm font-bold text-slate-700">السعر قبل الخصم (ر.س)</label>
-                <input type="number" min={0} value={form.priceOriginalSar ?? 1500} onChange={(event) => setForm({ ...form, priceOriginalSar: parseInt(event.target.value) || 0 })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm outline-none focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/20" />
+                <input type="number" min={0} value={form.priceOriginalSar ?? 0} onChange={(event) => setForm({ ...form, priceOriginalSar: parseInt(event.target.value) || 0 })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm outline-none focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/20" />
               </div>
               <div>
                 <label className="mb-2 block text-right text-sm font-bold text-slate-700">السعر بعد الخصم (ر.س)</label>
-                <input type="number" min={0} value={form.priceDiscountedSar ?? 1000} onChange={(event) => setForm({ ...form, priceDiscountedSar: parseInt(event.target.value) || 0 })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm outline-none focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/20" />
+                <input type="number" min={0} value={form.priceDiscountedSar ?? 0} onChange={(event) => setForm({ ...form, priceDiscountedSar: parseInt(event.target.value) || 0 })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm outline-none focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/20" />
               </div>
+            </div>
+            <div className="mt-4">
+              <label className="mb-2 block text-right text-sm font-bold text-slate-700">الخدمات المشمولة في مبلغ الاشتراك</label>
+              <textarea
+                rows={4}
+                value={(form.includedServices || []).join("\n")}
+                onChange={(event) => setForm({ ...form, includedServices: event.target.value.split("\n").slice(0, 20).map((service) => service.slice(0, 200)) })}
+                placeholder={"خدمة واحدة في كل سطر، مثل:\nالإشراف البحثي\nالتحليل الإحصائي\nإعداد البحث ومتابعة النشر"}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right text-sm outline-none focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/20"
+              />
+              <p className="mt-2 text-xs leading-5 text-slate-500">اكتب الخدمات الفعلية المشمولة بهذه الفرصة فقط. لا تُذكر رسوم المجلات أو ضمان القبول والنشر إلا إذا كانت صحيحة ومصرحاً بها.</p>
             </div>
           </div>
 
@@ -324,7 +336,7 @@ function ResearchFormModal({ initial, onSave, onClose, isEdit, requiredFields, s
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-right" data-testid="display-fields-section">
             <p className="font-black text-slate-800">العناصر الظاهرة للزوار</p>
-            <p className="mt-1 text-xs leading-5 text-slate-500">حدّد ما يُعرض علناً لهذه الفرصة. عند إلغاء التحديد يُخفى العنصر في البطاقات وصفحة التفاصيل والتسجيل. العنوان وأزرار التسجيل تبقى ظاهرة دائماً.</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">عنوان البحث والتخصص ومعاينة المشاركة مخفية افتراضياً للفرص الجديدة. فعّلها صراحةً عند رغبتك بنشرها. إخفاء العنوان من الخادم يمنع إرساله للزوار؛ أما ما يُنشر فلا يمكن منع تصويره بالكامل.</p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {OPPORTUNITY_DISPLAY_FIELDS.map((field) => {
                 const shown = !(form.hiddenFields || []).includes(field.id);
@@ -643,7 +655,7 @@ function ProgramCard({ research, onRegister, onEdit, onDelete, canManage, isSele
       )}
 
       <div className="mb-4">
-        <OpportunityMedia research={research} className="h-44" />
+        <OpportunityMedia research={{ ...research, hiddenFields: [] }} className="h-44" />
       </div>
 
       <div className="flex justify-between items-start mb-4 gap-4">
@@ -857,11 +869,12 @@ export default function AdminDashboard() {
     journalWos: form.journalWos || "",
     indexedIn: form.indexedIn,
     benefits: form.benefits,
+    includedServices: form.includedServices || [],
     duration: form.duration,
     supervisor: form.supervisor,
     researchGroupUrl: form.researchGroupUrl || "",
-    priceOriginalSar: form.priceOriginalSar ?? 1500,
-    priceDiscountedSar: form.priceDiscountedSar ?? 1000,
+    priceOriginalSar: form.priceOriginalSar ?? 0,
+    priceDiscountedSar: form.priceDiscountedSar ?? 0,
     ...(typeof imageToken === "string" ? { imageToken } : {}),
   });
 

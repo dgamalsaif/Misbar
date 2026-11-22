@@ -28,6 +28,7 @@ export interface ResearchOpportunity {
   journalWos?: string;
   indexedIn: string[];
   benefits: string[];
+  includedServices?: string[];
   duration: string;
   supervisor: string;
   createdAt: string;

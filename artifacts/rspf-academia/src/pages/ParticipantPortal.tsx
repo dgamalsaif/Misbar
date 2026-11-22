@@ -7,12 +7,13 @@ import SiteAnnouncement from "@/components/SiteAnnouncement";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 import { getContactUsHref, buildOpportunityInquiryLinks } from "@/lib/siteContentSettings";
 import OpportunityMedia from "@/components/OpportunityMedia";
-import OpportunityPrice from "@/components/OpportunityPrice";
+import { OpportunityFeeSummary } from "@/components/OpportunityPrice";
 import { OpportunityCurrency, useCurrency } from "@/lib/opportunityPricing";
 import { useLanguage } from "@/lib/i18n";
 import SpecialtyFilter, { buildSpecialtyOptions, canonicalSpecialty, specialtyMatches } from "@/components/SpecialtyFilter";
 import { ProtectedResearchWatermark, AntiCaptureResearchTitle } from "@/components/ResearchProtection";
 import { getEnglishOpportunityTitle, getOpportunityShareText } from "@/lib/opportunityDisplay";
+import { isFieldVisible } from "@/lib/opportunityVisibility";
 import { apiFetch } from "@/lib/api";
 
 export default function ParticipantPortal() {
@@ -94,17 +95,21 @@ export default function ParticipantPortal() {
   };
 
   const openModal = (research: ResearchOpportunity) => { setSelectedResearch(research); setModalOpen(true); };
-  const displayTitle = getEnglishOpportunityTitle;
+  const displayTitle = (opportunity: ResearchOpportunity) => isFieldVisible(opportunity, "title")
+    ? getEnglishOpportunityTitle(opportunity)
+    : localize("فرصة بحثية — العنوان مخفي", "Research opportunity — title hidden");
   const participantTitle = language === "en" ? contentSettings.pages.participant.titleEn : contentSettings.pages.participant.titleAr;
   const participantDescription = language === "en" ? contentSettings.pages.participant.descriptionEn : contentSettings.pages.participant.descriptionAr;
   const contactHref = getContactUsHref(contentSettings.brand);
 
-  const specialtyOptions = buildSpecialtyOptions(contentSettings.specialtyOptions, opportunities);
+  const visibleSpecialtyOpportunities = opportunities.filter((opportunity) => isFieldVisible(opportunity, "specialty"));
+  const specialtyOptions = buildSpecialtyOptions([], visibleSpecialtyOpportunities);
   const displaySpecialty = (opportunity: ResearchOpportunity) => {
     const canonical = canonicalSpecialty(opportunity.specialtyAr || opportunity.specialty, opportunity.specialtyEn || opportunity.specialty);
     return specialtyOptions.find((option) => option.id === canonical.id) || canonical;
   };
-  const visibleOpportunities = opportunities.filter((opportunity) => specialtyMatches(opportunity, selectedSpecialty));
+  const visibleOpportunities = opportunities.filter((opportunity) =>
+    !selectedSpecialty || !isFieldVisible(opportunity, "specialty") || specialtyMatches(opportunity, selectedSpecialty));
   const groupedOpportunities = specialtyOptions
     .map((option) => {
       const specialty = option.nameEn || option.nameAr;
@@ -300,7 +305,7 @@ export default function ParticipantPortal() {
 
                          {contentSettings.showOpportunityDetails !== false && <div className={`flex items-center justify-between gap-3 mb-3 relative z-10 ${contentFlow}`}>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            {contentSettings.visibleParticipantCardParts.includes("specialty") && <span className={`text-xs font-bold px-3 py-1 rounded-full ${opp.specialtyColor}`}>{localize(displaySpecialty(opp).nameAr, displaySpecialty(opp).nameEn, opp.specialty)}</span>}
+                            {contentSettings.visibleParticipantCardParts.includes("specialty") && isFieldVisible(opp, "specialty") && <span className={`text-xs font-bold px-3 py-1 rounded-full ${opp.specialtyColor}`}>{localize(displaySpecialty(opp).nameAr, displaySpecialty(opp).nameEn, opp.specialty)}</span>}
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <Lock size={10} className="text-emerald-600" />
                               <span>{localize("محمي", "Protected")}</span>
@@ -312,12 +317,17 @@ export default function ParticipantPortal() {
                          </div>}
 
                         <div className="relative z-10 mb-2">
+                          {isFieldVisible(opp, "title") ? (
                           <AntiCaptureResearchTitle
                             title={displayTitle(opp)}
                             titleHref={`/research/${opp.id}`}
                             titleClassName="mb-1 cursor-pointer text-left font-bold leading-snug text-slate-900 transition-colors select-none text-base"
                           />
+                          ) : (
+                            <p className="mb-2 text-left text-sm font-bold leading-snug text-slate-700" dir="ltr">{displayTitle(opp)}</p>
+                          )}
                         </div>
+                        {isFieldVisible(opp, "price") && <div className="mb-4"><OpportunityFeeSummary originalSar={opp.priceOriginalSar} discountedSar={opp.priceDiscountedSar} includedServices={opp.includedServices} currency={currency} onCurrencyChange={setCurrency} compact /></div>}
                          {contentSettings.showOpportunityDetails !== false && <>
                          <div className="mb-4"><OpportunityMedia research={opp} className="aspect-[4/3] min-h-[172px]" /></div>
 
@@ -330,8 +340,6 @@ export default function ParticipantPortal() {
                             return null;
                    })}
                        </div>
-
-                        <div className="mb-4"><OpportunityPrice originalSar={opp.priceOriginalSar} discountedSar={opp.priceDiscountedSar} currency={currency} onCurrencyChange={setCurrency} compact /></div>
 
                         {contentSettings.visibleParticipantCardParts.includes("seats") && <><div className="mb-1">
                           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -478,6 +486,8 @@ export default function ParticipantPortal() {
         coAuthorSeatsLeft={selectedResearch?.coAuthorSeatsLeft}
         priceOriginalSar={selectedResearch?.priceOriginalSar}
         priceDiscountedSar={selectedResearch?.priceDiscountedSar}
+        includedServices={selectedResearch?.includedServices}
+        showFeeDetails={selectedResearch ? isFieldVisible(selectedResearch, "price") : false}
         onRegistered={refreshOpportunities}
       />
     </div>

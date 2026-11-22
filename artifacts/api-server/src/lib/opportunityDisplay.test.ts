@@ -34,3 +34,10 @@ test("old title-language settings cannot bring back Arabic research titles", () 
   assert.equal(settings.coordinatorTitleLanguage, "english");
   assert.equal(settings.brand.siteNameAr, DEFAULT_SITE_CONTENT_SETTINGS.brand.siteNameAr);
 });
+
+test("app icon dimensions persist within the supported display range", () => {
+  assert.equal(DEFAULT_SITE_CONTENT_SETTINGS.brand.appIconDisplaySize, 72);
+  assert.equal(sanitizeSiteContentSettings({ brand: { appIconDisplaySize: 88 } }).brand.appIconDisplaySize, 88);
+  assert.equal(sanitizeSiteContentSettings({ brand: { appIconDisplaySize: 200 } }).brand.appIconDisplaySize, 100);
+  assert.equal(sanitizeSiteContentSettings({ brand: { appIconDisplaySize: 12 } }).brand.appIconDisplaySize, 30);
+});

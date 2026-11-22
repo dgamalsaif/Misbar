@@ -501,16 +501,13 @@ export default function OpportunitySurvey() {
                     if (field.id === "country") {
                       return (
                         <div key="country">
-                          <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                            {fieldText.label}
-                            {required("country") && <span className="text-rose-500"> *</span>}
-                          </label>
                           <CountrySelector
                             country={form.country}
-                            onCountryChange={(country) => setForm({ ...form, country })}
+                            onCountryChange={(country) => setForm((previous) => ({ ...previous, country }))}
                             dialCode={form.dialCode}
-                            onDialCodeChange={(dialCode) => setForm({ ...form, dialCode })}
+                            onDialCodeChange={(dialCode) => setForm((previous) => ({ ...previous, dialCode }))}
                             required={required("country")}
+                            label={fieldText.label}
                           />
                         </div>
                       );

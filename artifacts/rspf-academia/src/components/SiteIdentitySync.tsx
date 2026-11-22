@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
+import { getPwaIconUrl } from "@/lib/siteContentSettings";
 
 /**
  * Keeps PWA manifest, touch icon, favicon and theme-color in sync with brand settings.
@@ -15,14 +16,22 @@ export default function SiteIdentitySync() {
     if (manifest) {
       const version = encodeURIComponent([
         brand.appNameAr, brand.appNameEn, brand.appShortName, brand.appIconUrl,
-        brand.appThemeColor, settings.experience.theme.background,
+        brand.appIconDisplaySize, brand.appThemeColor, settings.experience.theme.background,
       ].join("|"));
       manifest.href = `/api/pwa-manifest?v=${version}`;
     }
     const icon = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
-    if (icon) icon.href = brand.appIconUrl || brand.logoUrl;
+    if (icon) {
+      icon.href = getPwaIconUrl(180, brand);
+      icon.type = "image/png";
+      icon.sizes = "180x180";
+    }
     const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-    if (favicon && brand.appIconUrl) favicon.href = brand.appIconUrl;
+    if (favicon) {
+      favicon.href = getPwaIconUrl(32, brand);
+      favicon.type = "image/png";
+      favicon.sizes = "32x32";
+    }
     const theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (theme) theme.content = brand.appThemeColor;
   }, [settings]);

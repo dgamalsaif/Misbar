@@ -5,7 +5,7 @@ import { ResearchOpportunity } from "@/lib/researchData";
 import { DEFAULT_SITE_CONTENT_SETTINGS, SiteContentSettings, getContactUsHref, getOpportunityContactLinks, buildOpportunityInquiryLinks } from "@/lib/siteContentSettings";
 import { isFieldVisible, type OpportunityDisplayFieldId } from "@/lib/opportunityVisibility";
 import OpportunityMedia from "@/components/OpportunityMedia";
-import OpportunityPrice from "@/components/OpportunityPrice";
+import { OpportunityFeeSummary } from "@/components/OpportunityPrice";
 import { OpportunityCurrency, RESEARCH_STATUS_LABELS, useCurrency } from "@/lib/opportunityPricing";
 import { useLanguage } from "@/lib/i18n";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
@@ -70,16 +70,26 @@ export default function ResearchDetail() {
   const statusLabel = localize(RESEARCH_STATUS_LABELS[research.status] || "دراسة منجزة", ({
     ethics_approved: "Ethics approved", under_review: "Under review", completed: "Completed study",
   } as Record<string, string>)[research.status], research.status);
-  const title = getEnglishOpportunityTitle(research);
-  const specialty = localize(research.specialtyAr, research.specialtyEn, research.specialty);
   const vis = (field: OpportunityDisplayFieldId) => isFieldVisible(research, field);
-  const description = localize(research.descriptionAr, research.descriptionEn, research.description);
+  const titleVisible = vis("title");
+  const previewTitleVisible = titleVisible && vis("preview");
+  const title = titleVisible ? getEnglishOpportunityTitle(research) : localize("فرصة بحثية", "Research opportunity");
+  const specialty = vis("specialty") ? localize(research.specialtyAr, research.specialtyEn, research.specialty) : "";
+  const description = vis("description") ? localize(research.descriptionAr, research.descriptionEn, research.description) : "";
   const contentFlow = direction === "rtl" ? "flex-row-reverse" : "flex-row";
   const siteName = language === "ar" ? contentSettings.brand.siteNameAr : contentSettings.brand.siteNameEn;
   const oppImageUrl = new URL(
-    research.imageUrl || `/api/programs/${research.id}/image`,
+    previewTitleVisible
+      ? research.imageUrl || `/api/programs/${research.id}/image`
+      : contentSettings.brand.socialShareImageUrl || "/misbar-logo.svg",
     window.location.origin,
   ).toString();
+  const pageSeoTitle = previewTitleVisible
+    ? `${title} | ${siteName}`
+    : `${siteName} | ${localize("فرصة بحثية", "Research opportunity")}`;
+  const pageSeoDescription = previewTitleVisible && description
+    ? description
+    : localize("سجّل في الفرص البحثية المتاحة لدى مسبار.", "Register for available research opportunities at Misbar.");
 
   const handleCopyLink = async () => {
     const url = `${window.location.origin}${getOpportunitySharePath(research.id)}`;
@@ -134,7 +144,7 @@ export default function ResearchDetail() {
   if (contentSettings.showOpportunityDetails === false) {
     return (
       <>
-        <PageSeo pathname={`/research/${research.id}`} language={language} title={`${title} | SRMA Research Academy`} description={localize("سجل في هذه الفرصة البحثية لدى أكاديمية SRMA.", "Register for this research opportunity at SRMA Research Academy.")} image={oppImageUrl} />
+        <PageSeo pathname={`/research/${research.id}`} language={language} title={pageSeoTitle} description={pageSeoDescription} image={oppImageUrl} />
         <div className="min-h-screen bg-slate-50 px-4 py-12" dir={direction}>
           <section className="mx-auto max-w-3xl space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
             <p className="text-sm font-bold text-[#0C3156]" lang="en" dir="ltr">SRMA Research Academy · RES-2026-{research.id}</p>
@@ -154,8 +164,8 @@ export default function ResearchDetail() {
       <PageSeo
         pathname={`/research/${research.id}`}
         language={language}
-        title={`${title} | ${siteName}`}
-        description={description}
+        title={pageSeoTitle}
+        description={pageSeoDescription}
         image={oppImageUrl}
       />
       <div className="min-h-screen bg-white" dir={direction}>
@@ -228,10 +238,14 @@ export default function ResearchDetail() {
 </>)}
               </div>
               <div className="relative z-10 mb-2">
+                {titleVisible ? (
                 <AntiCaptureResearchTitle
                   title={title}
                   titleClassName="mb-1 text-left text-xl font-black leading-snug sm:text-2xl select-none text-white"
                 />
+                ) : (
+                  <h1 className="mb-1 text-left text-xl font-black leading-snug sm:text-2xl text-white" lang="en" dir="ltr">{title}</h1>
+                )}
               </div>
               <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-white/15 relative z-10">
                 {vis("createdAt") ? <p className="text-blue-200 text-xs">{localize("تاريخ الإضافة:", "Date added:")} {research.createdAt}</p> : <span />}
@@ -355,7 +369,7 @@ export default function ResearchDetail() {
 </>)}
               </div>
 
-              {!isCompletedResearch && vis("price") && <div className="mb-5"><OpportunityPrice originalSar={research.priceOriginalSar} discountedSar={research.priceDiscountedSar} currency={currency} onCurrencyChange={setCurrency} /></div>}
+              {!isCompletedResearch && vis("price") && <div className="mb-5"><OpportunityFeeSummary originalSar={research.priceOriginalSar} discountedSar={research.priceDiscountedSar} includedServices={research.includedServices} currency={currency} onCurrencyChange={setCurrency} /></div>}
 
               {vis("seats") && (<>
 {/* Progress */}
@@ -525,7 +539,7 @@ export default function ResearchDetail() {
                   {isFieldVisible(r, "specialty") && <span className={`text-xs font-bold px-2.5 py-1 rounded-full inline-block mb-3 ${r.specialtyColor}`}>
                     {localize(r.specialtyAr, r.specialtyEn, r.specialty)}
                   </span>}
-                   <p className="mb-3 text-left text-sm font-semibold text-slate-800 line-clamp-2" dir="ltr">{getEnglishOpportunityTitle(r)}</p>
+                   <p className="mb-3 text-left text-sm font-semibold text-slate-800 line-clamp-2" dir="ltr">{isFieldVisible(r, "title") ? getEnglishOpportunityTitle(r) : localize("فرصة بحثية", "Research opportunity")}</p>
                   <div className={`flex items-center justify-between text-xs text-slate-500 ${contentFlow}`}>
                     {isFieldVisible(r, "seats") ? <span>{localize(`${r.seatsLeft} مقعد متبقي`, `${r.seatsLeft} seats remaining`)}</span> : <span />}
                     <span className="text-[#0C3156] font-semibold flex items-center gap-1">

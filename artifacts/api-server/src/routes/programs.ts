@@ -13,7 +13,8 @@ import { addImportedSpecialties, importResearchOpportunities, PROGRAM_CATALOG_LO
 import { getResearchImageBytes, getResearchImageUrl, ResearchImageStorageError, ResearchImageValidationError, resolveResearchImageUploadToken, uploadResearchImage } from "../lib/researchImageStorage";
 import { ensureProgramCapacityModel, PROGRAM_CAPACITY_LOCK_NAMESPACE, type DatabaseTransaction } from "../lib/programCapacity";
 import { applyResearchCatalogSeatSnapshot, researchCatalogDisplayOrder } from "../lib/researchCatalogSeatSnapshot";
-import { getOpportunityVisibility, saveOpportunityVisibility, validateHiddenFields } from "../lib/opportunityVisibility";
+import { getOpportunityIncludedServices, getOpportunityVisibility, saveOpportunityIncludedServices, saveOpportunityVisibility, validateHiddenFields } from "../lib/opportunityVisibility";
+import { DEFAULT_HIDDEN_OPPORTUNITY_FIELDS, validateIncludedServices } from "../lib/opportunityVisibilityFields";
 import { BatchProgramValidationError, validateBatchProgramScope, validateBatchProgramUpdates } from "../lib/batchProgramUpdate";
 
 const router = Router();
@@ -98,22 +99,27 @@ async function listPrograms() {
   });
 }
 
-function toClient(row: typeof researchProgramsTable.$inferSelect, includeOwnerFields = false, hiddenFields: string[] = []) {
+function toClient(row: typeof researchProgramsTable.$inferSelect, includeOwnerFields = false, hiddenFields: string[] = [], includedServices: string[] = []) {
   const imageVersion = row.updatedAt?.getTime?.() ?? row.createdAt.getTime();
+  const titleHidden = !includeOwnerFields && hiddenFields.includes("title");
+  const specialtyHidden = !includeOwnerFields && hiddenFields.includes("specialty");
+  const descriptionHidden = !includeOwnerFields && hiddenFields.includes("description");
+  const imageHidden = !includeOwnerFields && (hiddenFields.includes("image") || titleHidden);
+  const priceHidden = !includeOwnerFields && hiddenFields.includes("price");
   return {
     id: row.id,
     hiddenFields,
     category: row.category,
-    title: row.titleEn,
-    titleAr: row.titleAr,
-    titleEn: row.titleEn,
-    specialty: row.specialtyEn,
-    specialtyAr: row.specialtyAr,
-    specialtyEn: row.specialtyEn,
+    title: titleHidden ? "" : row.titleEn,
+    titleAr: titleHidden ? "" : row.titleAr,
+    titleEn: titleHidden ? "" : row.titleEn,
+    specialty: specialtyHidden ? "" : row.specialtyEn,
+    specialtyAr: specialtyHidden ? "" : row.specialtyAr,
+    specialtyEn: specialtyHidden ? "" : row.specialtyEn,
     displayOrder: researchCatalogDisplayOrder(row.titleEn),
-    description: row.descriptionAr,
-    descriptionAr: row.descriptionAr,
-    descriptionEn: row.descriptionEn,
+    description: descriptionHidden ? "" : row.descriptionAr,
+    descriptionAr: descriptionHidden ? "" : row.descriptionAr,
+    descriptionEn: descriptionHidden ? "" : row.descriptionEn,
     seatsLeft: row.seatsLeft,
     totalSeats: row.totalSeats,
     firstAuthorSeats: row.firstAuthorSeats,
@@ -121,8 +127,8 @@ function toClient(row: typeof researchProgramsTable.$inferSelect, includeOwnerFi
     coAuthorSeats: row.coAuthorSeats,
     coAuthorSeatsLeft: row.coAuthorSeatsLeft,
     status: row.status,
-    priceOriginalSar: row.priceOriginalSar,
-    priceDiscountedSar: row.priceDiscountedSar,
+    priceOriginalSar: priceHidden ? undefined : row.priceOriginalSar,
+    priceDiscountedSar: priceHidden ? undefined : row.priceDiscountedSar,
     journalTarget: row.journalTarget,
     journalIssn: row.journalIssn,
     journalPubmed: row.journalPubmed,
@@ -130,11 +136,12 @@ function toClient(row: typeof researchProgramsTable.$inferSelect, includeOwnerFi
     journalWos: row.journalWos,
     indexedIn: row.indexedIn.split("|").map((item) => item.trim()).filter(Boolean),
     benefits: row.benefits.split("|").map((item) => item.trim()).filter(Boolean),
+    includedServices: priceHidden ? [] : includedServices,
     duration: row.duration,
     supervisor: row.supervisor,
     specialtyColor: "bg-emerald-100 text-emerald-700",
     createdAt: row.createdAt.toISOString().slice(0, 10),
-    imageUrl: row.imagePath
+    imageUrl: imageHidden ? undefined : row.imagePath
       ? `/api/programs/${row.id}/image?v=${imageVersion}`
       : `/api/programs/${row.id}/poster.svg?v=${imageVersion}`,
     ...(includeOwnerFields ? { researchGroupUrl: row.researchGroupUrl } : {}),
@@ -181,7 +188,8 @@ router.get("/programs", async (req, res) => {
     const isStaff = Boolean(await getStaffSession(req)) || isOwner;
     const visibleRows = isStaff ? rows : rows.filter(isPublicProgram);
     const visibility = await getOpportunityVisibility(visibleRows.map((row: typeof researchProgramsTable.$inferSelect) => row.id));
-    res.json(visibleRows.map(row => toClient(row, isOwner, visibility.get(row.id) ?? [])));
+    const includedServices = await getOpportunityIncludedServices(visibleRows.map((row: typeof researchProgramsTable.$inferSelect) => row.id));
+    res.json(visibleRows.map(row => toClient(row, isOwner, visibility.get(row.id) ?? [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS], includedServices.get(row.id) ?? [])));
   } catch (err) {
     req.log.error({ err }, "Failed listing programs");
     res.status(500).json({ error: "تعذر تحميل الفرص البحثية حالياً." });
@@ -256,17 +264,24 @@ router.get("/programs/:id/image", async (req, res) => {
     res.status(404).end();
     return;
   }
+  const isOwner = Boolean(await getManagedOwner(req).catch(() => null));
   const isPublic = isPublicProgram(program);
   if (!isPublic) {
-    const isStaff = Boolean(await getStaffSession(req));
+    const isStaff = isOwner || Boolean(await getStaffSession(req));
     if (!isStaff) {
       res.status(404).end();
       return;
     }
   }
+  const hiddenFields = isOwner ? [] : (await getOpportunityVisibility([id])).get(id) ?? [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS];
+  if (hiddenFields.includes("image")) {
+    res.status(404).end();
+    return;
+  }
 
-  // 1. Try uploaded image from storage if path exists
-  if (program.imagePath) {
+  // An uploaded poster may contain the protected title itself. Do not return
+  // it when title/image visibility is disabled.
+  if (!hiddenFields.includes("image") && !hiddenFields.includes("title") && program.imagePath) {
     try {
       const result = await getResearchImageBytes(program.imagePath);
       if (result && result.data && result.data.length > 0) {
@@ -304,7 +319,6 @@ router.get("/programs/:id/image", async (req, res) => {
 
   // 2. Generate a high-resolution 1200x630 social card PNG using sharp
   try {
-    const hiddenFields = (await getOpportunityVisibility([id])).get(id) ?? [];
     const cardSvg = buildOpportunitySocialCardSvg(program, hiddenFields);
     const pngBuffer = await sharp(Buffer.from(cardSvg))
       .resize(1200, 630, { fit: "cover" })
@@ -356,9 +370,10 @@ router.get("/programs/:id/poster.svg", async (req, res) => {
     res.status(404).end();
     return;
   }
+  const isOwner = Boolean(await getManagedOwner(req).catch(() => null));
   const isPublic = isPublicProgram(program);
   if (!isPublic) {
-    const isStaff = Boolean(await getStaffSession(req));
+    const isStaff = isOwner || Boolean(await getStaffSession(req));
     if (!isStaff) {
       res.status(404).end();
       return;
@@ -369,7 +384,14 @@ router.get("/programs/:id/poster.svg", async (req, res) => {
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Content-Disposition", "inline; filename=\"research-opportunity-poster.svg\"");
-  const hiddenFields = (await getOpportunityVisibility([id])).get(id) ?? [];
+  let hiddenFields = isOwner ? [] : (await getOpportunityVisibility([id])).get(id) ?? [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS];
+  if (hiddenFields.includes("image")) {
+    res.status(404).end();
+    return;
+  }
+  if (req.query["generic"] === "1" || hiddenFields.includes("preview")) {
+    hiddenFields = [...new Set([...hiddenFields, "title", "specialty"])];
+  }
   res.type("image/svg+xml").send(buildOpportunityPoster(program, hiddenFields));
 });
 
@@ -384,9 +406,10 @@ router.get("/programs/:id/share", async (req, res) => {
     res.status(404).type("html").send("<!doctype html><html lang=\"ar\" dir=\"rtl\"><head><meta charset=\"utf-8\"><title>الفرصة غير متوفرة</title></head><body><p>عذراً، هذه الفرصة البحثية غير موجودة أو مغلقة.</p></body></html>");
     return;
   }
+  const isOwner = Boolean(await getManagedOwner(req).catch(() => null));
   const isPublic = isPublicProgram(program);
   if (!isPublic) {
-    const isStaff = Boolean(await getStaffSession(req));
+    const isStaff = isOwner || Boolean(await getStaffSession(req));
     if (!isStaff) {
       res.status(404).type("html").send("<!doctype html><html lang=\"ar\" dir=\"rtl\"><head><meta charset=\"utf-8\"><title>الفرصة غير متوفرة</title></head><body><p>عذراً، هذه الفرصة البحثية غير موجودة أو مغلقة.</p></body></html>");
       return;
@@ -397,13 +420,18 @@ router.get("/programs/:id/share", async (req, res) => {
   const english = req.query.lang === "en";
   const destination = `${origin}/survey?rid=RES-2026-${program.id}${english ? "&lang=en" : ""}`;
   const shareUrl = `${origin}/share/research/${program.id}${english ? "?lang=en" : ""}`;
-  const { title, specialty, heading, previewTitle, specialtyLine } = getOpportunityShareSummary(program, english);
-  const rawDescription = (english ? program.descriptionEn : program.descriptionAr) || program.descriptionEn || program.descriptionAr || "";
-  
   const siteSettings = await getSiteContentSettings().catch(() => null);
   const siteName = siteSettings?.brand?.siteNameEn || "SRMA Research Academy";
   const showDetails = siteSettings?.showOpportunityDetails === true;
-  const hiddenFields = (await getOpportunityVisibility([id])).get(id) ?? [];
+  const hiddenFields = isOwner ? [] : (await getOpportunityVisibility([id])).get(id) ?? [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS];
+  const showTitle = !hiddenFields.includes("title") && !hiddenFields.includes("preview");
+  const showSpecialty = showTitle && !hiddenFields.includes("specialty");
+  const { title: sourceTitle, specialty: sourceSpecialty, heading } = getOpportunityShareSummary(program, english);
+  const title = showTitle ? sourceTitle : (english ? "Research Opportunity" : "فرصة بحثية");
+  const specialty = showSpecialty ? sourceSpecialty : "";
+  const previewTitle = showTitle ? `${heading} | ${title}` : `${heading} | ${siteName}`;
+  const specialtyLine = specialty ? `${english ? "Specialty" : "التخصص"}: ${specialty}` : "";
+  const rawDescription = (english ? program.descriptionEn : program.descriptionAr) || program.descriptionEn || program.descriptionAr || "";
   const visible = (field: string) => !hiddenFields.includes(field);
 
   const journal = visible("journal") && program.journalTarget ? (english ? `Journal: ${program.journalTarget}` : `المجلة: ${program.journalTarget}`) : "";
@@ -422,7 +450,12 @@ router.get("/programs/:id/share", async (req, res) => {
 
   const metaDesc = [visible("specialty") ? specialtyLine : "", detailDescription].filter(Boolean).join(" • ");
   const imageVersion = program.updatedAt?.getTime?.() ?? program.createdAt.getTime();
-  const image = `${origin}/api/programs/${program.id}/${visible("image") ? "image" : "poster.svg"}?v=${imageVersion}`;
+  const imagePath = !visible("image")
+    ? (siteSettings?.brand?.socialShareImageUrl || "/api/site-share-image")
+    : showTitle
+      ? `/api/programs/${program.id}/image?v=${imageVersion}`
+      : `/api/programs/${program.id}/poster.svg?generic=1&v=${imageVersion}`;
+  const image = new URL(imagePath, origin).toString();
 
   res.setHeader("Cache-Control", "no-store");
   res.type("html").send(`<!doctype html>
@@ -463,8 +496,8 @@ router.get("/programs/:id/share", async (req, res) => {
        ${escapeHtml(heading)}
     </div>
     <h1 style="margin:0 0 12px 0;font-size:18px;font-weight:800;color:#0f2744;line-height:1.4;">${escapeHtml(title)}</h1>
-     ${visible("specialty") && specialty ? `<p style="font-weight:700;">${escapeHtml(specialtyLine)}</p>` : ""}
-     ${visible("image") ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" style="display:block;width:100%;height:auto;border-radius:12px;margin:16px 0;">` : ""}
+     ${showSpecialty && specialty ? `<p style="font-weight:700;">${escapeHtml(specialtyLine)}</p>` : ""}
+     ${visible("image") ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(showTitle ? title : siteName)}" style="display:block;width:100%;height:auto;border-radius:12px;margin:16px 0;">` : ""}
     <p style="margin:0 0 24px 0;color:#64748b;font-size:14px;line-height:1.6;">${english ? "Redirecting you to the research opportunity on the website..." : "جارٍ توجيهك إلى تفاصيل الفرصة البحثية على الموقع..."}</p>
     <a href="${escapeHtml(destination)}" style="display:inline-block;background:#0c3156;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 28px;border-radius:12px;font-size:14px;box-shadow:0 4px 12px rgba(12,49,86,0.25);">
        ${english ? "Register now" : "سجل الآن"}
@@ -476,7 +509,11 @@ router.get("/programs/:id/share", async (req, res) => {
 
 router.post("/programs", requireOwner, async (req, res) => {
   let hiddenFields: string[];
-  try { hiddenFields = validateHiddenFields(req.body?.hiddenFields ?? []); }
+  let includedServices: string[];
+  try {
+    hiddenFields = validateHiddenFields(req.body?.hiddenFields ?? [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS]);
+    includedServices = validateIncludedServices(req.body?.includedServices ?? []);
+  }
   catch (error) { res.status(400).json({ error: (error as Error).message }); return; }
   const researchGroupUrl = normalizeResearchGroupUrl(req.body?.researchGroupUrl);
   if (researchGroupUrl === null) {
@@ -495,8 +532,8 @@ router.post("/programs", requireOwner, async (req, res) => {
     return;
   }
   const programStatus = parsed.data.status || "open";
-  const priceOriginalSar = parsed.data.priceOriginalSar ?? 1500;
-  const priceDiscountedSar = parsed.data.priceDiscountedSar ?? 1000;
+  const priceOriginalSar = parsed.data.priceOriginalSar ?? 0;
+  const priceDiscountedSar = parsed.data.priceDiscountedSar ?? 0;
   if (!isProgramStatus(programStatus)) {
     res.status(400).json({ error: "حالة البحث غير معتمدة." });
     return;
@@ -513,9 +550,10 @@ router.post("/programs", requireOwner, async (req, res) => {
   const row = await db.transaction(async (tx: Pick<typeof db, "insert">) => {
     const [created] = await tx.insert(researchProgramsTable).values({ ...parsed.data, status: programStatus, priceOriginalSar, priceDiscountedSar }).returning();
     await saveOpportunityVisibility(tx, created.id, hiddenFields);
+    await saveOpportunityIncludedServices(tx, created.id, includedServices);
     return created;
   });
-  res.status(201).json(toClient(row, true, hiddenFields));
+  res.status(201).json(toClient(row, true, hiddenFields, includedServices));
 });
 
 router.post("/programs/import", requireOwner, async (req, res) => {
@@ -534,15 +572,19 @@ router.post("/programs/import", requireOwner, async (req, res) => {
   }
   const result = await importResearchOpportunities(rows);
   const specialtyOptions = await addImportedSpecialties(result.insertedSpecialties);
-  res.status(201).json({ ...result, inserted: result.inserted.map((row) => toClient(row, true)), specialtyOptions, received: req.body.rows.length });
+  res.status(201).json({ ...result, inserted: result.inserted.map((row) => toClient(row, true, [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS])), specialtyOptions, received: req.body.rows.length });
 });
 
 router.patch("/programs/:id", requireOwner, async (req, res) => {
   const id = Number(req.params["id"]);
   let hiddenFields: string[] | undefined;
+  let includedServices: string[] | undefined;
   try {
     if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "hiddenFields")) {
       hiddenFields = validateHiddenFields(req.body.hiddenFields);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "includedServices")) {
+      includedServices = validateIncludedServices(req.body.includedServices);
     }
   } catch (error) { res.status(400).json({ error: (error as Error).message }); return; }
   const researchGroupUrl = normalizeResearchGroupUrl(req.body?.researchGroupUrl);
@@ -588,10 +630,12 @@ router.patch("/programs/:id", requireOwner, async (req, res) => {
         .set({ ...parsed.data, ...seatOverride.value, totalSeats: 15, firstAuthorSeats: 1, coAuthorSeats: 14, updatedAt: new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1)) })
         .where(eq(researchProgramsTable.id, id)).returning();
       if (hiddenFields !== undefined) await saveOpportunityVisibility(tx, id, hiddenFields);
+      if (includedServices !== undefined) await saveOpportunityIncludedServices(tx, id, includedServices);
       return row;
     });
     const visibility = hiddenFields ?? (await getOpportunityVisibility([id])).get(id) ?? [];
-    res.json(toClient(row, true, visibility));
+    const services = includedServices ?? (await getOpportunityIncludedServices([id])).get(id) ?? [];
+    res.json(toClient(row, true, visibility, services));
   } catch (error) {
     if (error instanceof ProgramUpdateError) {
       res.status(error.status).json({ error: error.message, ...(error.fields?.length ? { fields: error.fields } : {}) });
@@ -664,7 +708,8 @@ router.post("/programs/batch-update", requireOwner, async (req, res) => {
     });
     const freshRows = await db.select().from(researchProgramsTable).orderBy(desc(researchProgramsTable.createdAt));
     const visibility = await getOpportunityVisibility(freshRows.map((row: typeof researchProgramsTable.$inferSelect) => row.id));
-    res.json({ success: true, affected, programs: freshRows.map((r) => toClient(r, true, visibility.get(r.id) ?? [])) });
+    const includedServices = await getOpportunityIncludedServices(freshRows.map((row: typeof researchProgramsTable.$inferSelect) => row.id));
+    res.json({ success: true, affected, programs: freshRows.map((r) => toClient(r, true, visibility.get(r.id) ?? [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS], includedServices.get(r.id) ?? [])) });
   } catch (error) {
     if (error instanceof ProgramUpdateError) {
       res.status(error.status).json({ error: error.message, ...(error.fields?.length ? { fields: error.fields } : {}) });
@@ -734,12 +779,12 @@ async function normalizeProgramPayload(source: Record<string, unknown>, mode: "c
       firstAuthorSeatsLeft: 1,
       coAuthorSeats: 14,
       coAuthorSeatsLeft: 14,
-      priceOriginalSar: numberOrDefault(source.priceOriginalSar, 1500),
-      priceDiscountedSar: numberOrDefault(source.priceDiscountedSar, 1000),
+      priceOriginalSar: numberOrDefault(source.priceOriginalSar, 0),
+      priceDiscountedSar: numberOrDefault(source.priceDiscountedSar, 0),
     });
   } else {
-    if ("priceOriginalSar" in source) result.priceOriginalSar = numberOrDefault(source.priceOriginalSar, 1500);
-    if ("priceDiscountedSar" in source) result.priceDiscountedSar = numberOrDefault(source.priceDiscountedSar, 1000);
+    if ("priceOriginalSar" in source) result.priceOriginalSar = numberOrDefault(source.priceOriginalSar, 0);
+    if ("priceDiscountedSar" in source) result.priceDiscountedSar = numberOrDefault(source.priceDiscountedSar, 0);
   }
 
   if (typeof imageToken === "string") {
@@ -804,7 +849,7 @@ async function getSeatsLeftOverride(value: unknown, current: typeof researchProg
 }
 
 function buildOpportunityPoster(program: typeof researchProgramsTable.$inferSelect, hiddenFields: string[] = []) {
-  const title = getEnglishOpportunityTitle(program);
+  const title = hiddenFields.includes("title") ? "Research Opportunity" : getEnglishOpportunityTitle(program);
   const specialty = program.specialtyAr || program.specialtyEn || "SRMA Research Academy";
   const titleLines = splitPosterText(title, 39, 3);
   const specialtyLines = splitPosterText(specialty, 30, 2);
@@ -848,7 +893,7 @@ function splitPosterText(value: string, maxLength: number, maxLines: number) {
 }
 
 function buildOpportunitySocialCardSvg(program: typeof researchProgramsTable.$inferSelect, hiddenFields: string[] = []) {
-  const title = getEnglishOpportunityTitle(program);
+  const title = hiddenFields.includes("title") ? "Research Opportunity" : getEnglishOpportunityTitle(program);
   const specialty = program.specialtyAr || program.specialtyEn || "أكاديمية SRMA للأبحاث";
   const journal = program.journalTarget || "Scopus / PubMed Q1 & Q2";
   const titleLines = splitPosterText(title, 44, 3);

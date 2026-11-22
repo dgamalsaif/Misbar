@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { X, CheckCircle2, Loader2, UserRound, Building2, MapPin, AtSign, ExternalLink, MessageCircle, Send, Mail, Share2, GraduationCap, AlertTriangle, ShieldCheck } from "lucide-react";
 import CountrySelector from "./CountrySelector";
 import OrcidConnectButton from "./OrcidConnectButton";
-import OpportunityPrice from "./OpportunityPrice";
+import { OpportunityFeeSummary } from "./OpportunityPrice";
 import { DEFAULT_SITE_CONTENT_SETTINGS, RegistrationFieldId, SiteContentSettings, buildForwardingUrl, ForwardingType, DEFAULT_ACADEMIC_DEGREE_SETTINGS, DEFAULT_RESEARCH_EXPERIENCE_SETTINGS, DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS, getOrderedRegistrationFields } from "@/lib/siteContentSettings";
 import { useLanguage } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api";
@@ -19,6 +19,8 @@ interface RegistrationModalProps {
   onRegistered?: () => void;
   priceOriginalSar?: number;
   priceDiscountedSar?: number;
+  includedServices?: string[];
+  showFeeDetails?: boolean;
 }
 
 const API_BASE = "/api";
@@ -35,6 +37,8 @@ export default function RegistrationModal({
   onRegistered,
   priceOriginalSar,
   priceDiscountedSar,
+  includedServices = [],
+  showFeeDetails = true,
 }: RegistrationModalProps) {
   const { language, localize } = useLanguage();
   const [form, setForm] = useState(initialForm);
@@ -313,7 +317,7 @@ export default function RegistrationModal({
                 </div>;
               }
               if (field.id === "country") {
-                return <CountrySelector key="country" country={form.country} onCountryChange={(country) => setForm((previous) => ({ ...previous, country }))} dialCode={form.dialCode} onDialCodeChange={(dialCode) => setForm((previous) => ({ ...previous, dialCode }))} id={coordinatorEntry ? "student-country" : "registration-country"} required={required("country")} />;
+                return <CountrySelector key="country" country={form.country} onCountryChange={(country) => setForm((previous) => ({ ...previous, country }))} dialCode={form.dialCode} onDialCodeChange={(dialCode) => setForm((previous) => ({ ...previous, dialCode }))} id={coordinatorEntry ? "student-country" : "registration-country"} required={required("country")} label={localizedField("country").label} />;
               }
               if (field.id === "orcid") {
                 return <div key="orcid">
@@ -332,11 +336,12 @@ export default function RegistrationModal({
               </div>;
             })}
 
-            {!coordinatorEntry && (priceDiscountedSar || priceOriginalSar) && (
+            {!coordinatorEntry && showFeeDetails && (
               <div className="rounded-xl overflow-hidden mb-2">
-                <OpportunityPrice
+                <OpportunityFeeSummary
                   originalSar={priceOriginalSar}
                   discountedSar={priceDiscountedSar}
+                  includedServices={includedServices}
                   compact
                 />
               </div>

@@ -18,6 +18,62 @@ interface OpportunityPriceProps {
   showDualEquiv?: boolean;
 }
 
+interface OpportunityFeeSummaryProps extends OpportunityPriceProps {
+  includedServices?: string[];
+}
+
+export function OpportunityFeeSummary({
+  originalSar,
+  discountedSar,
+  currency,
+  onCurrencyChange,
+  compact = false,
+  includedServices = [],
+}: OpportunityFeeSummaryProps) {
+  const { direction, localize } = useLanguage();
+  const hasAmount = (discountedSar ?? originalSar ?? 0) > 0 || (originalSar ?? 0) > 0;
+  const services = includedServices.map((service) => service.trim()).filter(Boolean);
+  return (
+    <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-start" dir={direction} data-testid="opportunity-fee-summary">
+      <h2 className="text-sm font-black text-[#0c3156]">
+        {hasAmount
+          ? localize("الاشتراك في هذه الفرصة البحثية مدفوع", "Participation in this research opportunity is paid")
+          : localize("لم يُحدد مبلغ الاشتراك لهذه الفرصة بعد", "The subscription amount has not been set for this opportunity")}
+      </h2>
+      {hasAmount && (
+        <div className="mt-3">
+          <OpportunityPrice
+            originalSar={originalSar}
+            discountedSar={discountedSar}
+            currency={currency}
+            onCurrencyChange={onCurrencyChange}
+            compact={compact}
+          />
+        </div>
+      )}
+      {services.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs font-black text-slate-800">{localize("الخدمات المشمولة في المبلغ", "Services included in the fee")}</p>
+          <ul className="mt-2 space-y-1.5">
+            {services.map((service, index) => (
+              <li key={`${service}-${index}`} className="flex items-start gap-2 text-xs leading-5 text-slate-700">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#117b59]" aria-hidden="true" />
+                <span>{service}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="mt-3 text-[11px] leading-5 text-slate-600">
+        {localize(
+          "الخدمات المذكورة فقط هي المعتمدة لهذه الفرصة. لا يُضمن قبول البحث أو نشره؛ وتُذكر رسوم المجلات صراحةً إذا كانت مشمولة.",
+          "Only the services listed here are included for this opportunity. Research acceptance or publication is not guaranteed; journal fees are included only when stated.",
+        )}
+      </p>
+    </section>
+  );
+}
+
 export default function OpportunityPrice({
   originalSar: providedOriginal,
   discountedSar: providedDiscounted,
@@ -39,7 +95,7 @@ export default function OpportunityPrice({
 
   const originalSar = providedOriginal ?? providedDiscounted;
   const discountedSar = providedDiscounted ?? providedOriginal;
-  if (originalSar === undefined || discountedSar === undefined) {
+  if (originalSar === undefined || discountedSar === undefined || (originalSar === 0 && discountedSar === 0)) {
     return <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">{localize("الرسوم غير محددة؛ تواصل مع الأكاديمية للاستفسار.", "Fees are not specified; contact the academy for details.")}</p>;
   }
   const discount = getDiscountPercentage(originalSar, discountedSar);

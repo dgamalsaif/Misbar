@@ -9,6 +9,10 @@ import { randomUUID } from "node:crypto";
 import { siteShareImageSource, siteShareImageVersion, validateSocialShareImageUrl } from "../lib/siteShareImage";
 import { validateExperienceSettings } from "../../../../lib/site-experience";
 import { getResearchImageBytes, resolveResearchImageUploadToken, ResearchImageStorageError, ResearchImageValidationError, uploadResearchImage } from "../lib/researchImageStorage";
+import { getManagedOwner } from "../middlewares/ownerAuth";
+import { db, researchProgramsTable } from "@workspace/db";
+import { getOpportunityVisibility } from "../lib/opportunityVisibility";
+import { validateAppIconMetadata } from "../lib/appIconValidation";
 
 const router = Router();
 
@@ -39,6 +43,38 @@ router.post("/site-brand-logo/upload", requireOwner, raw({ type: SITE_LOGO_IMAGE
   }
 });
 
+router.post("/site-app-icon/upload", requireOwner, raw({ type: SITE_LOGO_IMAGE_TYPES, limit: "10mb" }), async (req, res): Promise<void> => {
+  if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+    res.status(400).json({ error: "اختر أيقونة صالحة بصيغة PNG أو JPG أو WebP." });
+    return;
+  }
+  try {
+    let metadata: Awaited<ReturnType<ReturnType<typeof sharp>["metadata"]>>;
+    try {
+      metadata = await sharp(req.body, { limitInputPixels: 16_777_216 }).metadata();
+    } catch {
+      throw new ResearchImageValidationError("تعذر قراءة الصورة. اختر ملف PNG أو JPG أو WebP صالحاً.");
+    }
+    validateAppIconMetadata(metadata);
+    const upload = await uploadResearchImage({ data: req.body, contentType: req.get("content-type") || "" });
+    const objectPath = resolveResearchImageUploadToken(upload.imageToken);
+    const imageId = objectPath.split("/").at(-1);
+    if (!imageId) throw new ResearchImageValidationError("تعذر تجهيز رابط أيقونة التطبيق.");
+    res.status(201).json({ iconUrl: `/api/site-app-icon/${imageId}` });
+  } catch (error) {
+    if (error instanceof ResearchImageValidationError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    if (error instanceof ResearchImageStorageError) {
+      res.status(503).json({ error: error.message });
+      return;
+    }
+    req.log.error({ err: error }, "Failed to upload app icon");
+    res.status(500).json({ error: "تعذر رفع أيقونة التطبيق. لم يتم تأكيد الرفع؛ أعد المحاولة." });
+  }
+});
+
 router.get("/site-brand-logo/:imageId", async (req, res): Promise<void> => {
   const imageId = req.params.imageId;
   if (!/^[0-9a-f-]{36}$/i.test(imageId)) {
@@ -59,9 +95,49 @@ router.get("/site-brand-logo/:imageId", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/site-content-settings", async (_req, res): Promise<void> => {
+router.get("/site-app-icon/:imageId", async (req, res): Promise<void> => {
+  const imageId = req.params.imageId;
+  if (!/^[0-9a-f-]{36}$/i.test(imageId)) {
+    res.status(404).end();
+    return;
+  }
+  try {
+    const image = await getResearchImageBytes(`/objects/research-images/${imageId}`);
+    if (!image) {
+      res.status(404).end();
+      return;
+    }
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.type(image.contentType).send(image.data);
+  } catch {
+    res.status(404).end();
+  }
+});
+
+router.get("/site-content-settings", async (req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
-  res.json(await getSiteContentSettings());
+  const settings = await getSiteContentSettings();
+  if (!await getManagedOwner(req).catch(() => null)) {
+    try {
+      const programs: Array<typeof researchProgramsTable.$inferSelect> = await db.select().from(researchProgramsTable);
+      const publicPrograms = programs.filter((program) =>
+        ["active", "completed"].includes(program.category) && program.status !== "draft");
+      const visibility = await getOpportunityVisibility(publicPrograms.map((program) => program.id));
+      const visibleSpecialties = new Set(publicPrograms
+        .filter((program) => !(visibility.get(program.id) ?? []).includes("specialty"))
+        .flatMap((program) => [program.specialtyAr, program.specialtyEn])
+        .map((specialty) => specialty.trim().toLocaleLowerCase())
+        .filter(Boolean));
+      settings.specialtyOptions = settings.specialtyOptions.filter((option) =>
+        visibleSpecialties.has(option.nameAr.trim().toLocaleLowerCase()) ||
+        visibleSpecialties.has(option.nameEn.trim().toLocaleLowerCase()));
+    } catch (error) {
+      req.log.warn({ err: error }, "Could not safely filter public specialty options");
+      settings.specialtyOptions = [];
+    }
+  }
+  res.json(settings);
 });
 
 router.get("/site-share-metadata", async (_req, res): Promise<void> => {
@@ -103,6 +179,7 @@ router.post("/site-share-image/resolve-upload", requireOwner, (req, res): void =
 router.get("/pwa-manifest", async (_req, res): Promise<void> => {
   const { brand, experience } = await getSiteContentSettings();
   const name = `${brand.appNameAr || brand.siteNameAr || "مسبار"} | ${brand.appNameEn || brand.siteNameEn || "Misbar"}`;
+  const iconVersion = encodeURIComponent([brand.appIconUrl, brand.appIconDisplaySize, brand.appThemeColor].join("|"));
   res.setHeader("Cache-Control", "no-store, max-age=0");
   res.type("application/manifest+json").json({
     id: "/",
@@ -119,22 +196,22 @@ router.get("/pwa-manifest", async (_req, res): Promise<void> => {
     dir: "rtl",
     categories: ["education", "medical", "productivity"],
     icons: [
-      { src: "/api/pwa-icon/192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/api/pwa-icon/512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+      { src: `/api/pwa-icon/192.png?v=${iconVersion}`, sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: `/api/pwa-icon/512.png?v=${iconVersion}`, sizes: "512x512", type: "image/png", purpose: "any maskable" },
     ],
   });
 });
 
 router.get("/pwa-icon/:size.png", async (req, res): Promise<void> => {
   const size = Number(req.params.size);
-  if (size !== 192 && size !== 512) {
+  if (![32, 180, 192, 512].includes(size)) {
     res.status(404).end();
     return;
   }
   const { brand } = await getSiteContentSettings();
   const source = await loadPwaIconSource(brand.appIconUrl || "/misbar-logo.svg")
     .catch(() => loadPwaIconSource("/misbar-logo.svg"));
-  const inset = Math.round(size * 0.72);
+  const inset = Math.round(size * brand.appIconDisplaySize / 100);
   const logo = await sharp(source).resize(inset, inset, { fit: "contain" }).png().toBuffer();
   const output = await sharp({
     create: { width: size, height: size, channels: 4, background: brand.appThemeColor },
@@ -198,6 +275,15 @@ router.patch("/site-content-settings/opportunity-inquiry", requireOwner, async (
 export default router;
 
 async function loadPwaIconSource(iconUrl: string): Promise<Buffer> {
+  const assetPath = iconUrl.startsWith("/")
+    ? iconUrl
+    : new URL(iconUrl).pathname;
+  const uploadedIcon = assetPath.match(/^\/api\/site-(?:app-icon|brand-logo)\/([0-9a-f-]{36})$/i);
+  if (uploadedIcon) {
+    const image = await getResearchImageBytes(`/objects/research-images/${uploadedIcon[1]}`);
+    if (!image) throw new Error("Uploaded app icon is unavailable");
+    return image.data;
+  }
   if (iconUrl.startsWith("/")) {
     const publicRoots = [
       path.resolve(process.cwd(), "artifacts/rspf-academia/public"),
