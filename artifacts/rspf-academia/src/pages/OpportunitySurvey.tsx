@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { ResearchOpportunity } from "@/lib/researchData";
 import OpportunityRegistrationOverview from "@/components/OpportunityRegistrationOverview";
+import ParticipationInvoice from "@/components/ParticipationInvoice";
 import CountrySelector from "@/components/CountrySelector";
 import OrcidConnectButton from "@/components/OrcidConnectButton";
 import {
@@ -35,6 +36,7 @@ import { getRegistrationForwarding, loadLatestForwardingBrand } from "@/lib/regi
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 import { getEnglishOpportunityTitle, getOpportunityRegistrationPath, getOpportunitySharePath } from "@/lib/opportunityDisplay";
 import { normalizeOrcidId } from "@/lib/orcid";
+import { isFieldVisible } from "@/lib/opportunityVisibility";
 
 const API_BASE = "/api";
 
@@ -67,6 +69,11 @@ export default function OpportunitySurvey() {
   const [agreeFeesAndTasks, setAgreeFeesAndTasks] = useState<"agree" | "disagree" | "">("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [registrationReceipt, setRegistrationReceipt] = useState<{
+    id: number;
+    createdAt: string;
+    remainingSeats: number | null;
+  } | null>(null);
   const [error, setError] = useState("");
   const [forwardUrl, setForwardUrl] = useState("");
   const [forwardingUnavailable, setForwardingUnavailable] = useState(false);
@@ -238,6 +245,15 @@ export default function OpportunitySurvey() {
       if (!response.ok) {
         throw new Error(resData.error || localize("حدث خطأ أثناء حفظ التسجيل", "Failed to save registration"));
       }
+      setRegistrationReceipt(
+        typeof resData.id === "number"
+          ? {
+              id: resData.id,
+              createdAt: typeof resData.createdAt === "string" ? resData.createdAt : new Date().toISOString(),
+              remainingSeats: typeof resData.remainingSeats === "number" ? resData.remainingSeats : null,
+            }
+          : null,
+      );
 
       setResearchGroupUrl(resData.researchGroupUrl || selectedOpp.researchGroupUrl || "");
       const currentBrand = await loadLatestForwardingBrand();
@@ -263,7 +279,7 @@ export default function OpportunitySurvey() {
       setForwardUrl(fUrl);
       setForwardType(forwardingType);
       setDone(true);
-      if (fUrl && forwarding.autoRedirect && forwardingType !== "none") {
+      if (fUrl && forwarding.autoRedirect && forwardingType !== "none" && !contentSettings.invoiceSettings.enabled) {
         window.setTimeout(() => {
           if (forwardingType === "email") window.location.href = fUrl;
           else window.open(fUrl, "_blank", "noopener,noreferrer");
@@ -277,6 +293,9 @@ export default function OpportunitySurvey() {
   };
 
   const title = selectedOpp ? getEnglishOpportunityTitle(selectedOpp) : "";
+  const publicReceiptTitle = selectedOpp && isFieldVisible(selectedOpp, "title")
+    ? title
+    : localize("فرصة بحثية", "Research opportunity");
   const oppImageUrl = selectedOpp
     ? new URL(
         selectedOpp.imageUrl || `/api/programs/${selectedOpp.id}/image`,
@@ -355,10 +374,41 @@ export default function OpportunitySurvey() {
 
               <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-600">
                 {localize(
-                  `شكراً لك د. ${`${form.firstName} ${form.familyName}`.trim()}. تم تسجيل بياناتك في الفرصة البحثية (${title}).`,
-                  `Thank you Dr. ${`${form.firstName} ${form.familyName}`.trim()}. Your registration in (${title}) is confirmed.`
+                  `شكراً لك د. ${`${form.firstName} ${form.familyName}`.trim()}. تم تسجيل بياناتك في الفرصة البحثية (${publicReceiptTitle}).`,
+                  `Thank you Dr. ${`${form.firstName} ${form.familyName}`.trim()}. Your registration in (${publicReceiptTitle}) is confirmed.`
                 )}
               </p>
+
+              {contentSettings.invoiceSettings.enabled && registrationReceipt && (
+                <ParticipationInvoice
+                  registrationId={registrationReceipt.id}
+                  createdAt={registrationReceipt.createdAt}
+                  invoiceSettings={contentSettings.invoiceSettings}
+                  brand={contentSettings.brand}
+                  language={language}
+                  participant={{
+                    fullName: visible("fullName") ? `${form.firstName.trim()} ${form.familyName.trim()}`.trim() : "",
+                    email: visible("email") ? form.email.trim() : "",
+                    phone: visible("whatsapp") ? `${form.dialCode} ${form.whatsapp}`.trim() : "",
+                    country: visible("country") ? form.country : "",
+                    city: visible("city") ? form.city.trim() : "",
+                    affiliation: visible("affiliation") ? form.affiliation.trim() : "",
+                    specialization: visible("specialization") ? form.specialization.trim() : "",
+                  }}
+                  researchId={selectedOpp.id}
+                  researchTitle={publicReceiptTitle}
+                  showResearchReference={isFieldVisible(selectedOpp, "title")}
+                  showFeeDetails={isFieldVisible(selectedOpp, "price")}
+                  showSeatDetails={isFieldVisible(selectedOpp, "seats")}
+                  totalSeats={isFieldVisible(selectedOpp, "seats") ? selectedOpp.totalSeats : undefined}
+                  remainingSeats={isFieldVisible(selectedOpp, "seats") ? registrationReceipt.remainingSeats ?? undefined : undefined}
+                  targetJournal={isFieldVisible(selectedOpp, "journal") ? selectedOpp.journalTarget : ""}
+                  specialty={isFieldVisible(selectedOpp, "specialty") ? localize(selectedOpp.specialtyAr, selectedOpp.specialtyEn, selectedOpp.specialty) : ""}
+                  priceOriginalSar={selectedOpp.priceOriginalSar}
+                  priceDiscountedSar={selectedOpp.priceDiscountedSar}
+                  includedServices={isFieldVisible(selectedOpp, "price") ? selectedOpp.includedServices || [] : []}
+                />
+              )}
 
               <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-xs font-bold text-slate-700">
                 <p>{localize("دور التأليف المختار:", "Selected Author Role:")} <span className="font-black text-[#117b59]">{authorRole === "first_author" ? localize("الكاتب الأول (First Author)", "First Author") : localize("مؤلف مشارك (Co-Author)", "Co-Author")}</span></p>
