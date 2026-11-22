@@ -128,6 +128,8 @@ export default function InvoiceSettingsPanel({ settings, fallbackLogoUrl, onChan
         {textField("بادئة رقم الفاتورة", "numberPrefix", { placeholder: "MIS", maxLength: 24 })}
         {textField("وصف البند بالعربية", "itemDescriptionAr", { multiline: true, maxLength: 240 })}
         {textField("وصف البند بالإنجليزية", "itemDescriptionEn", { multiline: true, maxLength: 240 })}
+        {textField("بيان ملاءمة البحث بالعربية", "applicabilityNoteAr", { multiline: true, maxLength: 700 })}
+        {textField("بيان ملاءمة البحث بالإنجليزية", "applicabilityNoteEn", { multiline: true, maxLength: 700 })}
         {textField("ملاحظة أسفل الفاتورة بالعربية", "footerAr", { multiline: true, maxLength: 500 })}
         {textField("ملاحظة أسفل الفاتورة بالإنجليزية", "footerEn", { multiline: true, maxLength: 500 })}
       </div>

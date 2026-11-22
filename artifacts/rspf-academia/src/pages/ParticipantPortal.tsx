@@ -641,6 +641,10 @@ export default function ParticipantPortal() {
         includedServices={selectedResearch?.includedServices}
         showFeeDetails={selectedResearch ? isFieldVisible(selectedResearch, "price") : false}
         showResearchReference={selectedResearch ? isFieldVisible(selectedResearch, "title") : false}
+        showSeatDetails={selectedResearch ? isFieldVisible(selectedResearch, "seats") : false}
+        totalSeats={selectedResearch && isFieldVisible(selectedResearch, "seats") ? selectedResearch.totalSeats : undefined}
+        targetJournal={selectedResearch && isFieldVisible(selectedResearch, "journal") ? selectedResearch.journalTarget : ""}
+        specialty={selectedResearch && isFieldVisible(selectedResearch, "specialty") ? localize(selectedResearch.specialtyAr, selectedResearch.specialtyEn, selectedResearch.specialty) : ""}
         onRegistered={refreshOpportunities}
       />
     </div>

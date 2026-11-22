@@ -20,6 +20,11 @@ interface Props {
   researchTitle: string;
   showResearchReference: boolean;
   showFeeDetails: boolean;
+  showSeatDetails: boolean;
+  totalSeats?: number;
+  remainingSeats?: number;
+  targetJournal?: string;
+  specialty?: string;
   priceOriginalSar?: number;
   priceDiscountedSar?: number;
   includedServices: string[];
@@ -36,6 +41,11 @@ export default function ParticipationInvoice({
   researchTitle,
   showResearchReference,
   showFeeDetails,
+  showSeatDetails,
+  totalSeats,
+  remainingSeats,
+  targetJournal,
+  specialty,
   priceOriginalSar,
   priceDiscountedSar,
   includedServices,
@@ -47,6 +57,9 @@ export default function ParticipationInvoice({
   const original = Number.isFinite(priceOriginalSar) && (priceOriginalSar ?? 0) >= 0 ? priceOriginalSar : undefined;
   const discounted = Number.isFinite(priceDiscountedSar) && (priceDiscountedSar ?? 0) >= 0 ? priceDiscountedSar : undefined;
   const amountDue = showFeeDetails ? (discounted ?? original) : undefined;
+  const hasDiscount = showFeeDetails && original !== undefined && amountDue !== undefined && original > amountDue;
+  const discountValue = hasDiscount ? original - amountDue! : 0;
+  const discountPercent = hasDiscount ? Math.round((discountValue / original!) * 100) : 0;
   const issuerName = isEnglish
     ? invoiceSettings.issuerNameEn || brand.siteNameEn || "Misbar"
     : invoiceSettings.issuerNameAr || brand.siteNameAr || "مسبار";
@@ -128,26 +141,46 @@ export default function ParticipationInvoice({
       </div>
 
       <h3 className="mb-2 text-sm font-black text-slate-800">{isEnglish ? "Description" : "تفاصيل الفاتورة"}</h3>
-      <div className="overflow-hidden rounded-xl border border-slate-200">
+       <div className="overflow-hidden rounded-xl border border-slate-200">
         <div className="flex items-start justify-between gap-4 bg-slate-50 p-3 text-sm">
           <div className="min-w-0">
             <p className="font-bold text-slate-900">{isEnglish ? invoiceSettings.itemDescriptionEn : invoiceSettings.itemDescriptionAr}</p>
             <p className="mt-1 break-words text-xs text-slate-600">{opportunityLabel}</p>
+             {specialty && <p className="mt-1 break-words text-xs text-slate-600"><span className="font-bold">{isEnglish ? "Specialty: " : "التخصص: "}</span>{specialty}</p>}
+             {targetJournal && <p className="mt-1 break-words text-xs text-slate-600"><span className="font-bold">{isEnglish ? "Target journal: " : "المجلة المستهدفة: "}</span>{targetJournal}</p>}
             {showResearchReference && (
               <p className="mt-1 text-xs text-slate-500">
                 {isEnglish ? `Opportunity reference: ${researchId}` : `رقم الفرصة: ${researchId}`}
               </p>
             )}
+             {showSeatDetails && (typeof totalSeats === "number" || typeof remainingSeats === "number") && (
+               <p className="mt-2 rounded-lg bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700">
+                 {isEnglish ? "Available seats after registration: " : "المقاعد المتاحة بعد تسجيلك: "}
+                 {typeof remainingSeats === "number" && <bdi>{remainingSeats}</bdi>}
+                 {typeof remainingSeats === "number" && typeof totalSeats === "number" && " / "}
+                 {typeof totalSeats === "number" && <bdi>{totalSeats}</bdi>}
+               </p>
+             )}
             {includedServices.length > 0 && (
               <ul className="mt-2 list-inside list-disc text-xs leading-5 text-slate-600">
                 {includedServices.map((service, index) => <li key={`${index}-${service}`}>{service}</li>)}
               </ul>
             )}
           </div>
-          {amountDue !== undefined && (
-            <bdi className="shrink-0 font-black text-slate-900">{formatSar(amountDue)}</bdi>
-          )}
+          {amountDue !== undefined && <bdi className="shrink-0 font-black text-slate-900">{formatSar(amountDue)}</bdi>}
         </div>
+         {amountDue !== undefined && original !== undefined && (
+           <div className="grid gap-2 border-t border-slate-200 p-3 text-xs text-slate-600">
+             <p className="flex justify-between gap-3">
+               <span>{isEnglish ? "Original fee" : "الرسوم قبل الخصم"}</span>
+               <bdi className={hasDiscount ? "line-through" : "font-bold"}>{formatSar(original)}</bdi>
+             </p>
+             {hasDiscount && <p className="flex justify-between gap-3 font-bold text-emerald-800">
+               <span>{isEnglish ? `Discount (${discountPercent}%)` : `الخصم (${discountPercent}٪)`}</span>
+               <bdi>−{formatSar(discountValue)}</bdi>
+             </p>}
+           </div>
+         )}
         {amountDue !== undefined ? (
           <div className="flex justify-between gap-3 border-t border-slate-200 p-3 text-sm font-black text-slate-900">
             <span>{isEnglish ? "Amount due — unpaid" : "المبلغ المطلوب — غير مدفوع"}</span>
@@ -159,6 +192,12 @@ export default function ParticipationInvoice({
           </p>
         )}
       </div>
+
+       {(isEnglish ? invoiceSettings.applicabilityNoteEn : invoiceSettings.applicabilityNoteAr).trim() && (
+         <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+           {isEnglish ? invoiceSettings.applicabilityNoteEn : invoiceSettings.applicabilityNoteAr}
+         </p>
+       )}
 
       <div className="mt-5 flex min-h-24 items-end justify-between gap-4">
         <p className="max-w-[70%] whitespace-pre-line text-xs leading-5 text-slate-600">
@@ -178,10 +217,11 @@ export default function ParticipationInvoice({
         <button
           type="button"
           onClick={printInvoice}
+          data-testid="button-save-invoice-pdf"
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 py-3 text-sm font-black text-white hover:bg-emerald-900"
         >
           <FileDown size={17} />
-          {isEnglish ? "Save invoice as PDF" : "حفظ الفاتورة بصيغة PDF"}
+          {isEnglish ? "Print or save as PDF" : "طباعة أو حفظ الفاتورة PDF"}
         </button>
         <button
           type="button"

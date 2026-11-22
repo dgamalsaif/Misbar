@@ -197,6 +197,7 @@ export interface SiteContentSettings {
   feeAndTaskAgreementSettings: FeeAndTaskAgreementSettings;
   registrationFields: RegistrationFieldSetting[];
   invoiceSettings: InvoiceSettings;
+  watermarkSettings: WatermarkSettings;
   brand: BrandContactSettings;
   pages: Record<PublicPageId, PublicPageContent>;
   experience: ExperienceSettings;
@@ -224,10 +225,22 @@ export interface InvoiceSettings {
   numberPrefix: string;
   itemDescriptionAr: string;
   itemDescriptionEn: string;
+  applicabilityNoteAr: string;
+  applicabilityNoteEn: string;
   footerAr: string;
   footerEn: string;
   logoUrl: string;
   stampUrl: string;
+}
+
+export interface WatermarkSettings {
+  enabled: boolean;
+  textAr: string;
+  textEn: string;
+  color: string;
+  opacity: number;
+  fontSize: number;
+  angle: number;
 }
 
 export const CARD_PARTS = [
@@ -384,10 +397,21 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     numberPrefix: "MIS",
     itemDescriptionAr: "رسوم المشاركة في الفرصة البحثية",
     itemDescriptionEn: "Research opportunity participation fee",
+    applicabilityNoteAr: "قد تخدم هذه المشاركة ملف الترقية والبورد والإقامة المميزة وبدل التميز وبرامج الزمالة، وفق أنظمة الجهة المختصة؛ ولا يضمن هذا المستند القبول أو الترقية أو النشر.",
+    applicabilityNoteEn: "This participation may support academic promotion, board, premium residency, excellence allowance, and fellowship applications, subject to the relevant authority's rules. This document does not guarantee acceptance, promotion, or publication.",
     footerAr: "صدر هذا المستند عند تسجيلك. لم يُسدد المبلغ عبر الموقع.",
     footerEn: "Issued when you registered. No payment has been processed by this website.",
     logoUrl: "",
     stampUrl: "",
+  },
+  watermarkSettings: {
+    enabled: true,
+    textAr: "© مسبار",
+    textEn: "© MISBAR",
+    color: "#0c3156",
+    opacity: 0.1,
+    fontSize: 11,
+    angle: -20,
   },
   registrationFields: [
     { id: "fullName", label: "الاسم الكامل", labelEn: "Full name", placeholder: "د. أحمد محمد", placeholderEn: "Dr. Ahmed Mohammed", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#164f3a" },
@@ -583,6 +607,7 @@ export function normalizeSiteContentSettings(input: unknown): SiteContentSetting
     feeAndTaskAgreementSettings: raw.feeAndTaskAgreementSettings || D.feeAndTaskAgreementSettings,
     opportunityFilterVisibility: normalizeOpportunityFilterVisibility(raw.opportunityFilterVisibility),
     invoiceSettings: normalizeInvoiceSettings(raw.invoiceSettings),
+    watermarkSettings: normalizeWatermarkSettings(raw.watermarkSettings),
     brand,
     pages,
     experience: sanitizeExperienceSettings(raw.experience),
@@ -629,10 +654,37 @@ function normalizeInvoiceSettings(value: unknown): InvoiceSettings {
     numberPrefix: text("numberPrefix", 24).replace(/[^A-Za-z0-9_-]/g, "") || defaults.numberPrefix,
     itemDescriptionAr: text("itemDescriptionAr", 240),
     itemDescriptionEn: text("itemDescriptionEn", 240),
+    applicabilityNoteAr: text("applicabilityNoteAr", 700),
+    applicabilityNoteEn: text("applicabilityNoteEn", 700),
     footerAr: text("footerAr", 500),
     footerEn: text("footerEn", 500),
     logoUrl: asset(input.logoUrl),
     stampUrl: asset(input.stampUrl),
+  };
+}
+
+function normalizeWatermarkSettings(value: unknown): WatermarkSettings {
+  const input = value && typeof value === "object" && !Array.isArray(value)
+    ? value as Partial<WatermarkSettings>
+    : {};
+  const defaults = DEFAULT_SITE_CONTENT_SETTINGS.watermarkSettings;
+  const text = (key: "textAr" | "textEn") => typeof input[key] === "string"
+    ? input[key]!.trim().slice(0, 80)
+    : defaults[key];
+  return {
+    enabled: typeof input.enabled === "boolean" ? input.enabled : defaults.enabled,
+    textAr: text("textAr"),
+    textEn: text("textEn"),
+    color: typeof input.color === "string" && /^#[0-9a-fA-F]{6}$/.test(input.color) ? input.color : defaults.color,
+    opacity: typeof input.opacity === "number" && Number.isFinite(input.opacity)
+      ? Math.min(0.3, Math.max(0.03, input.opacity))
+      : defaults.opacity,
+    fontSize: typeof input.fontSize === "number" && Number.isFinite(input.fontSize)
+      ? Math.round(Math.min(28, Math.max(8, input.fontSize)))
+      : defaults.fontSize,
+    angle: typeof input.angle === "number" && Number.isFinite(input.angle)
+      ? Math.round(Math.min(45, Math.max(-45, input.angle)))
+      : defaults.angle,
   };
 }
 
