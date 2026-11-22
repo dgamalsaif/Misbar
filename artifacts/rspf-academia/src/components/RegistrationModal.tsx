@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, CheckCircle2, Loader2, UserRound, Building2, MapPin, AtSign, ExternalLink, MessageCircle, Send, Mail, Share2, GraduationCap, AlertTriangle, ShieldCheck } from "lucide-react";
 import CountrySelector from "./CountrySelector";
+import OrcidConnectButton from "./OrcidConnectButton";
 import OpportunityPrice from "./OpportunityPrice";
 import { DEFAULT_SITE_CONTENT_SETTINGS, RegistrationFieldId, SiteContentSettings, buildForwardingUrl, ForwardingType, DEFAULT_ACADEMIC_DEGREE_SETTINGS, DEFAULT_RESEARCH_EXPERIENCE_SETTINGS, DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS, getOrderedRegistrationFields } from "@/lib/siteContentSettings";
 import { useLanguage } from "@/lib/i18n";
@@ -316,8 +317,9 @@ export default function RegistrationModal({
               }
               if (field.id === "orcid") {
                 return <div key="orcid">
-                  <label className="mb-1.5 block text-right text-sm font-semibold text-slate-700">{localizedField("orcid").label} {required("orcid") && <span className="text-rose-500">*</span>}</label>
-                  <input data-testid="input-orcid" required={required("orcid")} type="text" placeholder={localizedField("orcid").placeholder} value={form.orcid} onChange={(e) => setForm({ ...form, orcid: e.target.value })} dir="ltr" className="w-full rounded-xl border px-4 py-3 text-left text-sm outline-none" style={{ borderColor: `${setting.color}55` }} />
+                  <label htmlFor="input-orcid" className="mb-1.5 block text-right text-sm font-semibold text-slate-700">{localizedField("orcid").label} {required("orcid") && <span className="text-rose-500">*</span>}</label>
+                  <input id="input-orcid" data-testid="input-orcid" required={required("orcid")} type="text" placeholder={localizedField("orcid").placeholder} value={form.orcid} onChange={(e) => setForm({ ...form, orcid: e.target.value })} dir="ltr" className="w-full rounded-xl border px-4 py-3 text-left text-sm outline-none" style={{ borderColor: `${setting.color}55` }} />
+                  <OrcidConnectButton onLinked={(orcid) => setForm((previous) => ({ ...previous, orcid }))} />
                 </div>;
               }
               const Icon = fieldIcon(field.id);

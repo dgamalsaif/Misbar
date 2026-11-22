@@ -7,6 +7,7 @@ import paymentsRouter from "./payments";
 import coordinatorPortalSettingsRouter from "./coordinatorPortalSettings";
 import siteContentSettingsRouter from "./siteContentSettings";
 import adminRouter from "./admin";
+import orcidRouter from "./orcid";
 import { COOKIE_NAME, getStaffSession, readSession } from "../middlewares/coordinatorAuth";
 import { isAllowedCoordinatorMutation } from "../lib/coordinatorPermissions";
 
@@ -36,5 +37,6 @@ router.use(paymentsRouter);
 router.use(coordinatorPortalSettingsRouter);
 router.use(siteContentSettingsRouter);
 router.use(adminRouter);
+router.use(orcidRouter);
 
 export default router;
