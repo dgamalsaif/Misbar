@@ -216,7 +216,7 @@ const t = (ar: string, en: string): BiText => ({ ar, en });
 const nav = (route: LinkableRouteId, ar: string, en: string, highlight = false, visible = true): NavItem => ({ route, label: t(ar, en), visible, highlight });
 
 export const THEME_PRESET_VALUES: Record<Exclude<ThemePreset, "custom">, Pick<ThemeSettings, "primary" | "gold" | "ink" | "background" | "surface">> = {
-  misbar: { primary: "#065634", gold: "#d4af37", ink: "#18352b", background: "#f3f5ef", surface: "#fffdf8" },
+  misbar: { primary: "#164f3a", gold: "#b68b42", ink: "#27382f", background: "#f1f3eb", surface: "#fbfaf5" },
   oasis: { primary: "#0f6b55", gold: "#b8892a", ink: "#102620", background: "#eef4ee", surface: "#fbfdf9" },
   sandstone: { primary: "#2f5d3a", gold: "#a8742a", ink: "#2a2117", background: "#f4ede0", surface: "#fffaf0" },
   nightClinic: { primary: "#0e3d36", gold: "#d2a744", ink: "#0f1c1a", background: "#e9ece6", surface: "#fafbf6" },
@@ -227,6 +227,13 @@ const LEGACY_MISBAR_THEME_VALUES = {
   ink: "#14231f",
   background: "#f3f1e7",
   surface: "#fffdf6",
+};
+const PREVIOUS_MISBAR_THEME_VALUES = {
+  primary: "#065634",
+  gold: "#d4af37",
+  ink: "#18352b",
+  background: "#f3f5ef",
+  surface: "#fffdf8",
 };
 
 const chrome = (ar: string, en: string): PageChrome => ({ eyebrow: t(ar, en), showEyebrow: true });
@@ -767,7 +774,8 @@ function parse(input: unknown, strict: boolean): ExperienceSettings {
   const legacySandstone = THEME_PRESET_VALUES.sandstone;
   const migrateDefaultPalette =
     (requestedThemePreset === "sandstone" && matchesPalette(legacySandstone)) ||
-    (requestedThemePreset === "misbar" && matchesPalette(LEGACY_MISBAR_THEME_VALUES));
+    (requestedThemePreset === "misbar" &&
+      (matchesPalette(LEGACY_MISBAR_THEME_VALUES) || matchesPalette(PREVIOUS_MISBAR_THEME_VALUES)));
   const theme: ThemeSettings = {
     preset: migrateDefaultPalette ? "misbar" : requestedThemePreset,
     primary: migrateDefaultPalette ? THEME_PRESET_VALUES.misbar.primary : color(s, th.primary, D.theme.primary, "theme.primary"),

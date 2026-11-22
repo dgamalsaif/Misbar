@@ -94,3 +94,54 @@ test("PWA icon URLs change when the uploaded icon or display treatment changes",
     original,
   );
 });
+
+test("legacy default colors migrate to the refreshed palette while custom colors stay intact", () => {
+  const legacyTheme = {
+    ...DEFAULT_SITE_CONTENT_SETTINGS.experience,
+    theme: {
+      ...DEFAULT_SITE_CONTENT_SETTINGS.experience.theme,
+      preset: "misbar" as const,
+      primary: "#065634",
+      gold: "#d4af37",
+      ink: "#18352b",
+      background: "#f3f5ef",
+      surface: "#fffdf8",
+    },
+  };
+  const refreshed = normalizeSiteContentSettings({
+    primaryColor: "#065634",
+    accentColor: "#d4af37",
+    cardBackgroundColor: "#ffffff",
+    experience: legacyTheme,
+  });
+
+  assert.equal(refreshed.primaryColor, "#164f3a");
+  assert.equal(refreshed.accentColor, "#b68b42");
+  assert.equal(refreshed.cardBackgroundColor, "#fbfaf5");
+  assert.equal(refreshed.experience.theme.primary, "#164f3a");
+  assert.equal(refreshed.experience.theme.gold, "#b68b42");
+
+  const custom = normalizeSiteContentSettings({
+    primaryColor: "#1c6491",
+    accentColor: "#cb4772",
+    cardBackgroundColor: "#f1efff",
+    experience: {
+      ...legacyTheme,
+      theme: {
+        ...legacyTheme.theme,
+        preset: "custom",
+        primary: "#1c6491",
+        gold: "#cb4772",
+        ink: "#253449",
+        background: "#f1efff",
+        surface: "#ffffff",
+      },
+    },
+  });
+
+  assert.equal(custom.primaryColor, "#1c6491");
+  assert.equal(custom.accentColor, "#cb4772");
+  assert.equal(custom.cardBackgroundColor, "#f1efff");
+  assert.equal(custom.experience.theme.primary, "#1c6491");
+  assert.equal(custom.experience.theme.gold, "#cb4772");
+});

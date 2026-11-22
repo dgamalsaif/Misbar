@@ -44,9 +44,31 @@ const universityAsset = (name: string) => {
 
 const universityInitials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").slice(0, 3);
 
+const journalInitials = (name: string) => name
+  .replace(/[()]/g, "")
+  .split(/[\s&-]+/)
+  .filter((part) => part && !/^(the|of|in|for|journal|medical)$/i.test(part))
+  .slice(0, 2)
+  .map((part) => part[0])
+  .join("")
+  .toUpperCase();
+
 const journalAsset = (id: string) => {
-  const available = new Set(["eur-heart-j", "frontiers-med", "jama", "nejm", "pediatrics-j", "plos-one"]);
-  return available.has(id) ? `${affiliationAssetRoot}journal-${id}.png` : "";
+  const localMarks: Record<string, string> = {
+    "eur-heart-j": "journal-eur-heart-j.png",
+    "frontiers-med": "journal-frontiers-med.png",
+    jama: "journal-jama.png",
+    nejm: "journal-nejm.png",
+    "pediatrics-j": "journal-pediatrics-j.png",
+    "plos-one": "journal-plos-one.png",
+    lancet: "journal-marks/lancet.svg",
+    bmj: "journal-marks/bmj.svg",
+    "annals-surgery": "journal-marks/annals-surgery.svg",
+    "lancet-oncology": "journal-marks/lancet-oncology.svg",
+    "neurology-j": "journal-marks/neurology.svg",
+    cureus: "journal-marks/cureus.svg",
+  };
+  return localMarks[id] ? `${affiliationAssetRoot}${localMarks[id]}` : "";
 };
 
 function usePrograms() {
@@ -262,7 +284,7 @@ export default function Home() {
               >
                 <div className="m-home-journal-cover" aria-hidden="true">
                   <span className="m-home-journal-cover-number">MISBAR / {String((i % journalOptions.length) + 1).padStart(2, "0")}</span>
-                  {mark ? <img className="m-home-journal-mark" src={mark} alt="" loading="lazy" /> : <span className="m-home-journal-wordmark">{journal.nameEn || name}</span>}
+                  {mark ? <img className="m-home-journal-mark" src={mark} alt="" loading="eager" /> : <span className="m-home-journal-custom-mark" aria-hidden="true">{journalInitials(journal.nameEn || name)}</span>}
                   <span className="m-home-journal-cover-name" dir="ltr">{journal.nameEn || name}</span>
                 </div>
                 <div className="m-home-journal-card-copy">
