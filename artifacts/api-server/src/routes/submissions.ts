@@ -4,6 +4,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { sendServiceRequestEmail } from "../lib/mailer";
 import { type StaffSession, requireCoordinator, requireOwner } from "../middlewares/coordinatorAuth";
 import { getSiteContentSettings } from "../lib/siteContentSettings";
+import { normalizeOrcidId } from "../lib/orcidOAuth";
 import { ensureProgramCapacityModel, PROGRAM_CAPACITY_LOCK_NAMESPACE, type DatabaseTransaction } from "../lib/programCapacity";
 import { insertCompatibleRegistration, normalizeRegistrationAnswers } from "../lib/registrationCompatibility";
 import { SEAT_MARKER, SeatAllocationError, seatChange, cleanRegistrationFields } from "../lib/registrationSeats";
@@ -23,6 +24,12 @@ async function createRegistration(req: Request, res: Response, coordinatorId: nu
     req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {},
   );
   const valueOf = (fieldId: string) => typeof source[fieldId] === "string" ? source[fieldId].trim() : "";
+  const rawOrcid = valueOf("orcid");
+  const normalizedOrcid = rawOrcid ? normalizeOrcidId(rawOrcid) : null;
+  if (rawOrcid && !normalizedOrcid) {
+    res.status(400).json({ error: "يرجى إدخال معرّف ORCID صحيح بصيغة 0000-0000-0000-0000." });
+    return;
+  }
 
   for (const field of settings.registrationFields) {
     const visible = audience === "participant" ? field.showParticipant : field.showCoordinator;
@@ -87,7 +94,7 @@ async function createRegistration(req: Request, res: Response, coordinatorId: nu
     affiliation: valueOf("affiliation"),
     country: valueOf("country") || "المملكة العربية السعودية",
     city: valueOf("city"),
-    orcid: valueOf("orcid"),
+    orcid: normalizedOrcid || "",
     academicDegree,
     hasResearchExperience,
     researchExperienceDetails,
@@ -245,6 +252,14 @@ router.patch("/registrations/:id", requireOwner, async (req, res) => {
   const updates = Object.fromEntries(editableKeys
     .filter((key) => key in source)
     .map((key) => [key, key === "customFields" ? source[key] : typeof source[key] === "string" ? source[key].trim() : source[key]]));
+  if (typeof updates.orcid === "string" && updates.orcid) {
+    const normalizedOrcid = normalizeOrcidId(updates.orcid);
+    if (!normalizedOrcid) {
+      res.status(400).json({ error: "يرجى إدخال معرّف ORCID صحيح بصيغة 0000-0000-0000-0000." });
+      return;
+    }
+    updates.orcid = normalizedOrcid;
+  }
   const parsed = insertRegistrationSchema.partial().safeParse(updates);
   if (!parsed.success) {
     res.status(400).json({ error: "بيانات الطالب غير صحيحة", details: parsed.error.issues });

@@ -43,6 +43,7 @@ test("signed ORCID state is bound to the browser callback and expires", () => {
 
 test("ORCID identifiers are normalized and malformed values are rejected", () => {
   assert.equal(normalizeOrcidId("https://orcid.org/0000-0002-1825-0097"), "0000-0002-1825-0097");
-  assert.equal(normalizeOrcidId("000000021825009X"), "0000-0002-1825-009X");
+  assert.equal(normalizeOrcidId("000000000000001X"), "0000-0000-0000-001X");
+  assert.equal(normalizeOrcidId("0000-0002-1825-0098"), null);
   assert.equal(normalizeOrcidId("not-an-orcid"), null);
 });

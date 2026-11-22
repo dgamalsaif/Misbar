@@ -7,6 +7,7 @@ import { DEFAULT_SITE_CONTENT_SETTINGS, RegistrationFieldId, SiteContentSettings
 import { useLanguage } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api";
 import { getRegistrationForwarding, loadLatestForwardingBrand } from "@/lib/registrationForwarding";
+import { normalizeOrcidId } from "@/lib/orcid";
 
 interface RegistrationModalProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ interface RegistrationModalProps {
 }
 
 const API_BASE = "/api";
-const initialForm = { fullName: "", specialization: "", email: "", whatsapp: "", affiliation: "", country: "المملكة العربية السعودية", dialCode: "+966", city: "", orcid: "" };
+const initialForm = { firstName: "", familyName: "", specialization: "", email: "", whatsapp: "", affiliation: "", country: "المملكة العربية السعودية", dialCode: "+966", city: "", orcid: "" };
 
 export default function RegistrationModal({
   isOpen,
@@ -118,6 +119,11 @@ export default function RegistrationModal({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+    const normalizedOrcid = form.orcid.trim() ? normalizeOrcidId(form.orcid) : "";
+    if (form.orcid.trim() && !normalizedOrcid) {
+      setError(localize("معرّف ORCID غير صحيح. تحقق من الرقم بصيغة 0000-0000-0000-0000.", "Enter a valid ORCID iD in the format 0000-0000-0000-0000."));
+      return;
+    }
 
     // Validate mandatory fee & task agreement
     if (audience === "participant" && agreementSettings.enabled && agreementSettings.required) {
@@ -147,8 +153,12 @@ export default function RegistrationModal({
 
     setLoading(true);
     try {
+      const { firstName, familyName, ...registrationFields } = form;
+      const fullName = `${firstName.trim()} ${familyName.trim()}`.trim();
       const payload = {
-        ...form,
+        ...registrationFields,
+        fullName,
+        orcid: normalizedOrcid || "",
         whatsapp: visible("whatsapp") ? `${form.dialCode} ${form.whatsapp}`.trim() : "",
         academicDegree: degreeSettings.enabled ? academicDegree : "",
         hasResearchExperience: expSettings.enabled ? hasResearchExp : "",
@@ -198,7 +208,7 @@ export default function RegistrationModal({
         type: fType,
         target: fTarget,
         customMessage: fMsg,
-        studentName: form.fullName,
+        studentName: fullName,
         specialization: form.specialization,
         researchTitle,
         email: form.email,
@@ -303,7 +313,7 @@ export default function RegistrationModal({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 px-6 py-6">
             {coordinatorEntry && <div className="rounded-xl border border-[#d8eee7] bg-[#f3fbf8] px-4 py-3 text-right text-sm leading-6 text-[#28634f]">{localizedSetting(contentSettings.coordinatorFormDescription, contentSettings.coordinatorFormDescriptionEn, "Enter the student's details exactly as they appear in their academic documents.")}</div>}
-            {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-right text-sm text-red-700">⚠️ {error}</div>}
+            {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-right text-sm text-red-700">{error}</div>}
             {/* Registration fields rendered in the order configured from the admin page */}
             {orderedFields.filter((field) => visible(field.id)).map((field) => {
               const setting = fieldSetting(field.id);
@@ -319,10 +329,23 @@ export default function RegistrationModal({
               if (field.id === "country") {
                 return <CountrySelector key="country" country={form.country} onCountryChange={(country) => setForm((previous) => ({ ...previous, country }))} dialCode={form.dialCode} onDialCodeChange={(dialCode) => setForm((previous) => ({ ...previous, dialCode }))} id={coordinatorEntry ? "student-country" : "registration-country"} required={required("country")} label={localizedField("country").label} />;
               }
+              if (field.id === "fullName") {
+                return <div key="fullName" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="registration-modal-first-name" className="mb-1.5 block text-right text-sm font-semibold text-slate-700">{localize("الاسم الأول", "First name")} {required("fullName") && <span className="text-rose-500">*</span>}</label>
+                    <input id="registration-modal-first-name" data-testid="input-first-name" required={required("fullName")} type="text" autoComplete="given-name" placeholder={localize("أحمد", "Ahmed")} value={form.firstName} onChange={(event) => setForm({ ...form, firstName: event.target.value })} className="w-full rounded-xl border px-4 py-3 text-sm outline-none" style={{ borderColor: `${setting.color}55` }} />
+                  </div>
+                  <div>
+                    <label htmlFor="registration-modal-family-name" className="mb-1.5 block text-right text-sm font-semibold text-slate-700">{localize("اسم العائلة", "Family name")} {required("fullName") && <span className="text-rose-500">*</span>}</label>
+                    <input id="registration-modal-family-name" data-testid="input-family-name" required={required("fullName")} type="text" autoComplete="family-name" placeholder={localize("محمد", "Mohammed")} value={form.familyName} onChange={(event) => setForm({ ...form, familyName: event.target.value })} className="w-full rounded-xl border px-4 py-3 text-sm outline-none" style={{ borderColor: `${setting.color}55` }} />
+                  </div>
+                </div>;
+              }
               if (field.id === "orcid") {
                 return <div key="orcid">
                   <label htmlFor="input-orcid" className="mb-1.5 block text-right text-sm font-semibold text-slate-700">{localizedField("orcid").label} {required("orcid") && <span className="text-rose-500">*</span>}</label>
                   <input id="input-orcid" data-testid="input-orcid" required={required("orcid")} type="text" placeholder={localizedField("orcid").placeholder} value={form.orcid} onChange={(e) => setForm({ ...form, orcid: e.target.value })} dir="ltr" className="w-full rounded-xl border px-4 py-3 text-left text-sm outline-none" style={{ borderColor: `${setting.color}55` }} />
+                  <p className="mt-1.5 text-right text-xs leading-5 text-slate-500">{localize("ORCID اختصار لمعرّف الباحث والمساهم المفتوح؛ وهو رقم دائم يميّز الباحث ويربطه بأعماله العلمية.", "ORCID stands for Open Researcher and Contributor ID. It is a persistent identifier that distinguishes researchers and connects their scholarly work.")}</p>
                   <OrcidConnectButton onLinked={(orcid) => setForm((previous) => ({ ...previous, orcid }))} />
                 </div>;
               }
@@ -333,6 +356,7 @@ export default function RegistrationModal({
                   {Icon && <Icon size={16} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: setting.color }} />}
                   <input data-testid={`input-${field.id}`} required={required(field.id)} type={setting.type} placeholder={localizedField(field.id).placeholder} value={form[field.id]} onChange={(e) => setForm({ ...form, [field.id]: e.target.value })} dir={field.id === "email" ? "ltr" : undefined} className="w-full rounded-xl border py-3 pr-10 pl-4 text-right text-sm outline-none transition focus:ring-2" style={{ borderColor: `${setting.color}55` }} />
                 </div>
+                {field.id === "affiliation" && <p className="mt-1.5 text-right text-xs leading-5 text-slate-500">{localize("جهة الانتساب: الجامعة أو المستشفى أو المؤسسة التي تعمل أو تدرس فيها.", "Your affiliation: the university, hospital, or organization where you work or study.")}</p>}
               </div>;
             })}
 
