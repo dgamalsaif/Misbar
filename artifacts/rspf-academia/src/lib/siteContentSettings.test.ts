@@ -174,3 +174,23 @@ test("participant opportunity filter visibility is configurable and defaults on"
     { searchBySpecialty: false, country: true, seats: true, deadline: true, price: false },
   );
 });
+
+test("invoice settings default to unpaid and only accept safe image URLs", () => {
+  assert.equal(DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings.enabled, true);
+  assert.match(DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings.titleAr, /غير مدفوعة/);
+  const normalized = normalizeSiteContentSettings({
+    invoiceSettings: {
+      enabled: false,
+      titleAr: "فاتورة مشاركة",
+      numberPrefix: "M!isbar 2026",
+      logoUrl: "javascript:alert(1)",
+      stampUrl: "/api/site-brand-logo/11111111-1111-4111-8111-111111111111",
+    },
+  });
+
+  assert.equal(normalized.invoiceSettings.enabled, false);
+  assert.equal(normalized.invoiceSettings.titleAr, "فاتورة مشاركة");
+  assert.equal(normalized.invoiceSettings.numberPrefix, "Misbar2026");
+  assert.equal(normalized.invoiceSettings.logoUrl, "");
+  assert.equal(normalized.invoiceSettings.stampUrl, "/api/site-brand-logo/11111111-1111-4111-8111-111111111111");
+});

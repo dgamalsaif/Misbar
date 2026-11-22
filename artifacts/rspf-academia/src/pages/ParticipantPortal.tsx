@@ -640,6 +640,7 @@ export default function ParticipantPortal() {
         priceDiscountedSar={selectedResearch?.priceDiscountedSar}
         includedServices={selectedResearch?.includedServices}
         showFeeDetails={selectedResearch ? isFieldVisible(selectedResearch, "price") : false}
+        showResearchReference={selectedResearch ? isFieldVisible(selectedResearch, "title") : false}
         onRegistered={refreshOpportunities}
       />
     </div>

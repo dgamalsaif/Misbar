@@ -1586,3 +1586,43 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
   .m-home-journal-mark { width: 2rem; height: 2rem; }
   .m-home-journal-custom-mark { width: 2rem; height: 2rem; }
 }
+
+@page {
+  size: A4;
+  margin: 14mm;
+}
+
+@media print {
+  body.invoice-printing::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  body.invoice-printing * {
+    visibility: hidden !important;
+  }
+
+  body.invoice-printing .invoice-print-root,
+  body.invoice-printing .invoice-print-root * {
+    visibility: visible !important;
+  }
+
+  body.invoice-printing .invoice-print-root {
+    position: fixed !important;
+    inset: 0 auto auto 0 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+  }
+
+  body.invoice-printing .invoice-screen-actions {
+    display: none !important;
+  }
+}
