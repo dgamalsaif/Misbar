@@ -78,3 +78,24 @@ test("country and WhatsApp fields stay enabled and required after loading saved 
   assert.equal(fields.city.placeholder, "الرياض");
   assert.equal(fields.city.placeholderEn, "Riyadh");
 });
+
+test("invoice settings persist as unpaid and reject unsafe image links", () => {
+  assert.equal(DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings.enabled, true);
+  assert.match(DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings.titleAr, /غير مدفوعة/);
+  const saved = sanitizeSiteContentSettings({
+    invoiceSettings: {
+      enabled: false,
+      titleAr: "فاتورة المشاركة",
+      numberPrefix: "MI!SBAR 2026",
+      logoUrl: "javascript:alert(1)",
+      stampUrl: "/api/site-brand-logo/11111111-1111-4111-8111-111111111111",
+    },
+  });
+  const loaded = sanitizeSiteContentSettings(JSON.parse(JSON.stringify(saved)));
+
+  assert.equal(loaded.invoiceSettings.enabled, false);
+  assert.equal(loaded.invoiceSettings.titleAr, "فاتورة المشاركة");
+  assert.equal(loaded.invoiceSettings.numberPrefix, "MISBAR2026");
+  assert.equal(loaded.invoiceSettings.logoUrl, "");
+  assert.equal(loaded.invoiceSettings.stampUrl, "/api/site-brand-logo/11111111-1111-4111-8111-111111111111");
+});

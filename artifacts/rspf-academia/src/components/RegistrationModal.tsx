@@ -3,7 +3,8 @@ import { X, CheckCircle2, Loader2, UserRound, Building2, MapPin, AtSign, Externa
 import CountrySelector from "./CountrySelector";
 import OrcidConnectButton from "./OrcidConnectButton";
 import { OpportunityFeeSummary } from "./OpportunityPrice";
-import { DEFAULT_SITE_CONTENT_SETTINGS, RegistrationFieldId, SiteContentSettings, buildForwardingUrl, ForwardingType, DEFAULT_ACADEMIC_DEGREE_SETTINGS, DEFAULT_RESEARCH_EXPERIENCE_SETTINGS, DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS, getOrderedRegistrationFields } from "@/lib/siteContentSettings";
+import ParticipationInvoice from "./ParticipationInvoice";
+import { DEFAULT_SITE_CONTENT_SETTINGS, RegistrationFieldId, SiteContentSettings, buildForwardingUrl, ForwardingType, DEFAULT_ACADEMIC_DEGREE_SETTINGS, DEFAULT_RESEARCH_EXPERIENCE_SETTINGS, DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS, getOrderedRegistrationFields, normalizeSiteContentSettings } from "@/lib/siteContentSettings";
 import { useLanguage } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api";
 import { getRegistrationForwarding, loadLatestForwardingBrand } from "@/lib/registrationForwarding";
@@ -22,6 +23,7 @@ interface RegistrationModalProps {
   priceDiscountedSar?: number;
   includedServices?: string[];
   showFeeDetails?: boolean;
+  showResearchReference?: boolean;
 }
 
 const API_BASE = "/api";
@@ -40,6 +42,7 @@ export default function RegistrationModal({
   priceDiscountedSar,
   includedServices = [],
   showFeeDetails = true,
+  showResearchReference = true,
 }: RegistrationModalProps) {
   const { language, localize } = useLanguage();
   const [form, setForm] = useState(initialForm);
@@ -51,6 +54,8 @@ export default function RegistrationModal({
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [remainingSeats, setRemainingSeats] = useState<number | null>(null);
+  const [registrationId, setRegistrationId] = useState<number | null>(null);
+  const [registrationCreatedAt, setRegistrationCreatedAt] = useState("");
   const [error, setError] = useState("");
   const [researchGroupUrl, setResearchGroupUrl] = useState("");
   const [forwardUrl, setForwardUrl] = useState("");
@@ -92,7 +97,7 @@ export default function RegistrationModal({
     if (!isOpen) return;
     apiFetch("/api/site-content-settings")
       .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((settings: SiteContentSettings) => setContentSettings(settings))
+      .then((settings: SiteContentSettings) => setContentSettings(normalizeSiteContentSettings(settings)))
       .catch(() => setContentSettings(DEFAULT_SITE_CONTENT_SETTINGS));
   }, [isOpen]);
 
@@ -110,6 +115,8 @@ export default function RegistrationModal({
     setAgreeFeesAndTasks("");
     setDone(false);
     setRemainingSeats(null);
+    setRegistrationId(null);
+    setRegistrationCreatedAt("");
     setError("");
     setResearchGroupUrl("");
     setLoading(false);
@@ -177,9 +184,17 @@ export default function RegistrationModal({
       const response = await fetch(coordinatorEntry ? `${API_BASE}/coordinator/registrations` : `${API_BASE}/registrations`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
-      const result = await response.json().catch(() => ({})) as { error?: string; researchGroupUrl?: string | null; remainingSeats?: number };
+      const result = await response.json().catch(() => ({})) as {
+        error?: string;
+        researchGroupUrl?: string | null;
+        remainingSeats?: number;
+        id?: number;
+        createdAt?: string;
+      };
       if (!response.ok) throw new Error(submitError(result.error));
       setRemainingSeats(typeof result.remainingSeats === "number" ? result.remainingSeats : null);
+      setRegistrationId(typeof result.id === "number" ? result.id : null);
+      setRegistrationCreatedAt(typeof result.createdAt === "string" ? result.createdAt : new Date().toISOString());
 
       // Resolve specialty group link or research group link
       const specialtyMatch = contentSettings.specialtyOptions.find((opt) =>
@@ -224,7 +239,8 @@ export default function RegistrationModal({
       setDone(true);
       onRegistered?.();
 
-      if (generatedUrl && fAuto && fType !== "none") {
+      // Keep the successful-registration screen open while the participant can save their invoice.
+      if (generatedUrl && fAuto && fType !== "none" && (coordinatorEntry || !contentSettings.invoiceSettings.enabled)) {
         window.setTimeout(() => {
           try {
             if (fType === "email") {
@@ -274,6 +290,32 @@ export default function RegistrationModal({
             {remainingSeats !== null && <p className="mt-2 font-bold text-[#117b59]">{localize("المقاعد المتبقية بعد تسجيلك", "Seats remaining after your registration")}: {remainingSeats}</p>}
             {forwardingUnavailable && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{localize("تم حفظ تسجيلك، لكن تعذّر تحميل بيانات التواصل الحالية. حدّث الصفحة للاطلاع عليها؛ لا تعِد التسجيل.", "Your registration is saved, but current contact details could not be loaded. Refresh to view them; do not register again.")}</p>}
             <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-slate-500">{coordinatorEntry ? localize("تمت إضافة بيانات الطالب إلى لوحة التسجيلات بنجاح.", "The student's details have been added to the registrations dashboard.") : localize(`تم حفظ بياناتك وسيتم التواصل معك من فريق ${contentSettings.brand.siteNameAr} قريباً.`, `Your details have been saved and the ${contentSettings.brand.siteNameEn} team will contact you soon.`)}</p>
+
+            {!coordinatorEntry && contentSettings.invoiceSettings.enabled && registrationId !== null && (
+              <ParticipationInvoice
+                registrationId={registrationId}
+                createdAt={registrationCreatedAt}
+                invoiceSettings={contentSettings.invoiceSettings}
+                brand={contentSettings.brand}
+                language={language}
+                participant={{
+                  fullName: visible("fullName") ? `${form.firstName.trim()} ${form.familyName.trim()}`.trim() : "",
+                  email: visible("email") ? form.email : "",
+                  phone: visible("whatsapp") ? `${form.dialCode} ${form.whatsapp}`.trim() : "",
+                  country: visible("country") ? form.country : "",
+                  city: visible("city") ? form.city : "",
+                  affiliation: visible("affiliation") ? form.affiliation : "",
+                  specialization: visible("specialization") ? form.specialization : "",
+                }}
+                researchId={researchId}
+                researchTitle={researchTitle}
+                showResearchReference={showResearchReference}
+                showFeeDetails={showFeeDetails}
+                priceOriginalSar={priceOriginalSar}
+                priceDiscountedSar={priceDiscountedSar}
+                includedServices={showFeeDetails ? includedServices : []}
+              />
+            )}
 
             {forwardUrl && forwardType !== "none" && (
               <a

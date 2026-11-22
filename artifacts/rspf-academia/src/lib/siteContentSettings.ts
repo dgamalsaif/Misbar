@@ -196,6 +196,7 @@ export interface SiteContentSettings {
   researchExperienceSettings: ResearchExperienceSettings;
   feeAndTaskAgreementSettings: FeeAndTaskAgreementSettings;
   registrationFields: RegistrationFieldSetting[];
+  invoiceSettings: InvoiceSettings;
   brand: BrandContactSettings;
   pages: Record<PublicPageId, PublicPageContent>;
   experience: ExperienceSettings;
@@ -207,6 +208,26 @@ export interface OpportunityFilterVisibility {
   seats: boolean;
   deadline: boolean;
   price: boolean;
+}
+
+export interface InvoiceSettings {
+  enabled: boolean;
+  titleAr: string;
+  titleEn: string;
+  issuerNameAr: string;
+  issuerNameEn: string;
+  addressAr: string;
+  addressEn: string;
+  taxNumber: string;
+  phone: string;
+  email: string;
+  numberPrefix: string;
+  itemDescriptionAr: string;
+  itemDescriptionEn: string;
+  footerAr: string;
+  footerEn: string;
+  logoUrl: string;
+  stampUrl: string;
 }
 
 export const CARD_PARTS = [
@@ -349,6 +370,25 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
   academicDegreeSettings: { ...DEFAULT_ACADEMIC_DEGREE_SETTINGS },
   researchExperienceSettings: { ...DEFAULT_RESEARCH_EXPERIENCE_SETTINGS },
   feeAndTaskAgreementSettings: { ...DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS },
+  invoiceSettings: {
+    enabled: true,
+    titleAr: "فاتورة مشاركة غير مدفوعة",
+    titleEn: "Participation invoice — unpaid",
+    issuerNameAr: "",
+    issuerNameEn: "",
+    addressAr: "",
+    addressEn: "",
+    taxNumber: "",
+    phone: "",
+    email: "",
+    numberPrefix: "MIS",
+    itemDescriptionAr: "رسوم المشاركة في الفرصة البحثية",
+    itemDescriptionEn: "Research opportunity participation fee",
+    footerAr: "صدر هذا المستند عند تسجيلك. لم يُسدد المبلغ عبر الموقع.",
+    footerEn: "Issued when you registered. No payment has been processed by this website.",
+    logoUrl: "",
+    stampUrl: "",
+  },
   registrationFields: [
     { id: "fullName", label: "الاسم الكامل", labelEn: "Full name", placeholder: "د. أحمد محمد", placeholderEn: "Dr. Ahmed Mohammed", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#164f3a" },
     { id: "specialization", label: "التخصص الدقيق", labelEn: "Specialization", placeholder: "مثال: طب القلب", placeholderEn: "e.g., Cardiology", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#164f3a" },
@@ -542,6 +582,7 @@ export function normalizeSiteContentSettings(input: unknown): SiteContentSetting
     researchExperienceSettings: raw.researchExperienceSettings || D.researchExperienceSettings,
     feeAndTaskAgreementSettings: raw.feeAndTaskAgreementSettings || D.feeAndTaskAgreementSettings,
     opportunityFilterVisibility: normalizeOpportunityFilterVisibility(raw.opportunityFilterVisibility),
+    invoiceSettings: normalizeInvoiceSettings(raw.invoiceSettings),
     brand,
     pages,
     experience: sanitizeExperienceSettings(raw.experience),
@@ -559,6 +600,39 @@ function normalizeOpportunityFilterVisibility(value: unknown): OpportunityFilter
     seats: typeof input.seats === "boolean" ? input.seats : defaults.seats,
     deadline: typeof input.deadline === "boolean" ? input.deadline : defaults.deadline,
     price: typeof input.price === "boolean" ? input.price : defaults.price,
+  };
+}
+
+function normalizeInvoiceSettings(value: unknown): InvoiceSettings {
+  const input = value && typeof value === "object" && !Array.isArray(value)
+    ? value as Partial<InvoiceSettings>
+    : {};
+  const defaults = DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings;
+  const text = (key: keyof InvoiceSettings, limit: number) => typeof input[key] === "string"
+    ? (input[key] as string).trim().slice(0, limit)
+    : defaults[key] as string;
+  const asset = (value: unknown) => typeof value === "string" &&
+    (/^https:\/\//i.test(value.trim()) || /^\/api\/site-brand-logo\/[0-9a-f-]{36}$/i.test(value.trim()))
+    ? value.trim().slice(0, 1000)
+    : "";
+  return {
+    enabled: typeof input.enabled === "boolean" ? input.enabled : defaults.enabled,
+    titleAr: text("titleAr", 120),
+    titleEn: text("titleEn", 120),
+    issuerNameAr: text("issuerNameAr", 160),
+    issuerNameEn: text("issuerNameEn", 160),
+    addressAr: text("addressAr", 300),
+    addressEn: text("addressEn", 300),
+    taxNumber: text("taxNumber", 80),
+    phone: text("phone", 80),
+    email: text("email", 160),
+    numberPrefix: text("numberPrefix", 24).replace(/[^A-Za-z0-9_-]/g, "") || defaults.numberPrefix,
+    itemDescriptionAr: text("itemDescriptionAr", 240),
+    itemDescriptionEn: text("itemDescriptionEn", 240),
+    footerAr: text("footerAr", 500),
+    footerEn: text("footerEn", 500),
+    logoUrl: asset(input.logoUrl),
+    stampUrl: asset(input.stampUrl),
   };
 }
 

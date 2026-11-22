@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp, Eye, EyeOff, Palette, Save, SlidersHorizontal, 
 import { useState, useRef, useId } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import SiteShareImageSettings from "@/components/SiteShareImageSettings";
+import InvoiceSettingsPanel from "@/components/InvoiceSettingsPanel";
 import { buildOpportunityInquiryLinks, getSelectedInquiryChannels, getInquiryOwnTarget } from "@/lib/siteContentSettings";
 import { CARD_PARTS, OPPORTUNITY_FIELDS, OpportunityDisplayMode, OpportunityFieldId, RegistrationFieldSetting, SiteContentSettings, SpecialtyOption, JournalOption, PublicPageId, BrandContactSettings, PublicPageContent, SOCIAL_ICON_OPTIONS, SocialIconId, FloatingIconPosition, ForwardingType, OpportunityInquiryChannel, ContactUsType, AcademicDegreeOption, DEFAULT_ACADEMIC_DEGREE_SETTINGS, DEFAULT_RESEARCH_EXPERIENCE_SETTINGS, DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS } from "@/lib/siteContentSettings";
 import ExperienceControlPanel from "@/components/ExperienceControlPanel";
@@ -38,6 +39,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
   const [appIconUploadMessage, setAppIconUploadMessage] = useState("");
   const [appIconPreviewError, setAppIconPreviewError] = useState(false);
   const appIconFileInput = useRef<HTMLInputElement>(null);
+  const [invoiceAssetsUploading, setInvoiceAssetsUploading] = useState(false);
   const update = <K extends keyof SiteContentSettings>(key: K, value: SiteContentSettings[K]) => {
     const next: SiteContentSettings = { ...latestSettings.current, [key]: value };
     if (key === "primaryColor" && typeof value === "string") {
@@ -270,13 +272,22 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
         </div>
         <div className="flex items-center gap-3">
           {message && <p role="status" aria-live="polite" data-testid="text-content-settings-message" className={`text-sm font-bold ${message.includes("نجاح") ? "text-[#117b59]" : "text-rose-600"}`}>{message}</p>}
-          <button type="button" onClick={onSave} disabled={saving || shareImageBusy || logoUploading || appIconUploading} data-testid="button-save-content-settings" className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#117b59] px-5 py-3 font-black text-white shadow-sm transition hover:bg-[#0c6549] disabled:opacity-60">
+          <button type="button" onClick={onSave} disabled={saving || shareImageBusy || logoUploading || appIconUploading || invoiceAssetsUploading} data-testid="button-save-content-settings" className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#117b59] px-5 py-3 font-black text-white shadow-sm transition hover:bg-[#0c6549] disabled:opacity-60">
             <Save size={17} />{saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}
           </button>
         </div>
       </div>
 
       <ExperienceControlPanel settings={settings} onChange={onChange} />
+
+      <Panel title="إعدادات الفاتورة" icon={FileText}>
+        <InvoiceSettingsPanel
+          settings={settings.invoiceSettings}
+          fallbackLogoUrl={settings.brand.logoUrl}
+          onChange={(invoiceSettings) => update("invoiceSettings", invoiceSettings)}
+          onBusyChange={setInvoiceAssetsUploading}
+        />
+      </Panel>
 
       <div className="grid gap-6 xl:grid-cols-12">
         <div className="space-y-6 xl:col-span-8">
@@ -2086,7 +2097,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
 }
 
 function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Palette; children: React.ReactNode }) {
-  const [open, setOpen] = useState(title.includes("هوية") || title === "إظهار تفاصيل جميع الفرص البحثية" || title === "فلاتر بوابة المشارك");
+  const [open, setOpen] = useState(title.includes("هوية") || title.includes("الفاتورة") || title === "إظهار تفاصيل جميع الفرص البحثية" || title === "فلاتر بوابة المشارك");
   return (
     <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 outline-none transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 sm:px-5 [&::-webkit-details-marker]:hidden">
