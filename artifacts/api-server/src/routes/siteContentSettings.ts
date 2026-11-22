@@ -12,7 +12,7 @@ import { getResearchImageBytes, resolveResearchImageUploadToken, ResearchImageSt
 import { getManagedOwner } from "../middlewares/ownerAuth";
 import { db, researchProgramsTable } from "@workspace/db";
 import { getOpportunityVisibility } from "../lib/opportunityVisibility";
-import { validateAppIconMetadata } from "../lib/appIconValidation";
+import { validateAppIconImageBytes, validateAppIconMetadata, validateAppIconUrl } from "../lib/appIconValidation";
 
 const router = Router();
 
@@ -236,6 +236,13 @@ router.put("/site-content-settings", requireOwner, async (req, res): Promise<voi
     const current = await getSiteContentSettings();
     settings = sanitizeSiteContentSettings({ ...current, ...req.body });
     const brandInput = req.body?.brand || {};
+    if (brandInput.appIconUrl !== undefined) {
+      const iconUrl = validateAppIconUrl(brandInput.appIconUrl);
+      if (iconUrl !== current.brand.appIconUrl) {
+        await validateAppIconAvailability(iconUrl);
+      }
+      settings.brand.appIconUrl = iconUrl;
+    }
     if (brandInput.socialShareImageUrl !== undefined) {
       settings.brand.socialShareImageUrl = validateSocialShareImageUrl(brandInput.socialShareImageUrl);
       if (settings.brand.socialShareImageUrl.startsWith("/objects/")) {
@@ -275,9 +282,8 @@ router.patch("/site-content-settings/opportunity-inquiry", requireOwner, async (
 export default router;
 
 async function loadPwaIconSource(iconUrl: string): Promise<Buffer> {
-  const assetPath = iconUrl.startsWith("/")
-    ? iconUrl
-    : new URL(iconUrl).pathname;
+  const parsedUrl = new URL(iconUrl, "https://srmaacademy.com");
+  const assetPath = parsedUrl.pathname;
   const uploadedIcon = assetPath.match(/^\/api\/site-(?:app-icon|brand-logo)\/([0-9a-f-]{36})$/i);
   if (uploadedIcon) {
     const image = await getResearchImageBytes(`/objects/research-images/${uploadedIcon[1]}`);
@@ -290,7 +296,7 @@ async function loadPwaIconSource(iconUrl: string): Promise<Buffer> {
       path.resolve(process.cwd(), "../rspf-academia/public"),
     ];
     for (const publicRoot of publicRoots) {
-      const filePath = path.resolve(publicRoot, `.${iconUrl}`);
+      const filePath = path.resolve(publicRoot, `.${assetPath}`);
       if (!filePath.startsWith(`${publicRoot}${path.sep}`)) continue;
       try {
         return await readFile(filePath);
@@ -300,11 +306,44 @@ async function loadPwaIconSource(iconUrl: string): Promise<Buffer> {
     }
     throw new Error("App icon file is unavailable");
   }
-  const response = await fetch(iconUrl, { signal: AbortSignal.timeout(8000) });
+  const hostname = parsedUrl.hostname.toLowerCase();
+  if (
+    parsedUrl.protocol !== "https:" ||
+    !["srmaacademy.com", "www.srmaacademy.com"].includes(hostname) ||
+    parsedUrl.username ||
+    parsedUrl.password
+  ) {
+    throw new Error("App icon URL is not allowed");
+  }
+  const response = await fetch(parsedUrl, {
+    signal: AbortSignal.timeout(8000),
+    redirect: "error",
+  });
   if (!response.ok) throw new Error("Could not load app icon");
   const length = Number(response.headers.get("content-length") || 0);
   if (length > 5_000_000) throw new Error("App icon is too large");
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length > 5_000_000) throw new Error("App icon is too large");
-  return bytes;
+  if (!response.body) throw new Error("App icon response has no body");
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > 5_000_000) {
+      await reader.cancel();
+      throw new Error("App icon is too large");
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks, total);
+}
+
+async function validateAppIconAvailability(iconUrl: string): Promise<void> {
+  try {
+    const bytes = await loadPwaIconSource(iconUrl);
+    await validateAppIconImageBytes(bytes);
+  } catch {
+    throw new Error("تعذر تحميل صورة أيقونة التطبيق أو أن الرابط لا يعرض صورة صالحة. صحح الرابط أو ارفع صورة صالحة.");
+  }
 }
