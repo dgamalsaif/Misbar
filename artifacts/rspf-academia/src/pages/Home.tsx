@@ -76,19 +76,43 @@ function usePrograms() {
   const [nonce, setNonce] = useState(0);
   useEffect(() => {
     let alive = true;
-    setState({ status: "loading" });
-    fetch("/api/programs", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((data: unknown) => {
-        if (!alive) return;
-        const list = Array.isArray(data) ? (data as ResearchOpportunity[]) : [];
+    let requestInFlight = false;
+    const refresh = async (showLoading = false) => {
+      if (requestInFlight) return;
+      requestInFlight = true;
+      if (showLoading) setState({ status: "loading" });
+      try {
+        const response = await fetch("/api/programs", { cache: "no-store" });
+        if (!response.ok) throw new Error(`Unable to load opportunities (${response.status})`);
+        const data: unknown = await response.json();
+        if (!Array.isArray(data)) throw new Error("Unexpected opportunities response");
+        const list = data as ResearchOpportunity[];
         const open = list
           .filter((p) => p.status === "open" && (p.category || "active") === "active")
           .sort((a, b) => (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999));
-        setState({ status: "ready", items: open });
-      })
-      .catch(() => alive && setState({ status: "error" }));
-    return () => { alive = false; };
+        if (alive) setState({ status: "ready", items: open });
+      } catch {
+        if (alive) {
+          setState((current) => current.status === "ready" ? current : { status: "error" });
+        }
+      } finally {
+        requestInFlight = false;
+      }
+    };
+    const refreshWhenVisible = () => {
+      if (!document.hidden) void refresh();
+    };
+
+    void refresh(true);
+    const timer = window.setInterval(refreshWhenVisible, 10000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [nonce]);
   return { state, retry: () => setNonce((n) => n + 1) };
 }
