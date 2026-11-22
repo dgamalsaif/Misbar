@@ -41,3 +41,24 @@ test("app icon dimensions persist within the supported display range", () => {
   assert.equal(sanitizeSiteContentSettings({ brand: { appIconDisplaySize: 200 } }).brand.appIconDisplaySize, 100);
   assert.equal(sanitizeSiteContentSettings({ brand: { appIconDisplaySize: 12 } }).brand.appIconDisplaySize, 30);
 });
+
+test("country and WhatsApp fields stay enabled and required after loading saved settings", () => {
+  const savedFields = DEFAULT_SITE_CONTENT_SETTINGS.registrationFields.map((field) =>
+    field.id === "country" || field.id === "whatsapp"
+      ? { ...field, showParticipant: false, showCoordinator: false, requiredParticipant: false, requiredCoordinator: false }
+      : field.id === "city"
+        ? { ...field, placeholder: "ضع مفتاح الدولة هنا", placeholderEn: "County Code" }
+        : field
+  );
+  const loaded = sanitizeSiteContentSettings({ registrationFields: savedFields });
+  const fields = Object.fromEntries(loaded.registrationFields.map((field) => [field.id, field]));
+
+  for (const id of ["country", "whatsapp"] as const) {
+    assert.equal(fields[id].showParticipant, true);
+    assert.equal(fields[id].showCoordinator, true);
+    assert.equal(fields[id].requiredParticipant, true);
+    assert.equal(fields[id].requiredCoordinator, true);
+  }
+  assert.equal(fields.city.placeholder, "الرياض");
+  assert.equal(fields.city.placeholderEn, "Riyadh");
+});

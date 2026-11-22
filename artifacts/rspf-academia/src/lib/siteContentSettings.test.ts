@@ -15,12 +15,34 @@ test("registration fields follow the admin-configured order and missing defaults
 
   assert.equal(ordered[0].id, "affiliation");
   assert.equal(ordered[1].id, "fullName");
-  assert.equal(ordered[2].id, "city");
+  const contactStart = ordered.findIndex((field) => field.id === "country");
+  assert.deepEqual(ordered.slice(contactStart, contactStart + 3).map((field) => field.id), ["country", "city", "whatsapp"]);
   // every default field still renders exactly once
   assert.equal(ordered.length, defaults.length);
   for (const field of defaults) {
     assert.equal(ordered.filter((f) => f.id === field.id).length, 1);
   }
+});
+
+test("country and WhatsApp stay visible and required for both audiences", () => {
+  const configured = DEFAULT_SITE_CONTENT_SETTINGS.registrationFields.map((field) =>
+    field.id === "country" || field.id === "whatsapp"
+      ? { ...field, showParticipant: false, showCoordinator: false, requiredParticipant: false, requiredCoordinator: false }
+      : field.id === "city"
+        ? { ...field, placeholder: "ضع مفتاح الدولة هنا", placeholderEn: "County Code" }
+        : field
+  );
+  const settings = normalizeSiteContentSettings({ registrationFields: configured });
+  const fields = Object.fromEntries(settings.registrationFields.map((field) => [field.id, field]));
+
+  for (const id of ["country", "whatsapp"] as const) {
+    assert.equal(fields[id].showParticipant, true);
+    assert.equal(fields[id].showCoordinator, true);
+    assert.equal(fields[id].requiredParticipant, true);
+    assert.equal(fields[id].requiredCoordinator, true);
+  }
+  assert.equal(fields.city.placeholder, "الرياض");
+  assert.equal(fields.city.placeholderEn, "Riyadh");
 });
 
 test("unknown saved field ids are dropped and empty settings fall back to defaults", () => {
@@ -33,10 +55,13 @@ test("unknown saved field ids are dropped and empty settings fall back to defaul
   });
 
   assert.equal(ordered.filter((f) => f.id === "legacy").length, 0);
+  const defaultOrder = getOrderedRegistrationFields(null);
   assert.deepEqual(
-    getOrderedRegistrationFields(null).map((f) => f.id),
-    DEFAULT_SITE_CONTENT_SETTINGS.registrationFields.map((f) => f.id),
+    defaultOrder.map((f) => f.id).sort(),
+    DEFAULT_SITE_CONTENT_SETTINGS.registrationFields.map((f) => f.id).sort(),
   );
+  const contactStart = defaultOrder.findIndex((field) => field.id === "country");
+  assert.deepEqual(defaultOrder.slice(contactStart, contactStart + 3).map((field) => field.id), ["country", "city", "whatsapp"]);
 });
 
 test("app icon size is saved independently and produces versioned PWA icon URLs", () => {

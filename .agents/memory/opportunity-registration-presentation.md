@@ -32,3 +32,9 @@ Inquiry-button customization must be independent of opportunity sharing and othe
 **Why:** the user requested changes to “المعلومات الخاصة بالتواصل فقط وليست كل” and explicitly said the opportunity link works.
 
 **How to apply:** preserve opportunity links and announcements. Do not sync inquiry edits into separate contact-channel settings or save unrelated site-wide drafts when saving inquiry preferences.
+
+Participant and coordinator forms must show a country dropdown before the city and WhatsApp fields. Choosing a country updates the visible WhatsApp calling-code prefix; applicants enter only the remaining phone number. Never use the city field to collect a country or calling code.
+
+**Why:** the user reported that production showed only the city field and explicitly requested country selection and automatic WhatsApp calling-code updates for both audiences.
+
+**How to apply:** keep country and WhatsApp required and visible for participants and coordinators, normalize legacy saved settings that hide them, and retain city as a separate location field.

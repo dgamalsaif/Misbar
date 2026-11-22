@@ -338,7 +338,7 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
     { id: "specialization", label: "التخصص الدقيق", labelEn: "Specialization", placeholder: "مثال: طب القلب", placeholderEn: "e.g., Cardiology", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
     { id: "email", label: "البريد الإلكتروني", labelEn: "Email address", placeholder: "doctor@example.com", placeholderEn: "doctor@example.com", type: "email", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
     { id: "affiliation", label: "جهة الانتساب", labelEn: "Affiliation", placeholder: "الجامعة أو المستشفى", placeholderEn: "University or hospital", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
-    { id: "whatsapp", label: "رقم واتساب", labelEn: "WhatsApp number", placeholder: "5X XXX XXXX", placeholderEn: "5X XXX XXXX", type: "tel", requiredParticipant: true, requiredCoordinator: false, showParticipant: true, showCoordinator: false, color: "#25D366" },
+    { id: "whatsapp", label: "رقم واتساب", labelEn: "WhatsApp number", placeholder: "5X XXX XXXX", placeholderEn: "5X XXX XXXX", type: "tel", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#25D366" },
     { id: "city", label: "المدينة", labelEn: "City", placeholder: "الرياض", placeholderEn: "Riyadh", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
     { id: "orcid", label: "ORCID", labelEn: "ORCID", placeholder: "0000-0000-0000-0000", placeholderEn: "0000-0000-0000-0000", type: "text", requiredParticipant: false, requiredCoordinator: false, showParticipant: true, showCoordinator: true, color: "#64748b" },
     { id: "country", label: "الدولة", labelEn: "Country", placeholder: "", placeholderEn: "", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
@@ -416,7 +416,30 @@ export function getOrderedRegistrationFields(
   for (const fallback of defaults) {
     if (!byId.has(fallback.id)) byId.set(fallback.id, fallback);
   }
-  return [...byId.values()];
+  const fields = [...byId.values()].map((field) => {
+    if (field.id === "country" || field.id === "whatsapp") {
+      return {
+        ...field,
+        requiredParticipant: true,
+        requiredCoordinator: true,
+        showParticipant: true,
+        showCoordinator: true,
+      };
+    }
+    if (field.id === "city" && /country code|county code|مفتاح الدولة|رمز الدولة/i.test(`${field.placeholder} ${field.placeholderEn}`)) {
+      const defaultsForCity = defaults.find((item) => item.id === "city")!;
+      return { ...field, placeholder: defaultsForCity.placeholder, placeholderEn: defaultsForCity.placeholderEn };
+    }
+    return field;
+  });
+
+  const contactFieldIds: RegistrationFieldId[] = ["country", "city", "whatsapp"];
+  const firstContactIndex = fields.findIndex((field) => contactFieldIds.includes(field.id));
+  const contactFields = contactFieldIds.map((id) => fields.find((field) => field.id === id)!);
+  const remainingFields = fields.filter((field) => !contactFieldIds.includes(field.id));
+  const insertAt = fields.slice(0, firstContactIndex).filter((field) => !contactFieldIds.includes(field.id)).length;
+  remainingFields.splice(insertAt, 0, ...contactFields);
+  return remainingFields;
 }
 
 /** Exact legacy brand values that are migrated to Misbar on read. Anything else is a custom value and is preserved. */
@@ -469,6 +492,7 @@ export function normalizeSiteContentSettings(input: unknown): SiteContentSetting
   return {
     ...D,
     ...raw,
+    registrationFields: getOrderedRegistrationFields({ registrationFields: raw.registrationFields ?? [] }),
     academicDegreeSettings: raw.academicDegreeSettings || D.academicDegreeSettings,
     researchExperienceSettings: raw.researchExperienceSettings || D.researchExperienceSettings,
     feeAndTaskAgreementSettings: raw.feeAndTaskAgreementSettings || D.feeAndTaskAgreementSettings,

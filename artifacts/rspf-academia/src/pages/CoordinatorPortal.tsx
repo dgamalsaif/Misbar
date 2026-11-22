@@ -566,28 +566,32 @@ function CoordinatorRequestModal({ onClose }: CoordinatorRequestModalProps) {
                   </div>
                 </div>
               ))}
-              <div>
-                <label htmlFor="coordinator-phone" className="mb-1.5 block text-right text-sm font-semibold text-[#263447]">{isEnglish ? "WhatsApp number" : "رقم واتساب"}</label>
-                <div className="relative">
-                  <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    id="coordinator-phone"
-                    data-testid="input-coordinator-phone"
-                    required type="tel" placeholder="5X XXX XXXX" value={form.phone}
-                    onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                    dir="ltr"
-                    className="w-full rounded-xl border border-slate-200 py-3 pr-10 pl-4 text-left text-sm outline-none transition focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/15"
-                  />
-                </div>
-              </div>
               <CountrySelector
                 country={form.country}
                 onCountryChange={(country) => setForm((previous) => ({ ...previous, country }))}
                 dialCode={form.dialCode}
                 onDialCodeChange={(dialCode) => setForm((previous) => ({ ...previous, dialCode }))}
                 id="coordinator"
+                compact
                 required
               />
+              <div>
+                <label htmlFor="coordinator-phone" className="mb-1.5 block text-right text-sm font-semibold text-[#263447]">{isEnglish ? "WhatsApp number" : "رقم واتساب"}</label>
+                <div className="flex gap-2" dir="ltr">
+                  <span aria-label={isEnglish ? "Selected country calling code" : "مفتاح الدولة المختارة"} className="flex min-w-16 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-[#117b59]">{form.dialCode}</span>
+                  <div className="relative min-w-0 flex-1">
+                    <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      id="coordinator-phone"
+                      data-testid="input-coordinator-phone"
+                      required type="tel" placeholder="5X XXX XXXX" value={form.phone}
+                      onChange={(event) => setForm({ ...form, phone: event.target.value })}
+                      dir="ltr"
+                      className="w-full rounded-xl border border-slate-200 py-3 pr-10 pl-4 text-left text-sm outline-none transition focus:border-[#117b59] focus:ring-2 focus:ring-[#117b59]/15"
+                    />
+                  </div>
+                </div>
+              </div>
               {error && <p data-testid="status-coordinator-request-error" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-right text-sm text-red-600">{error}</p>}
               <button type="submit" disabled={loading} data-testid="button-submit-coordinator-request" className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#117b59] py-3.5 font-bold text-white shadow-[0_8px_18px_rgba(17,123,89,0.16)] transition hover:bg-[#0c6549] disabled:opacity-60">
                 {loading ? <><Loader2 size={17} className="animate-spin" /> {isEnglish ? "Sending request..." : "جارٍ إرسال الطلب..."}</> : (isEnglish ? "Send accreditation request" : "إرسال طلب الاعتماد")}
