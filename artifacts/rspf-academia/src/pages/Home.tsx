@@ -11,6 +11,44 @@ import { LINKABLE_ROUTES, type HomeSectionId } from "../../../../lib/site-experi
 
 type ProgramsState = { status: "loading" } | { status: "error" } | { status: "ready"; items: ResearchOpportunity[] };
 
+const affiliationAssetRoot = `${import.meta.env.BASE_URL}affiliation-assets/`;
+const countryAsset = (name: string) => {
+  const value = name.toLowerCase();
+  const code = value.includes("السعود") || value.includes("saudi arabia") ? "sa"
+    : value.includes("الإمار") || value.includes("united arab") ? "ae"
+    : value.includes("الأردن") || value.includes("jordan") ? "jo"
+    : value.includes("مصر") || value.includes("egypt") ? "eg"
+    : value.includes("الكويت") || value.includes("kuwait") ? "kw"
+    : value.includes("قطر") || value.includes("qatar") ? "qa"
+    : value.includes("البحرين") || value.includes("bahrain") ? "bh"
+    : value.includes("عُمان") || value.includes("عمان") || value.includes("oman") ? "om"
+    : value.includes("اليمن") || value.includes("yemen") ? "ye" : "";
+  return code ? `${affiliationAssetRoot}country-${code}.png` : "";
+};
+
+const universityAsset = (name: string) => {
+  const value = name.toLowerCase();
+  const match = value.includes("king saud") || value.includes("الملك سعود") ? "university-ksu.png"
+    : value.includes("king abdulaziz") || value.includes("الملك عبدالعزيز") ? "university-kau.png"
+    : value.includes("king fahd") || value.includes("الملك فهد") ? "university-kfupm.svg"
+    : value.includes("king abdullah") || value.includes("الملك عبدالله") ? "university-kaust.svg"
+    : value.includes("king khalid") || value.includes("الملك خالد") ? "university-kku.png"
+    : value.includes("umm al-qura") || value.includes("أم القرى") ? "university-uqu.png"
+    : value.includes("princess nourah") || value.includes("الأميرة نورة") ? "university-pnu.png"
+    : value.includes("taibah") || value.includes("طيبة") ? "university-taibah.svg"
+    : value.includes("qassim") || value.includes("القصيم") ? "university-qassim.png"
+    : value.includes("hail") || value.includes("حائل") ? "university-hail.webp"
+    : value.includes("jazan") || value.includes("جازان") ? "university-jazan.png" : "";
+  return match ? `${affiliationAssetRoot}${match}` : "";
+};
+
+const universityInitials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").slice(0, 3);
+
+const journalAsset = (id: string) => {
+  const available = new Set(["eur-heart-j", "frontiers-med", "jama", "nejm", "pediatrics-j", "plos-one"]);
+  return available.has(id) ? `${affiliationAssetRoot}journal-${id}.png` : "";
+};
+
 function usePrograms() {
   const [state, setState] = useState<ProgramsState>({ status: "loading" });
   const [nonce, setNonce] = useState(0);
@@ -162,7 +200,13 @@ export default function Home() {
             <h3 className="m-home-affiliation-label">{L(affiliations.countriesTitle)}</h3>
             <div className="m-home-country-window" aria-label={L(affiliations.countriesTitle)}>
               <div className="m-home-country-track" data-animated={affiliations.animationEnabled && settings.experience.theme.motion} style={marqueeStyle(affiliations.animationDurationSeconds)}>
-                {[...countries, ...countries].map((name, i) => <span className="m-home-country-chip" key={`${name}-${i}`} dir={language === "ar" ? "rtl" : "ltr"} aria-hidden={i >= countries.length}>{name}</span>)}
+                {[...countries, ...countries].map((name, i) => {
+                  const flag = countryAsset(name);
+                  return <span className="m-home-country-chip" key={`${name}-${i}`} dir={language === "ar" ? "rtl" : "ltr"} aria-hidden={i >= countries.length}>
+                    {flag ? <img className="m-home-country-flag" src={flag} alt="" loading="lazy" /> : <span className="m-home-country-monogram" aria-hidden="true">{universityInitials(name)}</span>}
+                    {name}
+                  </span>;
+                })}
               </div>
             </div>
           </div>}
@@ -170,7 +214,16 @@ export default function Home() {
             <h3 className="m-home-affiliation-label">{L(affiliations.universitiesTitle)}</h3>
             <div className="m-home-university-window" aria-label={L(affiliations.universitiesTitle)}>
               <div className="m-home-university-track" data-animated={affiliations.animationEnabled && settings.experience.theme.motion} style={marqueeStyle(affiliations.animationDurationSeconds)}>
-                {[...universities, ...universities].map((name, i) => <span className="m-home-university-chip" key={`${name}-${i}`} dir={language === "ar" ? "rtl" : "ltr"} aria-hidden={i >= universities.length}><span className="m-home-university-seal" aria-hidden="true"><BookOpenText size={15} /></span>{name}</span>)}
+                {[...universities, ...universities].map((name, i) => {
+                  const logo = universityAsset(name);
+                  return <span className="m-home-university-chip" key={`${name}-${i}`} dir={language === "ar" ? "rtl" : "ltr"} aria-hidden={i >= universities.length}>
+                    <span className="m-home-university-seal" data-image-failed={!logo} aria-hidden="true">
+                      {logo && <img src={logo} alt="" loading="lazy" onError={(event) => { event.currentTarget.parentElement?.setAttribute("data-image-failed", "true"); event.currentTarget.hidden = true; }} />}
+                      <span className="m-home-university-monogram">{universityInitials(name)}</span>
+                    </span>
+                    <span className="m-home-university-name">{name}</span>
+                  </span>;
+                })}
               </div>
             </div>
           </div>}
@@ -199,6 +252,7 @@ export default function Home() {
                 { name: "Scopus", value: journal.scopus },
                 { name: "WoS", value: journal.wos },
               ].filter(({ value }) => Boolean(value?.trim()) && !/^(no|false|none|n\/a)$/i.test(value.trim()));
+                const mark = journalAsset(journal.id);
               return <article
                 key={`${journal.id || name}-${i}`}
                 className={`m-home-journal-card m-home-journal-card-${i % 4}`}
@@ -208,7 +262,7 @@ export default function Home() {
               >
                 <div className="m-home-journal-cover" aria-hidden="true">
                   <span className="m-home-journal-cover-number">MISBAR / {String((i % journalOptions.length) + 1).padStart(2, "0")}</span>
-                  <BookOpenText size={25} strokeWidth={1.5} />
+                  {mark ? <img className="m-home-journal-mark" src={mark} alt="" loading="lazy" /> : <span className="m-home-journal-wordmark">{journal.nameEn || name}</span>}
                   <span className="m-home-journal-cover-name" dir="ltr">{journal.nameEn || name}</span>
                 </div>
                 <div className="m-home-journal-card-copy">
