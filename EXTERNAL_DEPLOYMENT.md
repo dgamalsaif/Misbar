@@ -70,7 +70,7 @@ Do not set `VITE_CLERK_PROXY_URL` for the external deployment.
 
 The existing `srmaacademy` Pages project builds the frontend from GitHub `main`. Keep its custom domains and existing build configuration; set the external Clerk publishable key in the Pages production build environment.
 
-Edit `deploy/cloudflare/wrangler.jsonc` and replace `API_ORIGIN` with the HTTPS Render service origin if it changes. Then deploy the existing API-only Worker:
+The currently verified Render API origin is `https://srmaacademy-api.onrender.com`. If the existing Render service URL changes, update `API_ORIGIN` in `deploy/cloudflare/wrangler.jsonc` to that service's HTTPS origin. Then deploy the existing API-only Worker:
 
 ```bash
 pnpm dlx wrangler@latest deploy --config deploy/cloudflare/wrangler.jsonc

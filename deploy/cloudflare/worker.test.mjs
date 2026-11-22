@@ -13,6 +13,7 @@ const config = JSON.parse(readFileSync(new URL("./wrangler.jsonc", import.meta.u
 test("Cloudflare routes both public hostnames through the share-aware Worker", () => {
   assert.equal(config.name, "srma-api-proxy");
   assert.equal(config.assets, undefined, "Keep the existing Pages frontend");
+  assert.equal(config.vars.API_ORIGIN, "https://srmaacademy-api.onrender.com");
   for (const hostname of ["srmaacademy.com", "www.srmaacademy.com"]) {
     for (const route of ["/api/*", "/research/*", "/survey*", "/share/research/*"]) {
       assert.ok(config.routes.some(r => r.pattern === `${hostname}${route}`), `Missing route: ${hostname}${route}`);
