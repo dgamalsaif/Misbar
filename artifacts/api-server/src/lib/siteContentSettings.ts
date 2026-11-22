@@ -2,6 +2,7 @@ import { coordinatorPortalSettingsTable, db } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { DEFAULT_EXPERIENCE_SETTINGS, sanitizeExperienceSettings, type ExperienceSettings } from "../../../../lib/site-experience";
 import { migrateLegacySiteIdentity } from "../../../../lib/site-brand-migration";
+import { validateAppIconUrl } from "./appIconValidation";
 
 export type Audience = "participant" | "coordinator";
 type TitleLanguage = "arabic" | "english" | "both";
@@ -509,13 +510,8 @@ type BrandTextKey = { [K in keyof BrandContactSettings]-?: BrandContactSettings[
     }
   };
   const safeAppIcon = (candidate: string) => {
-    const normalized = safeUrl(candidate, DEFAULT_SITE_CONTENT_SETTINGS.brand.appIconUrl);
-    if (normalized.startsWith("/")) return normalized;
     try {
-      const host = new URL(normalized).hostname.toLowerCase();
-      return host === "srmaacademy.com" || host === "www.srmaacademy.com"
-        ? normalized
-        : DEFAULT_SITE_CONTENT_SETTINGS.brand.appIconUrl;
+      return validateAppIconUrl(candidate);
     } catch {
       return DEFAULT_SITE_CONTENT_SETTINGS.brand.appIconUrl;
     }

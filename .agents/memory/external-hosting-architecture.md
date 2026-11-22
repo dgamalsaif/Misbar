@@ -7,6 +7,14 @@ Production uses Cloudflare Pages/Worker for the frontend and same-origin API pro
 
 The user initially instructed: no migrations now; keep existing external services. They subsequently authorized GitHub and Cloudflare connections specifically to deploy the opportunity share-preview fix. This does not authorize new Replit hosting, databases, or managed authentication.
 
+The user explicitly said never to add Replit to this website. Keep production on Cloudflare Pages/Worker, Render, the existing PostgreSQL database and R2, with the existing external Clerk account.
+
+**Why:** the user restated this boundary after the preview showed a Replit-managed Clerk configuration check.
+
+**How to apply:** do not provision Replit hosting, databases, managed Clerk, or ask the user to put production credentials in Replit. Keep the external Clerk publishable key in the Cloudflare Pages build environment and its secret key in Render.
+
+On 2026-11-22, the user confirmed that the ORCID client ID and secret are configured in the existing Render service. Never store or ask for their values in chat.
+
 The user has since explicitly authorized updating the existing Render database schema to match the website's registration fields. This is a registration-schema exception, not permission to replace the database, change seat allocations, delete registrations, or run unrelated historical migrations.
 
 **Why:** the user asked whether the database could be modified to match the registration form while reporting failed reservations and a failed Render build.

@@ -108,7 +108,7 @@ export const app=express();app.use(express.json());app.use((req,res,next)=>{req.
     fixture.reset();
     let response = await request("/registrations", "POST", registration, "public");
     assert.equal(response.status, 201);
-    const student = await response.json();
+    const student = await response.json() as { id: number; remainingSeats: number };
     assert.equal(student.remainingSeats, 2);
     assert.equal(fixture.snapshot().registrations[0].customFields.__seatReservation, undefined);
     assert.equal((await request(`/registrations/${student.id}/status`, "PATCH", { status: "rejected" })).status, 200);
