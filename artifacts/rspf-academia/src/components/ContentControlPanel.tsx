@@ -1703,7 +1703,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
           </Panel>
 
           <Panel title="حقول التسجيل" icon={SlidersHorizontal}>
-            <p className="mb-5 text-sm leading-6 text-slate-500">يمكنك تغيير التسمية والنص المساعد واللون، وتحديد ظهور الحقل وإلزاميته بشكل مستقل للمشترك والمنسق. يظهر اختيار الدولة ورقم واتساب إلزامياً لكليهما، ويأتيان بعد المدينة. الأسهم تغيّر ترتيب الحقول الأخرى.</p>
+            <p className="mb-5 text-sm leading-6 text-slate-500">يمكنك تغيير التسمية والنص المساعد واللون، وتحديد ظهور الحقل وإلزاميته بشكل مستقل للمشترك والمنسق. اختيار الدولة ومفتاح الاتصال ورقم واتساب إلزامية للمشارك والمنسق؛ يظهر اختيار الدولة قبل المدينة ثم رقم واتساب مع مفتاحها المحدد. الأسهم تغيّر ترتيب الحقول الأخرى.</p>
             <div className="space-y-4">
               {settings.registrationFields.map((field, index) => (
                 <article key={field.id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
