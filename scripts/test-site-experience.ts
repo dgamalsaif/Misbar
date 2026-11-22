@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   DEFAULT_EXPERIENCE_SETTINGS,
+  THEME_PRESETS,
+  THEME_PRESET_VALUES,
   sanitizeExperienceSettings,
   validateExperienceSettings,
   resolveRouteId,
@@ -40,6 +42,21 @@ test("default contract validates and read normalization preserves saved values",
   assert.deepEqual(sanitizeExperienceSettings(JSON.parse(JSON.stringify(validated))), validated);
   assert.equal(validated.home.hero.title.en, "Persistence test");
   assert.deepEqual(validateExperienceSettings(undefined), DEFAULT_EXPERIENCE_SETTINGS);
+});
+
+test("all curated visual themes have distinct palettes accepted by the shared contract", () => {
+  const curatedPresets = THEME_PRESETS.filter((preset) => preset !== "custom");
+  assert.equal(curatedPresets.length, 8);
+  assert.equal(new Set(curatedPresets.map((preset) => THEME_PRESET_VALUES[preset].primary)).size, curatedPresets.length);
+
+  for (const preset of curatedPresets) {
+    const settings = structuredClone(DEFAULT_EXPERIENCE_SETTINGS);
+    settings.theme = { ...settings.theme, preset, ...THEME_PRESET_VALUES[preset] };
+    assert.equal(validateExperienceSettings(settings).theme.preset, preset);
+    for (const key of ["primary", "gold", "ink", "background", "surface"] as const) {
+      assert.match(settings.theme[key], /^#[\da-f]{6}$/i, `${preset}.${key} should be a six-digit hex color`);
+    }
+  }
 });
 
 test("homepage showcases normalize for existing settings and validate bilingual entries", () => {

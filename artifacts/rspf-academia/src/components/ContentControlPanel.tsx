@@ -39,7 +39,14 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
   const [appIconPreviewError, setAppIconPreviewError] = useState(false);
   const appIconFileInput = useRef<HTMLInputElement>(null);
   const update = <K extends keyof SiteContentSettings>(key: K, value: SiteContentSettings[K]) => {
-    const next = { ...latestSettings.current, [key]: value };
+    const next: SiteContentSettings = { ...latestSettings.current, [key]: value };
+    if (key === "primaryColor" && typeof value === "string") {
+      next.experience = { ...next.experience, theme: { ...next.experience.theme, preset: "custom", primary: value } };
+    } else if (key === "accentColor" && typeof value === "string") {
+      next.experience = { ...next.experience, theme: { ...next.experience.theme, preset: "custom", gold: value } };
+    } else if (key === "cardBackgroundColor" && typeof value === "string") {
+      next.experience = { ...next.experience, theme: { ...next.experience.theme, preset: "custom", surface: value } };
+    }
     latestSettings.current = next;
     onChange(next);
   };
@@ -2007,9 +2014,10 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
         <div className="space-y-6 xl:col-span-4">
           <Panel title="ألوان الواجهة" icon={Palette}>
             <div className="space-y-4">
-              <ColorField label="اللون الرئيسي" value={settings.primaryColor} onChange={(value) => update("primaryColor", value)} />
-              <ColorField label="لون الإجراءات" value={settings.accentColor} onChange={(value) => update("accentColor", value)} />
-              <ColorField label="خلفية البطاقة" value={settings.cardBackgroundColor} onChange={(value) => update("cardBackgroundColor", value)} />
+              <p className="text-xs leading-5 text-slate-500">تتزامن هذه الألوان مع الهوية البصرية العامة وتظهر على بقية صفحات الموقع.</p>
+              <ColorField label="اللون الرئيسي" value={settings.experience.theme.primary} onChange={(value) => update("primaryColor", value)} />
+              <ColorField label="لون الإجراءات" value={settings.experience.theme.gold} onChange={(value) => update("accentColor", value)} />
+              <ColorField label="خلفية البطاقة" value={settings.experience.theme.surface} onChange={(value) => update("cardBackgroundColor", value)} />
             </div>
           </Panel>
            <Panel title="عرض الفرص حسب التخصص" icon={SlidersHorizontal}>

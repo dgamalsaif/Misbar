@@ -261,7 +261,7 @@ export default function RegistrationModal({
         <div className="sticky top-0 z-10 flex items-start justify-between rounded-t-[1.35rem] border-b border-slate-100 bg-white/95 px-6 py-5 backdrop-blur">
           <button data-testid="button-modal-close" aria-label={localize("إغلاق نافذة التسجيل", "Close registration dialog")} onClick={handleClose} className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"><X size={20} /></button>
           <div className="text-right">
-            <p className="mb-1 text-xs font-bold" style={{ color: contentSettings.accentColor }}>{coordinatorEntry ? localize("تسجيل جديد من لوحة المنسق", "New registration from the coordinator dashboard") : (language === "en" ? contentSettings.brand.siteNameEn : contentSettings.brand.siteNameAr)}</p>
+             <p className="mb-1 text-xs font-bold text-[color:var(--m-gold)]">{coordinatorEntry ? localize("تسجيل جديد من لوحة المنسق", "New registration from the coordinator dashboard") : (language === "en" ? contentSettings.brand.siteNameEn : contentSettings.brand.siteNameAr)}</p>
             <h2 id="registration-dialog-title" className="text-lg font-black text-[#102b4d]">{coordinatorEntry ? localizedSetting(contentSettings.coordinatorFormTitle, contentSettings.coordinatorFormTitleEn, "Register a student for a research opportunity") : localize("التسجيل في الفرصة البحثية", "Register for the research opportunity")}</h2>
             <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">{coordinatorEntry ? localizedSetting(contentSettings.coordinatorFormDescription, contentSettings.coordinatorFormDescriptionEn, "Enter the student's details exactly as they appear in their academic documents.") : researchTitle}</p>
           </div>
@@ -269,7 +269,7 @@ export default function RegistrationModal({
 
         {done ? (
           <div className="px-7 py-10 text-center">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#e7f3ef]"><CheckCircle2 size={34} style={{ color: contentSettings.accentColor }} /></div>
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--m-primary-soft)]"><CheckCircle2 size={34} className="text-[color:var(--m-gold)]" /></div>
             <h3 className="text-xl font-black text-[#172238]">{localize("تم حفظ التسجيل بنجاح", "Registration saved successfully")}</h3>
             {remainingSeats !== null && <p className="mt-2 font-bold text-[#117b59]">{localize("المقاعد المتبقية بعد تسجيلك", "Seats remaining after your registration")}: {remainingSeats}</p>}
             {forwardingUnavailable && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{localize("تم حفظ تسجيلك، لكن تعذّر تحميل بيانات التواصل الحالية. حدّث الصفحة للاطلاع عليها؛ لا تعِد التسجيل.", "Your registration is saved, but current contact details could not be loaded. Refresh to view them; do not register again.")}</p>}
@@ -308,7 +308,7 @@ export default function RegistrationModal({
               </a>
             )}
 
-            <button onClick={handleClose} className="mt-7 rounded-xl px-8 py-3 text-sm font-bold text-white transition" style={{ backgroundColor: contentSettings.primaryColor }}>{localize("إغلاق", "Close")}</button>
+            <button onClick={handleClose} className="mt-7 rounded-xl bg-[color:var(--m-primary)] px-8 py-3 text-sm font-bold text-white transition">{localize("إغلاق", "Close")}</button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 px-6 py-6">
@@ -322,7 +322,7 @@ export default function RegistrationModal({
                   <label className="mb-1.5 block text-right text-sm font-semibold text-slate-700">{localizedField("whatsapp").label} {required("whatsapp") && <span className="text-rose-500">*</span>}</label>
                   <div className="flex gap-2" dir="ltr">
                     <input data-testid="input-whatsapp" required={required("whatsapp")} type="tel" placeholder={localizedField("whatsapp").placeholder} value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} className="min-w-0 flex-1 rounded-xl border px-4 py-3 text-sm outline-none" style={{ borderColor: `${setting.color}55` }} />
-                    <span className="flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold" style={{ color: contentSettings.accentColor }}>{form.dialCode}</span>
+                     <span className="flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-[color:var(--m-gold)]">{form.dialCode}</span>
                   </div>
                 </div>;
               }
@@ -567,7 +567,7 @@ export default function RegistrationModal({
               type="submit"
               disabled={loading || (!coordinatorEntry && agreementSettings.enabled && agreementSettings.required && agreeFeesAndTasks === "disagree")}
               className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-base font-bold text-white shadow-[0_8px_18px_rgba(17,123,89,0.18)] transition disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: (!coordinatorEntry && agreementSettings.enabled && agreementSettings.required && agreeFeesAndTasks === "disagree") ? "#94a3b8" : contentSettings.accentColor }}
+              style={{ backgroundColor: (!coordinatorEntry && agreementSettings.enabled && agreementSettings.required && agreeFeesAndTasks === "disagree") ? "#94a3b8" : "var(--m-gold)" }}
             >
                {loading ? (
                  <><Loader2 size={18} className="animate-spin" /> {localize("جارٍ الحفظ...", "Saving...")}</>
