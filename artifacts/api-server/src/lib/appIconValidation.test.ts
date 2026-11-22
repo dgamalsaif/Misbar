@@ -28,6 +28,15 @@ test("accepts only supported local paths and HTTPS icon URLs from the site domai
   assert.throws(() => validateAppIconUrl("/images/../private.png"));
 });
 
+test("rejects broken content even when it was returned from an available URL", async () => {
+  const validPng = await sharp({
+    create: { width: 128, height: 128, channels: 4, background: "#117b59" },
+  }).png().toBuffer();
+  await assert.doesNotReject(() => validateAppIconImageBytes(validPng));
+  await assert.rejects(() => validateAppIconImageBytes(Buffer.from("not an image")), /تعذر تحميل صورة أيقونة التطبيق/);
+  await assert.rejects(() => validateAppIconImageBytes(Buffer.alloc(0)), /تعذر تحميل صورة أيقونة التطبيق/);
+});
+
 test("rejects broken image bytes even when their URL is reachable", async () => {
   const validPng = await sharp({
     create: { width: 128, height: 128, channels: 4, background: "#117b59" },

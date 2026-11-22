@@ -21,11 +21,11 @@ Participant Portal sharing must copy an announcement headed «فرصة بحثي�
 
 **How to apply:** preserve this combined public registration experience when changing cards, metadata, sharing, or admin controls. Do not restore the older details-first sharing flow. Hiding informational fields must not delete their stored values or remove necessary author-role selection or financial consent during registration.
 
-Research-title protection must keep full titles accessible to all visitors. The user chose “جميع الزوار، مع تقليل سهولة النسخ”, not registration-only or staff-only access.
+Research-title visibility is controlled by the owner per opportunity. When title, specialty, description, or preview is hidden, public API responses, page metadata, images, cards, and share text must not leak those values; owner views retain them. Registration remains open when the opportunity itself is public.
 
-**Why:** the user explicitly selected public visibility after being told that public titles, metadata and images cannot be made completely uncopyable.
+**Why:** the user changed the requirement and now wants research titles, specialties, and previews withheld unless the admin enables them.
 
-**How to apply:** use truthful copy deterrents and attribution while preserving public English titles, announcement sharing and registration. Do not introduce a title-access gate or block clipboard use in form fields. Do not claim screenshots or OCR can be prevented.
+**How to apply:** keep independent per-opportunity visibility controls and enforce them server-side. When content is shown, copy deterrents and attribution are best-effort only; never claim screenshots or OCR can be prevented.
 
 Inquiry-button customization must be independent of opportunity sharing and other site settings. Edit and save only its contact channel, destination, labels, messages and enabled state.
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useClerk } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -766,6 +766,7 @@ export default function AdminDashboard() {
   const [portalSettingsSaving, setPortalSettingsSaving] = useState(false);
   const [portalSettingsMessage, setPortalSettingsMessage] = useState("");
   const [contentSettings, setContentSettings] = useState<SiteContentSettings>(DEFAULT_SITE_CONTENT_SETTINGS);
+  const savedAppIconUrl = useRef(DEFAULT_SITE_CONTENT_SETTINGS.brand.appIconUrl);
   const [contentSettingsSaving, setContentSettingsSaving] = useState(false);
   const [contentSettingsMessage, setContentSettingsMessage] = useState("");
   const [inquirySaving, setInquirySaving] = useState(false);
@@ -827,7 +828,11 @@ export default function AdminDashboard() {
     if (!role) return;
     apiFetch("/api/site-content-settings")
       .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((settings: unknown) => setContentSettings(normalizeSiteContentSettings(settings)))
+      .then((settings: unknown) => {
+        const normalized = normalizeSiteContentSettings(settings);
+        savedAppIconUrl.current = normalized.brand.appIconUrl;
+        setContentSettings(normalized);
+      })
       .catch(() => role === "owner" && setContentSettingsMessage("تعذر تحميل إعدادات المحتوى حالياً."));
   }, [role]);
 
@@ -1139,10 +1144,18 @@ export default function AdminDashboard() {
       });
       const result = await response.json().catch(() => ({})) as SiteContentSettings | { error?: string };
       if (!response.ok) {
-        setContentSettingsMessage(`تعذر الحفظ (${response.status}): ${"error" in result && result.error ? result.error : "رفض الخادم الإعدادات."}`);
+        const errorMessage = "error" in result && result.error ? result.error : "رفض الخادم الإعدادات.";
+        if (contentSettings.brand.appIconUrl !== savedAppIconUrl.current && errorMessage.includes("أيقونة التطبيق")) {
+          setContentSettings((current) => ({
+            ...current,
+            brand: { ...current.brand, appIconUrl: savedAppIconUrl.current },
+          }));
+        }
+        setContentSettingsMessage(`تعذر الحفظ (${response.status}): ${errorMessage}`);
         return;
       }
       const saved = normalizeSiteContentSettings(result);
+      savedAppIconUrl.current = saved.brand.appIconUrl;
       setContentSettings(saved);
       queryClient.setQueryData(["site-content-settings"], saved);
       setDraft(null);

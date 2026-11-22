@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/node-postgres";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
 import { getPostgresConnectionConfig } from "./connection-config";
@@ -370,7 +371,7 @@ export async function checkDatabaseReadiness(): Promise<{ ready: boolean; host: 
 }
 
 export const pool = activePool;
-export const db: any = new Proxy({}, {
+export const db: NodePgDatabase<typeof schema> = new Proxy({}, {
   get(_target, prop) {
     if (useInMemory || !postgresDb) {
       return inMemoryDb[prop];
@@ -406,4 +407,4 @@ export const db: any = new Proxy({}, {
       }
     };
   }
-});
+}) as NodePgDatabase<typeof schema>;
