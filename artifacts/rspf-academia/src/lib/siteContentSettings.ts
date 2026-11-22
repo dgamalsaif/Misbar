@@ -420,6 +420,9 @@ export function getOrderedRegistrationFields(
     const defaultField = defaults.find((item) => item.id === field.id)!;
     if (field.color.toLowerCase() === "#117b59") field = { ...field, color: defaultField.color };
     if (field.id === "country" || field.id === "whatsapp") {
+      if (field.id === "country" && /قم بحذف مفتاح الدولة|delete the country code/i.test(`${field.placeholder} ${field.placeholderEn}`)) {
+        field = { ...field, placeholder: defaultField.placeholder, placeholderEn: defaultField.placeholderEn };
+      }
       return {
         ...field,
         requiredParticipant: true,

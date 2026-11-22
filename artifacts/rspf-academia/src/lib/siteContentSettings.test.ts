@@ -45,6 +45,19 @@ test("country and WhatsApp stay visible and required for both audiences", () => 
   assert.equal(fields.city.placeholderEn, "Riyadh");
 });
 
+test("legacy manual country-code instructions are removed from the country field", () => {
+  const configured = DEFAULT_SITE_CONTENT_SETTINGS.registrationFields.map((field) =>
+    field.id === "country"
+      ? { ...field, placeholder: "قم بحذف مفتاح الدولة وضع مفتاح الدولة الخاصة بك", placeholderEn: "Delete the country code and enter your own country code." }
+      : field
+  );
+  const country = normalizeSiteContentSettings({ registrationFields: configured }).registrationFields.find((field) => field.id === "country");
+  const defaultCountry = DEFAULT_SITE_CONTENT_SETTINGS.registrationFields.find((field) => field.id === "country");
+
+  assert.equal(country?.placeholder, defaultCountry?.placeholder);
+  assert.equal(country?.placeholderEn, defaultCountry?.placeholderEn);
+});
+
 test("unknown saved field ids are dropped and empty settings fall back to defaults", () => {
   const legacyField = {
     ...DEFAULT_SITE_CONTENT_SETTINGS.registrationFields[0],
