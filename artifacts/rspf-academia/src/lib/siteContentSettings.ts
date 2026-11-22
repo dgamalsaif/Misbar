@@ -318,9 +318,9 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
   coordinatorFormDescriptionEn: "Enter the student's details exactly as they appear in their academic documents.",
   participantTitleLanguage: "english",
   coordinatorTitleLanguage: "english",
-  primaryColor: "#065634",
-  accentColor: "#d4af37",
-  cardBackgroundColor: "#ffffff",
+  primaryColor: "#164f3a",
+  accentColor: "#b68b42",
+  cardBackgroundColor: "#fbfaf5",
   opportunityDisplayMode: "grid",
   showOpportunityDetails: true,
   participantCardOrder: ["description", "specialty", "seats", "duration", "supervisor", "journal", "benefits"],
@@ -334,19 +334,19 @@ export const DEFAULT_SITE_CONTENT_SETTINGS: SiteContentSettings = {
   researchExperienceSettings: { ...DEFAULT_RESEARCH_EXPERIENCE_SETTINGS },
   feeAndTaskAgreementSettings: { ...DEFAULT_FEE_AND_TASK_AGREEMENT_SETTINGS },
   registrationFields: [
-    { id: "fullName", label: "الاسم الكامل", labelEn: "Full name", placeholder: "د. أحمد محمد", placeholderEn: "Dr. Ahmed Mohammed", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
-    { id: "specialization", label: "التخصص الدقيق", labelEn: "Specialization", placeholder: "مثال: طب القلب", placeholderEn: "e.g., Cardiology", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
-    { id: "email", label: "البريد الإلكتروني", labelEn: "Email address", placeholder: "doctor@example.com", placeholderEn: "doctor@example.com", type: "email", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
-    { id: "affiliation", label: "جهة الانتساب", labelEn: "Affiliation", placeholder: "الجامعة أو المستشفى", placeholderEn: "University or hospital", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
-    { id: "whatsapp", label: "رقم واتساب", labelEn: "WhatsApp number", placeholder: "5X XXX XXXX", placeholderEn: "5X XXX XXXX", type: "tel", requiredParticipant: true, requiredCoordinator: false, showParticipant: true, showCoordinator: false, color: "#25D366" },
-    { id: "city", label: "المدينة", labelEn: "City", placeholder: "الرياض", placeholderEn: "Riyadh", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
+    { id: "fullName", label: "الاسم الكامل", labelEn: "Full name", placeholder: "د. أحمد محمد", placeholderEn: "Dr. Ahmed Mohammed", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#164f3a" },
+    { id: "specialization", label: "التخصص الدقيق", labelEn: "Specialization", placeholder: "مثال: طب القلب", placeholderEn: "e.g., Cardiology", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#164f3a" },
+    { id: "email", label: "البريد الإلكتروني", labelEn: "Email address", placeholder: "doctor@example.com", placeholderEn: "doctor@example.com", type: "email", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#164f3a" },
+    { id: "affiliation", label: "جهة الانتساب", labelEn: "Affiliation", placeholder: "الجامعة أو المستشفى", placeholderEn: "University or hospital", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#164f3a" },
+    { id: "whatsapp", label: "رقم واتساب", labelEn: "WhatsApp number", placeholder: "5X XXX XXXX", placeholderEn: "5X XXX XXXX", type: "tel", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#25D366" },
+    { id: "city", label: "المدينة", labelEn: "City", placeholder: "الرياض", placeholderEn: "Riyadh", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#164f3a" },
     { id: "orcid", label: "ORCID", labelEn: "ORCID", placeholder: "0000-0000-0000-0000", placeholderEn: "0000-0000-0000-0000", type: "text", requiredParticipant: false, requiredCoordinator: false, showParticipant: true, showCoordinator: true, color: "#64748b" },
-    { id: "country", label: "الدولة", labelEn: "Country", placeholder: "", placeholderEn: "", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#117b59" },
+    { id: "country", label: "الدولة", labelEn: "Country", placeholder: "", placeholderEn: "", type: "text", requiredParticipant: true, requiredCoordinator: true, showParticipant: true, showCoordinator: true, color: "#164f3a" },
   ],
   brand: {
     siteNameAr: "مسبار", siteNameEn: "Misbar", logoUrl: "/misbar-logo.svg",
     logoAnimationEnabled: false,
-    appNameAr: "مسبار", appNameEn: "Misbar", appShortName: "Misbar", appIconUrl: "/misbar-logo.svg", appIconDisplaySize: 72, appThemeColor: "#0b5145",
+    appNameAr: "مسبار", appNameEn: "Misbar", appShortName: "Misbar", appIconUrl: "/misbar-logo.svg", appIconDisplaySize: 72, appThemeColor: "#164f3a",
     phone: "+966562159258", whatsapp: "966562159258", participantWhatsapp: "966562159258", coordinatorWhatsapp: "966562159258", whatsappChannelUrl: "", email: "srmaacademy@gmail.com", telegramUsername: "SRMAAcademy", instagramUsername: "", xUsername: "", linkedinUsername: "",
     facebookUrl: "", tiktokUrl: "", youtubeUrl: "", snapchatUrl: "",
     publicSocialIcons: ["whatsapp", "telegram"], participantSocialIcons: ["whatsapp", "telegram"], coordinatorSocialIcons: ["whatsapp", "telegram"],
@@ -416,7 +416,32 @@ export function getOrderedRegistrationFields(
   for (const fallback of defaults) {
     if (!byId.has(fallback.id)) byId.set(fallback.id, fallback);
   }
-  return [...byId.values()];
+  const fields = [...byId.values()].map((field) => {
+    const defaultField = defaults.find((item) => item.id === field.id)!;
+    if (field.color.toLowerCase() === "#117b59") field = { ...field, color: defaultField.color };
+    if (field.id === "country" || field.id === "whatsapp") {
+      return {
+        ...field,
+        requiredParticipant: true,
+        requiredCoordinator: true,
+        showParticipant: true,
+        showCoordinator: true,
+      };
+    }
+    if (field.id === "city" && /country code|county code|مفتاح الدولة|رمز الدولة/i.test(`${field.placeholder} ${field.placeholderEn}`)) {
+      const defaultsForCity = defaults.find((item) => item.id === "city")!;
+      return { ...field, placeholder: defaultsForCity.placeholder, placeholderEn: defaultsForCity.placeholderEn };
+    }
+    return field;
+  });
+
+  const contactFieldIds: RegistrationFieldId[] = ["country", "city", "whatsapp"];
+  const firstContactIndex = fields.findIndex((field) => contactFieldIds.includes(field.id));
+  const contactFields = contactFieldIds.map((id) => fields.find((field) => field.id === id)!);
+  const remainingFields = fields.filter((field) => !contactFieldIds.includes(field.id));
+  const insertAt = fields.slice(0, firstContactIndex).filter((field) => !contactFieldIds.includes(field.id)).length;
+  remainingFields.splice(insertAt, 0, ...contactFields);
+  return remainingFields;
 }
 
 /** Exact legacy brand values that are migrated to Misbar on read. Anything else is a custom value and is preserved. */
@@ -425,7 +450,9 @@ const LEGACY_BRAND_MAP: Record<string, string> = {
   "SRMA Research Academy": "Misbar",
   "SRMA": "Misbar",
   "/srma-logo.jpg": "/misbar-logo.svg",
-  "#0d765c": "#0b5145",
+  "#0d765c": "#164f3a",
+  "#0b5145": "#164f3a",
+  "#065634": "#164f3a",
 };
 const LEGACY_PAGE_TEXT: Record<string, string> = {
   "نحو مجتمع بحثي أكثر تأثيراً": "فرص بحثية طبية بوضوح وأمانة",
@@ -449,6 +476,25 @@ export function normalizeSiteContentSettings(input: unknown): SiteContentSetting
   const raw = (migrated && typeof migrated === "object" ? migrated : {}) as Partial<SiteContentSettings>;
   const D = DEFAULT_SITE_CONTENT_SETTINGS;
   const brandIn = { ...D.brand, ...(raw.brand || {}) } as BrandContactSettings;
+  const migrateDefaultColor = (value: unknown, replacements: Record<string, string>, fallback: string) =>
+    typeof value === "string" ? replacements[value.toLowerCase()] || value : fallback;
+  const primaryColor = migrateDefaultColor(raw.primaryColor, {
+    "#065634": D.primaryColor,
+    "#0b5145": D.primaryColor,
+    "#0d765c": D.primaryColor,
+    "#117b59": D.primaryColor,
+  }, D.primaryColor);
+  const accentColor = migrateDefaultColor(raw.accentColor, {
+    "#d4af37": D.accentColor,
+    "#c69b35": D.accentColor,
+    "#e9a020": D.accentColor,
+    "#e2a229": D.accentColor,
+  }, D.accentColor);
+  const cardBackgroundColor = migrateDefaultColor(raw.cardBackgroundColor, {
+    "#ffffff": D.cardBackgroundColor,
+    "#fffdf8": D.cardBackgroundColor,
+    "#fffdf6": D.cardBackgroundColor,
+  }, D.cardBackgroundColor);
   const brand = { ...brandIn } as BrandContactSettings;
   (["siteNameAr", "siteNameEn", "appNameAr", "appNameEn", "appShortName", "logoUrl", "appIconUrl", "appThemeColor"] as const).forEach((k) => {
     (brand as unknown as Record<string, unknown>)[k] = migrateExact(brandIn[k], LEGACY_BRAND_MAP);
@@ -469,6 +515,10 @@ export function normalizeSiteContentSettings(input: unknown): SiteContentSetting
   return {
     ...D,
     ...raw,
+    primaryColor,
+    accentColor,
+    cardBackgroundColor,
+    registrationFields: getOrderedRegistrationFields({ registrationFields: raw.registrationFields ?? [] }),
     academicDegreeSettings: raw.academicDegreeSettings || D.academicDegreeSettings,
     researchExperienceSettings: raw.researchExperienceSettings || D.researchExperienceSettings,
     feeAndTaskAgreementSettings: raw.feeAndTaskAgreementSettings || D.feeAndTaskAgreementSettings,

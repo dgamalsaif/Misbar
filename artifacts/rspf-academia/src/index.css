@@ -43,11 +43,11 @@
 
 :root {
   /* Misbar palette — overwritten at runtime by ThemeSync from experience.theme */
-  --m-primary: #065634;
-  --m-gold: #d4af37;
-  --m-ink: #18352b;
-  --m-bg: #f3f5ef;
-  --m-surface: #fffdf8;
+  --m-primary: #164f3a;
+  --m-gold: #b68b42;
+  --m-ink: #27382f;
+  --m-bg: #f1f3eb;
+  --m-surface: #fbfaf5;
   --m-radius: 1rem;
   --m-btn-radius: 999px;
   --m-space: 1;
@@ -60,25 +60,25 @@
   --m-line: color-mix(in oklab, var(--m-ink) 11%, transparent);
   --m-muted: color-mix(in oklab, var(--m-ink) 62%, var(--m-bg));
 
-  --background: 80 24% 95%;
-  --foreground: 160 38% 15%;
-  --border: 80 15% 84%;
-  --input: 80 15% 84%;
-  --ring: 155 87% 18%;
-  --card: 46 100% 98%;
-  --card-foreground: 160 38% 15%;
-  --card-border: 80 15% 86%;
-  --popover: 46 100% 98%;
-  --popover-foreground: 160 38% 15%;
-  --popover-border: 80 15% 86%;
-  --primary: 155 87% 18%;
-  --primary-foreground: 46 100% 98%;
-  --secondary: 80 22% 91%;
-  --secondary-foreground: 160 38% 15%;
-  --muted: 80 20% 91%;
-  --muted-foreground: 155 10% 38%;
-  --accent: 45 62% 88%;
-  --accent-foreground: 160 38% 15%;
+  --background: 80 22% 94%;
+  --foreground: 145 17% 19%;
+  --border: 82 13% 84%;
+  --input: 82 13% 84%;
+  --ring: 151 57% 20%;
+  --card: 50 38% 97%;
+  --card-foreground: 145 17% 19%;
+  --card-border: 82 13% 86%;
+  --popover: 50 38% 97%;
+  --popover-foreground: 145 17% 19%;
+  --popover-border: 82 13% 86%;
+  --primary: 151 57% 20%;
+  --primary-foreground: 50 38% 97%;
+  --secondary: 83 20% 91%;
+  --secondary-foreground: 145 17% 19%;
+  --muted: 83 18% 91%;
+  --muted-foreground: 147 10% 39%;
+  --accent: 39 37% 88%;
+  --accent-foreground: 145 17% 19%;
   --destructive: 4 70% 46%;
   --destructive-foreground: 48 100% 98%;
 
@@ -466,7 +466,7 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
   isolation: isolate;
   background:
     radial-gradient(ellipse at 18% 34%, color-mix(in oklab, var(--m-primary) 12%, transparent), transparent 35%),
-    radial-gradient(ellipse at 82% 23%, color-mix(in oklab, #9d9bd0 13%, transparent), transparent 34%),
+    radial-gradient(ellipse at 82% 23%, color-mix(in oklab, var(--m-gold) 10%, transparent), transparent 34%),
     linear-gradient(180deg, color-mix(in oklab, var(--m-surface) 68%, var(--m-bg)), var(--m-bg) 88%);
 }
 .m-home-hero-wash {
@@ -478,7 +478,7 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
     radial-gradient(circle at 12% 20%, var(--m-primary) 0 3px, transparent 4px),
     radial-gradient(circle at 88% 30%, var(--m-gold) 0 4px, transparent 5px),
     radial-gradient(circle at 20% 77%, color-mix(in oklab, var(--m-primary) 62%, white) 0 3px, transparent 4px),
-    radial-gradient(circle at 84% 80%, #9996c9 0 4px, transparent 5px);
+    radial-gradient(circle at 84% 80%, color-mix(in oklab, var(--m-gold) 48%, var(--m-primary)) 0 4px, transparent 5px);
 }
 .m-home-orbit {
   position: absolute;
@@ -1411,4 +1411,106 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
     margin: 0;
   }
   .m-home-journal-track [aria-hidden="true"] { display: none; }
+}
+
+/* Affiliation and journal identity marks: directory signals, never partner badges. */
+.m-home-country-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .58rem;
+  min-height: 2.6rem;
+  padding-inline: .95rem;
+  border-color: color-mix(in oklab, var(--m-primary) 12%, var(--m-gold));
+  box-shadow: 0 6px 15px -14px var(--m-primary);
+}
+.m-home-country-flag {
+  display: block;
+  width: 1.65rem;
+  height: 1.13rem;
+  flex: 0 0 1.65rem;
+  object-fit: cover;
+  border: 1px solid color-mix(in oklab, var(--m-ink) 13%, transparent);
+  border-radius: .2rem;
+  box-shadow: 0 1px 3px rgb(20 35 31 / .14);
+}
+.m-home-country-monogram {
+  display: grid;
+  width: 1.45rem;
+  height: 1.1rem;
+  place-items: center;
+  border: 1px solid color-mix(in oklab, var(--m-gold) 55%, transparent);
+  border-radius: .2rem;
+  color: var(--m-primary);
+  background: var(--home-pale-gold);
+  font: 700 .5rem/1 var(--m-font-body);
+}
+.m-home-university-seal {
+  overflow: hidden;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-basis: 2.25rem;
+  padding: .25rem;
+  background: color-mix(in oklab, var(--m-surface) 88%, var(--m-gold));
+}
+.m-home-university-seal img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.m-home-university-monogram {
+  display: none;
+  font: 800 .55rem/1 var(--m-font-heading);
+  letter-spacing: -.04em;
+}
+.m-home-university-seal[data-image-failed="true"] .m-home-university-monogram { display: block; }
+.m-home-university-name { line-height: 1.45; }
+.m-home-journal-mark {
+  display: block;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: .22rem;
+  border: 1px solid rgb(255 255 255 / .56);
+  border-radius: .45rem;
+  object-fit: contain;
+  background: color-mix(in oklab, var(--m-surface) 96%, transparent);
+  box-shadow: 0 5px 14px -10px var(--m-ink);
+}
+.m-home-journal-custom-mark {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border: 1px solid color-mix(in oklab, var(--m-gold) 66%, transparent);
+  border-radius: .45rem;
+  background: color-mix(in oklab, var(--m-surface) 94%, var(--m-gold));
+  color: var(--m-primary);
+  font-family: var(--m-font-heading);
+  font-size: .84rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  box-shadow: 0 5px 14px -10px var(--m-ink);
+}
+.m-home-journal-wordmark {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-family: var(--m-font-heading);
+  font-size: .87rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.m-home-affiliation-head .m-muted { line-height: 1.9; }
+.m-home-journal-disclaimer {
+  padding-inline-start: .9rem;
+  border-inline-start: 2px solid color-mix(in oklab, var(--m-gold) 75%, transparent);
+}
+@media (max-width: 767px) {
+  .m-home-country-chip { min-height: 2.4rem; padding-inline: .75rem; }
+  .m-home-university-chip { gap: .55rem; }
+  .m-home-university-seal { width: 2rem; height: 2rem; flex-basis: 2rem; }
+  .m-home-journal-mark { width: 2rem; height: 2rem; }
+  .m-home-journal-custom-mark { width: 2rem; height: 2rem; }
 }

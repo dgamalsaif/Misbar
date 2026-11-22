@@ -104,6 +104,11 @@ function createInMemoryDb() {
       orderBy(..._args: any[]) {
         return builder;
       },
+      for(..._args: any[]) {
+        // Row locks are unnecessary in the single-process in-memory fallback,
+        // but keep Drizzle's fluent query chain compatible with route code.
+        return builder;
+      },
       limit(n: number) {
         limitCount = n;
         return builder;

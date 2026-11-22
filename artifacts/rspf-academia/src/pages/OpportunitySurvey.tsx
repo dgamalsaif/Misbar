@@ -16,6 +16,7 @@ import {
 import { ResearchOpportunity } from "@/lib/researchData";
 import OpportunityRegistrationOverview from "@/components/OpportunityRegistrationOverview";
 import CountrySelector from "@/components/CountrySelector";
+import OrcidConnectButton from "@/components/OrcidConnectButton";
 import {
   DEFAULT_SITE_CONTENT_SETTINGS,
   RegistrationFieldId,
@@ -33,6 +34,7 @@ import { apiFetch } from "@/lib/api";
 import { getRegistrationForwarding, loadLatestForwardingBrand } from "@/lib/registrationForwarding";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 import { getEnglishOpportunityTitle, getOpportunityRegistrationPath, getOpportunitySharePath } from "@/lib/opportunityDisplay";
+import { normalizeOrcidId } from "@/lib/orcid";
 
 const API_BASE = "/api";
 
@@ -47,7 +49,8 @@ export default function OpportunitySurvey() {
 
   // Form states
   const [form, setForm] = useState({
-    fullName: "",
+    firstName: "",
+    familyName: "",
     specialization: "",
     email: "",
     whatsapp: "",
@@ -155,7 +158,7 @@ export default function OpportunitySurvey() {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
       toast({
-        title: localize("تم نسخ رابط استمارة التسجيل 🔗", "Registration link copied 🔗"),
+        title: localize("تم نسخ رابط استمارة التسجيل", "Registration link copied"),
         description: localize(
           "ينقل هذا الرابط المشترك مباشرة إلى استمارة التسجيل الخاصة بهذه الفرصة.",
           "This link takes applicants directly to the registration form for this opportunity."
@@ -198,22 +201,29 @@ export default function OpportunitySurvey() {
       }
     }
 
+    const normalizedOrcid = form.orcid.trim() ? normalizeOrcidId(form.orcid) : "";
+    if (form.orcid.trim() && !normalizedOrcid) {
+      setError(localize("معرّف ORCID غير صحيح. تحقق من الرقم بصيغة 0000-0000-0000-0000.", "Enter a valid ORCID iD in the format 0000-0000-0000-0000."));
+      return;
+    }
+
     setLoading(true);
     setError("");
+    const fullName = `${form.firstName.trim()} ${form.familyName.trim()}`.trim();
 
     try {
       const response = await fetch(`${API_BASE}/registrations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName: form.fullName.trim(),
+          fullName,
           specialization: form.specialization.trim(),
           email: form.email.trim(),
           whatsapp: visible("whatsapp") ? `${form.dialCode} ${form.whatsapp}`.trim() : "",
           affiliation: form.affiliation.trim(),
           country: form.country,
           city: form.city.trim(),
-          orcid: form.orcid.trim(),
+          orcid: normalizedOrcid || "",
           researchId: selectedOpp.id,
           researchTitle: getEnglishOpportunityTitle(selectedOpp),
           academicDegree: academicDegree || undefined,
@@ -238,7 +248,7 @@ export default function OpportunitySurvey() {
         type: forwardingType,
         target: forwarding.target,
         customMessage: forwarding.customMessage,
-        studentName: form.fullName.trim(),
+        studentName: fullName,
         specialization: form.specialization.trim(),
         email: form.email.trim(),
         whatsapp: `${form.dialCode} ${form.whatsapp}`.trim(),
@@ -303,7 +313,7 @@ export default function OpportunitySurvey() {
                 className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-black text-[#117b59] shadow-2xs transition hover:bg-emerald-100"
               >
                 {copiedLink ? <Check size={14} className="text-emerald-700" /> : <Copy size={14} />}
-                <span>{copiedLink ? localize("تم نسخ الرابط ✓", "Link Copied ✓") : localize("نسخ رابط الاستمارة 🔗", "Copy Form Link 🔗")}</span>
+                <span>{copiedLink ? localize("تم نسخ الرابط", "Link Copied") : localize("نسخ رابط الاستمارة", "Copy Form Link")}</span>
               </button>
             )}
           </div>
@@ -345,8 +355,8 @@ export default function OpportunitySurvey() {
 
               <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-600">
                 {localize(
-                  `شكراً لك د. ${form.fullName}. تم تسجيل بياناتك في الفرصة البحثية (${title}).`,
-                  `Thank you Dr. ${form.fullName}. Your registration in (${title}) is confirmed.`
+                  `شكراً لك د. ${`${form.firstName} ${form.familyName}`.trim()}. تم تسجيل بياناتك في الفرصة البحثية (${title}).`,
+                  `Thank you Dr. ${`${form.firstName} ${form.familyName}`.trim()}. Your registration in (${title}) is confirmed.`
                 )}
               </p>
 
@@ -471,6 +481,46 @@ export default function OpportunitySurvey() {
                   {getOrderedRegistrationFields(contentSettings).filter((field) => visible(field.id)).map((field) => {
                     const setting = fieldSetting(field.id);
                     const fieldText = localizedFieldText(field.id);
+                    if (field.id === "fullName") {
+                      return (
+                        <div key="fullName" className="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-2">
+                          <div>
+                            <label htmlFor="registration-first-name" className="mb-1.5 block text-xs font-bold text-slate-700">
+                              {localize("الاسم الأول", "First name")}
+                              {required("fullName") && <span className="text-rose-500"> *</span>}
+                            </label>
+                            <input
+                              id="registration-first-name"
+                              data-testid="input-first-name"
+                              required={required("fullName")}
+                              type="text"
+                              autoComplete="given-name"
+                              value={form.firstName}
+                              onChange={(event) => setForm({ ...form, firstName: event.target.value })}
+                              placeholder={localize("أحمد", "Ahmed")}
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-[#117b59] focus:outline-none focus:ring-2 focus:ring-[#117b59]/20"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="registration-family-name" className="mb-1.5 block text-xs font-bold text-slate-700">
+                              {localize("اسم العائلة", "Family name")}
+                              {required("fullName") && <span className="text-rose-500"> *</span>}
+                            </label>
+                            <input
+                              id="registration-family-name"
+                              data-testid="input-family-name"
+                              required={required("fullName")}
+                              type="text"
+                              autoComplete="family-name"
+                              value={form.familyName}
+                              onChange={(event) => setForm({ ...form, familyName: event.target.value })}
+                              placeholder={localize("محمد", "Mohammed")}
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-[#117b59] focus:outline-none focus:ring-2 focus:ring-[#117b59]/20"
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
                     if (field.id === "whatsapp") {
                       return (
                         <div key="whatsapp">
@@ -529,6 +579,19 @@ export default function OpportunitySurvey() {
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-[#117b59] focus:outline-none focus:ring-2 focus:ring-[#117b59]/20"
                           dir={isLtr ? "ltr" : undefined}
                         />
+                        {field.id === "affiliation" && (
+                          <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                              {localize("جهة الانتساب: الجامعة أو المستشفى أو المؤسسة التي تعمل أو تدرس فيها.", "Your affiliation: the university, hospital, or organization where you work or study.")}
+                          </p>
+                        )}
+                        {field.id === "orcid" && (
+                          <>
+                            <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                              {localize("ORCID اختصار لمعرّف الباحث والمساهم المفتوح؛ وهو رقم دائم يميّز الباحث ويربطه بأعماله العلمية.", "ORCID stands for Open Researcher and Contributor ID. It is a persistent identifier that distinguishes researchers and connects their scholarly work.")}
+                            </p>
+                            <OrcidConnectButton onLinked={(orcid) => setForm((previous) => ({ ...previous, orcid }))} />
+                          </>
+                        )}
                       </div>
                     );
                   })}
@@ -659,7 +722,7 @@ export default function OpportunitySurvey() {
                       <span>{localize("جارٍ إرسال طلب التسجيل...", "Submitting Registration...")}</span>
                     </>
                   ) : (
-                    <span>{localize("تأكيد التسجيل في الفرصة البحثية ✓", "Confirm Opportunity Registration ✓")}</span>
+                    <span>{localize("تأكيد التسجيل في الفرصة البحثية", "Confirm Opportunity Registration")}</span>
                   )}
                 </button>
                </form> : <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center text-slate-700" data-testid="registration-closed">

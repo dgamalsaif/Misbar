@@ -104,12 +104,18 @@ export const app=express();app.use(express.json());app.use((req,res,next)=>{req.
     const base = `http://127.0.0.1:${server.address().port}/api`;
     const request = (path: string, method = "GET", body?: object, role = "owner") =>
       fetch(base + path, { method, headers: { "Content-Type": "application/json", "x-role": role }, body: body ? JSON.stringify(body) : undefined });
-    const registration = { researchId: 1, fullName: "Fixture Student", email: "student@example.invalid", authorRole: "co_author", customFields: { __seatReservation: "released" } };
+    const registration = { researchId: 1, fullName: "Fixture Student", email: "student@example.invalid", orcid: "https://orcid.org/0000-0002-1825-0097", authorRole: "co_author", customFields: { __seatReservation: "released" } };
     fixture.reset();
-    let response = await request("/registrations", "POST", registration, "public");
+    let response = await request("/registrations", "POST", { ...registration, orcid: "not-an-orcid" }, "public");
+    assert.equal(response.status, 400);
+    assert.equal(fixture.snapshot().registrations.length, 0);
+
+    response = await request("/registrations", "POST", registration, "public");
     assert.equal(response.status, 201);
     const student = await response.json() as { id: number; remainingSeats: number };
     assert.equal(student.remainingSeats, 2);
+    assert.equal(fixture.snapshot().registrations[0].orcid, "0000-0002-1825-0097");
+    assert.equal((await request(`/registrations/${student.id}`, "PATCH", { orcid: "not-an-orcid" })).status, 400);
     assert.equal(fixture.snapshot().registrations[0].customFields.__seatReservation, undefined);
     assert.equal((await request(`/registrations/${student.id}/status`, "PATCH", { status: "rejected" })).status, 200);
     assert.equal(fixture.snapshot().programs[0].seatsLeft, 3);
