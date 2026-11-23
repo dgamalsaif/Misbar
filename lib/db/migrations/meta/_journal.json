@@ -99,6 +99,13 @@
       "when": 1795435311319,
       "tag": "0013_social_publishing",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795437234997,
+      "tag": "0014_social_seat_updates",
+      "breakpoints": true
     }
   ]
 }

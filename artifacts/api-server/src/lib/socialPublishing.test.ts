@@ -27,6 +27,28 @@ test("social content omits title, specialty, and image when hidden", () => {
   assert.equal(content.shareUrl, "https://srmaacademy.com/share/research/45");
 });
 
+test("automatic seat updates expose counts without leaking hidden opportunity details", () => {
+  const content = buildSocialPostContent({
+    id: 46,
+    titleEn: "Confidential promotion research",
+    specialtyEn: "Cardiology",
+    imagePath: "private/research.jpg",
+    hiddenFields: ["title", "preview", "specialty", "image"],
+    seatUpdate: {
+      seatsLeft: 2,
+      totalSeats: 9,
+      firstAuthorSeatsLeft: 1,
+      coAuthorSeatsLeft: 1,
+    },
+  });
+
+  assert.match(content.text, /المقاعد المتبقية: 2 من 9/);
+  assert.match(content.text, /كاتب أول: 1 \| مؤلف مشارك: 1/);
+  assert.equal(content.text.includes("Confidential promotion research"), false);
+  assert.equal(content.text.includes("Cardiology"), false);
+  assert.equal(content.imageUrl, "https://srmaacademy.com/api/site-share-image");
+});
+
 test("social credentials encrypt and decrypt without exposing plaintext", () => {
   const token = "test-provider-access-token";
   const encrypted = encryptSocialSecret(token);

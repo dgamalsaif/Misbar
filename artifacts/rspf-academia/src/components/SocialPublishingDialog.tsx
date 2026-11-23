@@ -15,14 +15,17 @@ import {
 } from "lucide-react";
 import {
   getListProgramSocialPostsQueryKey,
+  getListProgramSocialSeatUpdatesQueryKey,
   getListSocialConnectionsQueryKey,
   useConnectTelegramChannel,
   useDisconnectSocialConnection,
   useGetProgramSocialPreview,
   useListProgramSocialPosts,
+  useListProgramSocialSeatUpdates,
   useListSocialConnections,
   usePublishProgramToSocialAccounts,
   useRetrySocialPost,
+  useRetrySocialSeatUpdate,
   useStartMetaSocialAuthorization,
   useStartXSocialAuthorization,
 } from "@workspace/api-client-react";
@@ -49,6 +52,17 @@ const PLATFORM_ICONS: Record<string, typeof Share2> = {
   instagram: Instagram,
   x: Share2,
   telegram: Send,
+};
+
+const SEAT_UPDATE_STATUS: Record<string, string> = {
+  pending: "بانتظار الإرسال",
+  processing: "جارٍ الإرسال",
+  completed: "تم التحديث",
+  failed: "فشل الإرسال",
+  unknown: "نتيجة غير مؤكدة",
+  skipped: "لم يُرسل",
+  published: "تم النشر",
+  publishing: "جارٍ النشر",
 };
 
 function messageFromError(error: unknown) {
@@ -136,12 +150,21 @@ export default function SocialPublishingDialog({ opportunity, onClose }: Props) 
   const connectionsQuery = useListSocialConnections();
   const previewQuery = useGetProgramSocialPreview(opportunity.id);
   const postsQuery = useListProgramSocialPosts(opportunity.id);
+  const seatUpdatesQuery = useListProgramSocialSeatUpdates(opportunity.id, {
+    query: {
+      refetchInterval: (query) =>
+        query.state.data?.events.some((event) => event.status === "pending" || event.status === "processing")
+          ? 5_000
+          : false,
+    },
+  });
   const connectTelegram = useConnectTelegramChannel();
   const disconnectConnection = useDisconnectSocialConnection();
   const startMeta = useStartMetaSocialAuthorization();
   const startX = useStartXSocialAuthorization();
   const publish = usePublishProgramToSocialAccounts();
   const retry = useRetrySocialPost();
+  const retrySeatUpdate = useRetrySocialSeatUpdate();
   const connections = connectionsQuery.data?.connections || [];
   const activeConnections = connections.filter((connection) => connection.status === "active");
 
@@ -157,6 +180,7 @@ export default function SocialPublishingDialog({ opportunity, onClose }: Props) 
   const invalidateSocialData = () => {
     void queryClient.invalidateQueries({ queryKey: getListSocialConnectionsQueryKey() });
     void queryClient.invalidateQueries({ queryKey: getListProgramSocialPostsQueryKey(opportunity.id) });
+    void queryClient.invalidateQueries({ queryKey: getListProgramSocialSeatUpdatesQueryKey(opportunity.id) });
   };
 
   const connectMeta = async () => {
@@ -241,9 +265,23 @@ export default function SocialPublishingDialog({ opportunity, onClose }: Props) 
     }
   };
 
+  const handleRetrySeatUpdate = async (eventId: number) => {
+    setNotice("");
+    try {
+      const result = await retrySeatUpdate.mutateAsync({ id: eventId });
+      setNotice(result.message);
+      setNoticeError(false);
+      invalidateSocialData();
+    } catch (error) {
+      setNotice(messageFromError(error));
+      setNoticeError(true);
+    }
+  };
+
   const startBusy = startMeta.isPending || startX.isPending;
-  const busy = connectTelegram.isPending || disconnectConnection.isPending || publish.isPending || retry.isPending;
+  const busy = connectTelegram.isPending || disconnectConnection.isPending || publish.isPending || retry.isPending || retrySeatUpdate.isPending;
   const history = postsQuery.data?.posts || [];
+  const seatUpdates = seatUpdatesQuery.data?.events || [];
   const getError = (value: unknown) => value instanceof Error ? value.message : "تعذر تحميل البيانات.";
 
   return (
@@ -437,6 +475,66 @@ export default function SocialPublishingDialog({ opportunity, onClose }: Props) 
                     )}
                     {post.status === "unknown" && (
                       <span className="max-w-52 text-[10px] leading-4 text-amber-800">تحقق من الحساب قبل إعادة النشر لتجنب التكرار.</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-amber-100 bg-amber-50/40 p-4 sm:p-5" data-testid="section-social-seat-updates">
+            <div className="mb-3">
+              <h3 className="text-sm font-black text-slate-800">تحديثات المقاعد الآلية</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-600">يُرسل تحديث جديد بعد كل تسجيل ناجح، ويعرض المقاعد المتبقية من دون اسم أو بيانات المشترك.</p>
+            </div>
+            {seatUpdatesQuery.isLoading ? (
+              <div className="flex items-center gap-2 py-3 text-sm text-slate-500"><Loader2 size={16} className="animate-spin" /> جارٍ تحميل تحديثات المقاعد…</div>
+            ) : seatUpdatesQuery.isError ? (
+              <p className="text-sm text-red-700">{getError(seatUpdatesQuery.error)}</p>
+            ) : seatUpdates.length === 0 ? (
+              <p className="text-xs text-slate-500">لا توجد تسجيلات جديدة أُرسلت كتحديثات حتى الآن. تبدأ التحديثات بعد ترحيل قاعدة Render وربط حساب تواصل نشط.</p>
+            ) : (
+              <div className="space-y-3">
+                {seatUpdates.map((event) => (
+                  <div key={event.id} className="rounded-xl border border-amber-100 bg-white p-3" data-testid={`row-social-seat-update-${event.id}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-black text-slate-800">
+                          المتبقي {event.seatsLeft} من {event.totalSeats}
+                          {" · "}كاتب أول {event.firstAuthorSeatsLeft}
+                          {" · "}مؤلف مشارك {event.coAuthorSeatsLeft}
+                        </p>
+                        <p className="mt-1 text-[11px] font-bold text-slate-500">
+                          {SEAT_UPDATE_STATUS[event.status] || event.status} · {new Date(event.createdAt).toLocaleString("ar-SA")}
+                        </p>
+                        {event.lastError && <p className="mt-1 text-[11px] leading-5 text-amber-800">{event.lastError}</p>}
+                      </div>
+                      {event.status === "failed" && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRetrySeatUpdate(event.id)}
+                          disabled={busy}
+                          data-testid={`button-retry-seat-update-${event.id}`}
+                          className="rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-50 disabled:opacity-50"
+                        >
+                          إعادة إرسال الفاشل
+                        </button>
+                      )}
+                    </div>
+                    {event.deliveries.length > 0 ? (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {event.deliveries.map((delivery) => (
+                          <div key={delivery.id} className="rounded-lg bg-slate-50 px-3 py-2 text-[11px]" data-testid={`row-social-seat-delivery-${delivery.id}`}>
+                            <p className="font-black text-slate-700">{PLATFORM_LABELS[delivery.platform] || delivery.platform} · {delivery.accountName}</p>
+                            <p className={`mt-1 font-bold ${delivery.status === "published" ? "text-emerald-700" : delivery.status === "unknown" ? "text-amber-800" : delivery.status === "failed" ? "text-red-700" : "text-slate-500"}`}>
+                              {SEAT_UPDATE_STATUS[delivery.status] || delivery.status}
+                            </p>
+                            {delivery.lastError && <p className="mt-1 leading-4 text-red-700">{delivery.lastError}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-slate-500">لم يُربط حساب نشط وقت معالجة هذا التحديث.</p>
                     )}
                   </div>
                 ))}

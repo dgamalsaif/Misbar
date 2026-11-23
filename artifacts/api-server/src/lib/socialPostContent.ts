@@ -6,6 +6,12 @@ type SocialOpportunityInput = Pick<
 > & {
   hiddenFields: string[];
   siteImageUrl?: string;
+  seatUpdate?: {
+    seatsLeft: number;
+    totalSeats: number;
+    firstAuthorSeatsLeft: number;
+    coAuthorSeatsLeft: number;
+  };
 };
 
 export type SocialPostContent = {
@@ -50,11 +56,18 @@ export function buildSocialPostContent(opportunity: SocialOpportunityInput): Soc
   const opportunityImageVisible = titleVisible && !hidden.has("image") && Boolean(opportunity.imagePath);
   const origin = publicOrigin();
   const shareUrl = `${origin}/share/research/${opportunity.id}`;
-  // Keep the shared copy short enough for X while still including a safe link.
-  const title = titleVisible ? opportunity.titleEn.trim().slice(0, 70) : "";
-  const specialty = specialtyVisible ? opportunity.specialtyEn.trim().slice(0, 30) : "";
+  // Keep seat-update copy conservative enough for X while still including a safe link.
+  const title = titleVisible ? opportunity.titleEn.trim().slice(0, opportunity.seatUpdate ? 40 : 70) : "";
+  const specialty = specialtyVisible ? opportunity.specialtyEn.trim().slice(0, opportunity.seatUpdate ? 15 : 30) : "";
   const lines = ["فرصة بحثية جديدة", ...(title ? [title] : [])];
   if (specialty) lines.push(`التخصص: ${specialty}`);
+  if (opportunity.seatUpdate) {
+    const seats = opportunity.seatUpdate;
+    lines.push(seats.seatsLeft > 0
+      ? `المقاعد المتبقية: ${seats.seatsLeft} من ${seats.totalSeats}`
+      : "اكتملت المقاعد البحثية");
+    lines.push(`كاتب أول: ${seats.firstAuthorSeatsLeft} | مؤلف مشارك: ${seats.coAuthorSeatsLeft}`);
+  }
   lines.push(`التسجيل: ${shareUrl}`);
 
   return {

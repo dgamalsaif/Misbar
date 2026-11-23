@@ -119,6 +119,69 @@ export interface SocialPostsResponse {
   posts: SocialPostRecord[];
 }
 
+export type SocialSeatUpdateDeliveryPlatform = typeof SocialSeatUpdateDeliveryPlatform[keyof typeof SocialSeatUpdateDeliveryPlatform];
+
+
+export const SocialSeatUpdateDeliveryPlatform = {
+  facebook: 'facebook',
+  instagram: 'instagram',
+  x: 'x',
+  telegram: 'telegram',
+} as const;
+
+export type SocialSeatUpdateDeliveryStatus = typeof SocialSeatUpdateDeliveryStatus[keyof typeof SocialSeatUpdateDeliveryStatus];
+
+
+export const SocialSeatUpdateDeliveryStatus = {
+  publishing: 'publishing',
+  published: 'published',
+  failed: 'failed',
+  unknown: 'unknown',
+  skipped: 'skipped',
+} as const;
+
+export interface SocialSeatUpdateDelivery {
+  id: number;
+  platform: SocialSeatUpdateDeliveryPlatform;
+  accountName: string;
+  status: SocialSeatUpdateDeliveryStatus;
+  lastError: string;
+  /** @nullable */
+  publishedAt: string | null;
+}
+
+export type SocialSeatUpdateEventStatus = typeof SocialSeatUpdateEventStatus[keyof typeof SocialSeatUpdateEventStatus];
+
+
+export const SocialSeatUpdateEventStatus = {
+  pending: 'pending',
+  processing: 'processing',
+  completed: 'completed',
+  failed: 'failed',
+  unknown: 'unknown',
+  skipped: 'skipped',
+} as const;
+
+export interface SocialSeatUpdateEvent {
+  id: number;
+  seatsLeft: number;
+  totalSeats: number;
+  firstAuthorSeatsLeft: number;
+  coAuthorSeatsLeft: number;
+  status: SocialSeatUpdateEventStatus;
+  lastError: string;
+  createdAt: string;
+  deliveries: SocialSeatUpdateDelivery[];
+}
+
+export interface SocialSeatUpdatesResponse {
+  events: SocialSeatUpdateEvent[];
+}
+
+export interface SocialSeatUpdateRetryResponse {
+  message: string;
+}
+
 export interface PublishSocialPostsBody {
   /**
      * @minItems 1

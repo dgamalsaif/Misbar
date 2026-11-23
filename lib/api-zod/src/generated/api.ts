@@ -15,8 +15,6 @@ import * as zod from 'zod';
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
-
-
 /**
  * Starts the ORCID OAuth flow and redirects the participant to ORCID.
  * @summary Start ORCID account authorization
@@ -213,6 +211,51 @@ export const PublishProgramToSocialAccountsResponse = zod.object({
   "message": zod.string()
 })
 /**
+ * @summary List automatic seat updates and account delivery results
+ */
+
+
+
+export const ListProgramSocialSeatUpdatesParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const ListProgramSocialSeatUpdatesResponse = zod.object({
+  "events": zod.array(zod.object({
+  "id": zod.number(),
+  "seatsLeft": zod.number(),
+  "totalSeats": zod.number(),
+  "firstAuthorSeatsLeft": zod.number(),
+  "coAuthorSeatsLeft": zod.number(),
+  "status": zod.enum(['pending', 'processing', 'completed', 'failed', 'unknown', 'skipped']),
+  "lastError": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "deliveries": zod.array(zod.object({
+  "id": zod.number(),
+  "platform": zod.enum(['facebook', 'instagram', 'x', 'telegram']),
+  "accountName": zod.string(),
+  "status": zod.enum(['publishing', 'published', 'failed', 'unknown', 'skipped']),
+  "lastError": zod.string(),
+  "publishedAt": zod.coerce.date().nullable()
+}))
+}))
+})
+
+
+/**
+ * @summary Retry account deliveries that definitely failed
+ */
+
+
+
+export const RetrySocialSeatUpdateParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const RetrySocialSeatUpdateResponse = zod.object({
+  "message": zod.string()
+})
+/**
  * @summary Retry a publication that definitely failed
  */
 
@@ -240,4 +283,4 @@ export const RetrySocialPostResponse = zod.object({
   "platform": zod.enum(['facebook', 'instagram', 'x', 'telegram']),
   "accountName": zod.string(),
   "message": zod.string()
-}) // End of generated API schemas.
+})

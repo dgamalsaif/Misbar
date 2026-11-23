@@ -35,7 +35,9 @@ import type {
   SocialConnectionsResponse,
   SocialOAuthStartResponse,
   SocialPostsResponse,
-  SocialPublishingPreview
+  SocialPublishingPreview,
+  SocialSeatUpdateRetryResponse,
+  SocialSeatUpdatesResponse
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -117,7 +119,6 @@ export const getHealthCheckQueryKey = () => {
     `/api/healthz`
     ] as const;
     }
-
 
 export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
@@ -1096,6 +1097,179 @@ export const usePublishProgramToSocialAccounts = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getPublishProgramToSocialAccountsMutationOptions(options), queryClient);
+    }
+
+export const getListProgramSocialSeatUpdatesUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/programs/${id}/social-seat-updates`
+}
+
+/**
+ * @summary List automatic seat updates and account delivery results
+ */
+export const listProgramSocialSeatUpdates = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<SocialSeatUpdatesResponse> => {
+
+  return customFetch<SocialSeatUpdatesResponse>(getListProgramSocialSeatUpdatesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListProgramSocialSeatUpdatesQueryKey = (id: number,) => {
+    return [
+    `/api/admin/programs/${id}/social-seat-updates`
+    ] as const;
+    }
+
+
+export const getListProgramSocialSeatUpdatesQueryOptions = <TData = Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError = ErrorType<void>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListProgramSocialSeatUpdatesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>> = ({ signal }) => listProgramSocialSeatUpdates(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListProgramSocialSeatUpdatesQueryResult = NonNullable<Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>>
+export type ListProgramSocialSeatUpdatesQueryError = ErrorType<void>
+
+
+/** @summary List automatic seat updates and account delivery results */
+export function useListProgramSocialSeatUpdates<TData = Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError = ErrorType<void>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>,
+          TError,
+          Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary List automatic seat updates and account delivery results */
+export function useListProgramSocialSeatUpdates<TData = Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>,
+          TError,
+          Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary List automatic seat updates and account delivery results */
+export function useListProgramSocialSeatUpdates<TData = Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary List automatic seat updates and account delivery results */
+export function useListProgramSocialSeatUpdates<TData = Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProgramSocialSeatUpdates>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListProgramSocialSeatUpdatesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRetrySocialSeatUpdateUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/social-seat-updates/${id}/retry`
+}
+
+/**
+ * @summary Retry account deliveries that definitely failed
+ */
+export const retrySocialSeatUpdate = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<SocialSeatUpdateRetryResponse> => {
+
+  return customFetch<SocialSeatUpdateRetryResponse>(getRetrySocialSeatUpdateUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRetrySocialSeatUpdateMutationKey = () => ['retrySocialSeatUpdate'] as const;
+
+export const getRetrySocialSeatUpdateMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retrySocialSeatUpdate>>, TError,RetrySocialSeatUpdateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retrySocialSeatUpdate>>, TError,RetrySocialSeatUpdateMutationVariables, TContext> => {
+
+const mutationKey = getRetrySocialSeatUpdateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retrySocialSeatUpdate>>, RetrySocialSeatUpdateMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  retrySocialSeatUpdate(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetrySocialSeatUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof retrySocialSeatUpdate>>>
+
+    export type RetrySocialSeatUpdateMutationError = ErrorType<void>
+    export type RetrySocialSeatUpdateMutationVariables = {id: number}
+
+    /** @summary Retry account deliveries that definitely failed */
+export const useRetrySocialSeatUpdate = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retrySocialSeatUpdate>>, TError,RetrySocialSeatUpdateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof retrySocialSeatUpdate>>,
+        TError,
+        RetrySocialSeatUpdateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRetrySocialSeatUpdateMutationOptions(options), queryClient);
     }
 
 export const getRetrySocialPostUrl = (id: number,) => {

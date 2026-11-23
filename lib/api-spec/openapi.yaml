@@ -252,6 +252,56 @@ paths:
           description: Opportunity not found
         "409":
           description: Opportunity is not open for registration
+  /admin/programs/{id}/social-seat-updates:
+    get:
+      operationId: listProgramSocialSeatUpdates
+      tags: [socialPublishing]
+      summary: List automatic seat updates and account delivery results
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      responses:
+        "200":
+          description: Recent automatic seat update history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialSeatUpdatesResponse"
+        "403":
+          description: Owner authentication required
+        "503":
+          description: The Render database migration is not ready
+  /admin/social-seat-updates/{id}/retry:
+    post:
+      operationId: retrySocialSeatUpdate
+      tags: [socialPublishing]
+      summary: Retry account deliveries that definitely failed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      responses:
+        "202":
+          description: The event was requeued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialSeatUpdateRetryResponse"
+        "403":
+          description: Owner authentication required
+        "404":
+          description: Automatic seat update not found
+        "409":
+          description: No definitely failed deliveries can be retried
+        "503":
+          description: The retry could not be queued
   /admin/social/posts/{id}/retry:
     post:
       operationId: retrySocialPost
@@ -416,6 +466,66 @@ components:
           items:
             $ref: "#/components/schemas/SocialPostRecord"
       required: [posts]
+    SocialSeatUpdateDelivery:
+      type: object
+      properties:
+        id:
+          type: number
+        platform:
+          type: string
+          enum: [facebook, instagram, x, telegram]
+        accountName:
+          type: string
+        status:
+          type: string
+          enum: [publishing, published, failed, unknown, skipped]
+        lastError:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, platform, accountName, status, lastError, publishedAt]
+    SocialSeatUpdateEvent:
+      type: object
+      properties:
+        id:
+          type: number
+        seatsLeft:
+          type: number
+        totalSeats:
+          type: number
+        firstAuthorSeatsLeft:
+          type: number
+        coAuthorSeatsLeft:
+          type: number
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, unknown, skipped]
+        lastError:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        deliveries:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialSeatUpdateDelivery"
+      required: [id, seatsLeft, totalSeats, firstAuthorSeatsLeft, coAuthorSeatsLeft, status, lastError, createdAt, deliveries]
+    SocialSeatUpdatesResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialSeatUpdateEvent"
+      required: [events]
+    SocialSeatUpdateRetryResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
     PublishSocialPostsBody:
       type: object
       properties:

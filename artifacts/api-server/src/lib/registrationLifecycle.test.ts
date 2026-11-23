@@ -16,16 +16,17 @@ export const serviceRequestsTable = {name:"services",id:"id"};
 export const ownerAccountsTable = {name:"owners"};
 export const coordinatorPortalSettingsTable = {name:"portal"};
 export const paymentRecordsTable = {name:"payments"};
+export const socialSeatUpdateEventsTable = {name:"seatEvents"};
 const schema = { safeParse: data => ({success:true,data}), partial:()=>schema };
 export const insertRegistrationSchema = schema;
 export const insertServiceRequestSchema = schema;
 let state = {}, failNext = false;
 export function reset(rejected=false) {
  state = {
- programs:[{id:1,titleAr:"Study",titleEn:"Study",category:"active",status:"open",firstAuthorSeats:1,firstAuthorSeatsLeft:1,coAuthorSeats:14,coAuthorSeatsLeft:2,seatsLeft:3}],
+  programs:[{id:1,titleAr:"Study",titleEn:"Study",category:"training",status:"open",firstAuthorSeats:1,firstAuthorSeatsLeft:1,coAuthorSeats:14,coAuthorSeatsLeft:2,seatsLeft:3}],
  registrations: rejected ? [{id:1,researchId:1,coordinatorId:1,authorRole:"co_author",status:"rejected",customFields:{}}] : [],
  coordinators:[{id:1,fullName:"Fixture coordinator",email:"one@example.invalid",status:"active"}],
- bootstrap:[{key:"program-capacity-and-author-roles-v1"}],services:[],owners:[],portal:[],payments:[] };
+  bootstrap:[{key:"program-capacity-and-author-roles-v1"}],services:[],owners:[],portal:[],payments:[],seatEvents:[] };
  failNext=false;
 }
 export const snapshot=()=>structuredClone(state);
@@ -114,6 +115,9 @@ export const app=express();app.use(express.json());app.use((req,res,next)=>{req.
     assert.equal(response.status, 201);
     const student = await response.json() as { id: number; remainingSeats: number };
     assert.equal(student.remainingSeats, 2);
+    assert.equal(fixture.snapshot().seatEvents.length, 1);
+    assert.equal(fixture.snapshot().seatEvents[0].seatsLeft, 2);
+    assert.equal(fixture.snapshot().seatEvents[0].registrationId, student.id);
     assert.equal(fixture.snapshot().registrations[0].orcid, "0000-0002-1825-0097");
     assert.equal((await request(`/registrations/${student.id}`, "PATCH", { orcid: "not-an-orcid" })).status, 400);
     assert.equal(fixture.snapshot().registrations[0].customFields.__seatReservation, undefined);
@@ -128,6 +132,7 @@ export const app=express();app.use(express.json());app.use((req,res,next)=>{req.
     assert.equal((await request("/registrations", "POST", registration, "public")).status, 500);
     assert.equal(fixture.snapshot().registrations.length, 0);
     assert.equal(fixture.snapshot().programs[0].seatsLeft, 3);
+    assert.equal(fixture.snapshot().seatEvents.length, 0);
     fixture.reset(true);
     assert.equal((await request("/registrations/1", "DELETE")).status, 204);
     assert.equal(fixture.snapshot().programs[0].seatsLeft, 4);
