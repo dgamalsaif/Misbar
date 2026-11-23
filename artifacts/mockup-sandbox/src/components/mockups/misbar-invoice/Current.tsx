@@ -3,6 +3,7 @@ import "./_group.css";
 import { FileDown } from "lucide-react";
 type BrandContactSettings = any;
 type InvoiceSettings = any;
+type WatermarkSettings = any;
 
 interface Props {
   registrationId: number;
@@ -255,6 +256,7 @@ function ParticipationInvoice({
 const sampleProps = {
   registrationId: 112, createdAt: "2026-11-23T12:00:00.000Z",
   invoiceSettings: { enabled: true, numberPrefix: "MIS", titleAr: "فاتورة مشاركة بحثية", titleEn: "Research Participation Invoice", itemDescriptionAr: "رسوم المشاركة في الفرصة البحثية", itemDescriptionEn: "Research participation fee", issuerNameAr: "أكاديمية مسبار للبحث والتطوير", issuerNameEn: "MISBAR Academy for Research & Development", logoUrl: "/__mockup/images/misbar-invoice-logo.svg", stampUrl: "", phone: "+966 55 000 0000", email: "misbar@example.com", taxNumber: "", addressAr: "", addressEn: "", applicabilityNoteAr: "قد تخدم المشاركة ملف الترقية والبورد والإقامة المميزة وبدل التميز وبرامج الزمالة وفق أنظمة الجهة المختصة. هذا المستند لا يضمن القبول أو الترقية أو النشر.", applicabilityNoteEn: "Participation may support promotion, board, distinguished residency and fellowship applications subject to the relevant authority. This document does not guarantee acceptance, promotion or publication.", footerAr: "صدر هذا المستند عند تسجيلك في الفرصة البحثية. لم يتم سداد المبلغ.", footerEn: "Issued upon registration. Payment has not been received." },
+  watermarkSettings: { enabled: true, textAr: "© مسبار", textEn: "© MISBAR", color: "#0c3156", opacity: 0.08, fontSize: 11, angle: -20 },
   brand: { siteNameAr: "أكاديمية مسبار للبحث والتطوير", siteNameEn: "MISBAR Academy for Research & Development", logoUrl: "/__mockup/images/misbar-invoice-logo.svg" },
   language: "ar",
   participant: { fullName: "د. نورة الحربي", email: "noura@example.com", phone: "+966 55 000 0000", country: "المملكة العربية السعودية", city: "الرياض", affiliation: "معهد مسبار", specialization: "الطب الباطني" },

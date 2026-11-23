@@ -1,11 +1,12 @@
 import { useRef, type ReactNode } from "react";
 import { CalendarDays, FileDown, FileText, Info, Mail, Phone, ReceiptText, UserRound } from "lucide-react";
-import type { BrandContactSettings, InvoiceSettings } from "@/lib/siteContentSettings";
+import type { BrandContactSettings, InvoiceSettings, WatermarkSettings } from "@/lib/siteContentSettings";
 
 interface Props {
   registrationId: number;
   createdAt: string;
   invoiceSettings: InvoiceSettings;
+  watermarkSettings: WatermarkSettings;
   brand: BrandContactSettings;
   language: string;
   participant: {
@@ -47,6 +48,7 @@ export default function ParticipationInvoice({
   registrationId,
   createdAt,
   invoiceSettings,
+  watermarkSettings,
   brand,
   language,
   participant,
@@ -79,6 +81,10 @@ export default function ParticipationInvoice({
     ? invoiceSettings.issuerNameEn || brand.siteNameEn || "Misbar"
     : invoiceSettings.issuerNameAr || brand.siteNameAr || "مسبار";
   const logoUrl = invoiceSettings.logoUrl || (/\.mp4(?:[?#]|$)/i.test(brand.logoUrl) ? "" : brand.logoUrl);
+  const watermarkText = (isEnglish ? watermarkSettings.textEn : watermarkSettings.textAr).trim();
+  const watermarkOpacity = Math.min(0.35, Math.max(0, watermarkSettings.opacity));
+  const watermarkFontSize = Math.min(72, Math.max(12, watermarkSettings.fontSize * 4));
+  const watermarkAngle = Math.min(45, Math.max(-45, watermarkSettings.angle));
   const opportunityLabel = showResearchReference
     ? researchTitle.trim() || (isEnglish ? "Research opportunity" : "فرصة بحثية")
     : (isEnglish ? "Research opportunity" : "فرصة بحثية");
@@ -118,10 +124,10 @@ export default function ParticipationInvoice({
     window.setTimeout(() => window.print(), 50);
     restoreTimer = window.setTimeout(restore, 30000);
   };
-  const lines = [
+  const lines: Array<{ label: string; value: string; dir?: "ltr" | "auto" }> = [
     { label: isEnglish ? "Participant" : "المشارك", value: participant.fullName },
-    { label: isEnglish ? "Email" : "البريد الإلكتروني", value: participant.email },
-    { label: isEnglish ? "Phone" : "رقم التواصل", value: participant.phone },
+    { label: isEnglish ? "Email" : "البريد الإلكتروني", value: participant.email, dir: "ltr" as const },
+    { label: isEnglish ? "Phone" : "رقم التواصل", value: participant.phone, dir: "ltr" as const },
     { label: isEnglish ? "Country" : "الدولة", value: participant.country },
     { label: isEnglish ? "City" : "المدينة", value: participant.city },
     { label: isEnglish ? "Affiliation" : "جهة الانتساب", value: participant.affiliation },
@@ -145,14 +151,19 @@ export default function ParticipationInvoice({
       dir={isEnglish ? "ltr" : "rtl"}
       lang={isEnglish ? "en" : "ar"}
     >
-      {logoUrl && (
-        <img
-          src={logoUrl}
-          alt=""
+      {watermarkSettings.enabled && watermarkText && (
+        <div
+          className="invoice-watermark pointer-events-none absolute left-1/2 top-[48%] z-0 max-w-[90%] -translate-x-1/2 -translate-y-1/2 overflow-hidden text-ellipsis whitespace-nowrap font-black"
           aria-hidden="true"
-          onError={(event) => { event.currentTarget.style.display = "none"; }}
-          className="invoice-watermark pointer-events-none absolute left-1/2 top-[42%] z-0 h-64 w-64 -translate-x-1/2 -translate-y-1/2 object-contain opacity-[.045]"
-        />
+          style={{
+            color: watermarkSettings.color,
+            opacity: watermarkOpacity,
+            fontSize: `${watermarkFontSize}px`,
+            transform: `translate(-50%, -50%) rotate(${watermarkAngle}deg)`,
+          }}
+        >
+          {watermarkText}
+        </div>
       )}
       <div className="relative z-10">
         <header className="invoice-header relative overflow-hidden bg-[#0b3154] px-5 py-5 text-white sm:px-8 sm:py-6">
@@ -207,13 +218,13 @@ export default function ParticipationInvoice({
           {invoiceSettings.email && (
             <div className="flex min-w-0 items-center gap-2">
               <Mail className="h-4 w-4 shrink-0 text-[#0b5574]" />
-              <span className="min-w-0"><b>{isEnglish ? "Email" : "البريد الإلكتروني"}</b><br /><span className="break-all">{invoiceSettings.email}</span></span>
+              <span className="min-w-0"><b>{isEnglish ? "Email" : "البريد الإلكتروني"}</b><br /><span dir="ltr" className="break-all">{invoiceSettings.email}</span></span>
             </div>
           )}
           {invoiceSettings.phone && (
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 shrink-0 text-[#0b5574]" />
-              <span><b>{isEnglish ? "Phone" : "الهاتف"}</b><br /><bdi>{invoiceSettings.phone}</bdi></span>
+              <span><b>{isEnglish ? "Phone" : "الهاتف"}</b><br /><bdi dir="ltr">{invoiceSettings.phone}</bdi></span>
             </div>
           )}
           {invoiceSettings.taxNumber && (
@@ -233,7 +244,7 @@ export default function ParticipationInvoice({
             {lines.map((line) => (
               <p key={line.label} className="flex min-w-0 justify-between gap-2 border-b border-[#e9eef2] pb-1.5 sm:block">
                 <span className="shrink-0 font-bold text-[#527086]">{line.label}</span>
-                <span className="break-words font-semibold text-[#16334e] sm:mt-1 sm:block">{line.value}</span>
+                <span dir={line.dir} className="break-words font-semibold text-[#16334e] sm:mt-1 sm:block">{line.value}</span>
               </p>
             ))}
           </div>
@@ -268,9 +279,13 @@ export default function ParticipationInvoice({
                 {showSeatDetails && (typeof totalSeats === "number" || typeof remainingSeats === "number") && (
                   <p className="mx-auto mt-3 max-w-md border-t border-[#c7d5df] pt-2 text-[10px] font-bold text-[#536c80]">
                     {isEnglish ? "Available seats after registration: " : "المقاعد المتاحة بعد تسجيلك: "}
-                    {typeof remainingSeats === "number" && <bdi>{remainingSeats}</bdi>}
-                    {typeof remainingSeats === "number" && typeof totalSeats === "number" && " / "}
-                    {typeof totalSeats === "number" && <bdi>{totalSeats}</bdi>}
+                    {typeof remainingSeats === "number" && typeof totalSeats === "number"
+                      ? <bdi dir="ltr">{remainingSeats} / {totalSeats}</bdi>
+                      : typeof remainingSeats === "number"
+                        ? <bdi dir="ltr">{remainingSeats}</bdi>
+                        : typeof totalSeats === "number"
+                          ? <bdi dir="ltr">{totalSeats}</bdi>
+                          : null}
                   </p>
                 )}
                 {includedServices.length > 0 && (
@@ -286,7 +301,7 @@ export default function ParticipationInvoice({
               {amountDue !== undefined && (
                 <div className="invoice-opportunity-amount rounded-2xl bg-[#eef4f8] px-4 py-3 text-center text-[#173b5a]">
                   <p className="text-[10px] font-bold">{isEnglish ? "Participation fee" : "رسوم المشاركة"}</p>
-                  <bdi className="mt-1 block text-base font-black">{formatSar(amountDue)}</bdi>
+                  <bdi dir="ltr" className="mt-1 block text-base font-black">{formatSar(amountDue)}</bdi>
                 </div>
               )}
             </div>
@@ -294,12 +309,12 @@ export default function ParticipationInvoice({
               <div className="invoice-fee-breakdown mt-3 grid gap-2 border-t border-[#d7e2e9] pt-3 text-xs text-[#536c80]">
                 <p className="flex justify-between gap-3">
                   <span>{isEnglish ? "Fees before discount" : "الرسوم قبل الخصم"}</span>
-                  <bdi className={hasDiscount ? "line-through" : "font-bold"}>{formatSar(original)}</bdi>
+                  <bdi dir="ltr" className={hasDiscount ? "line-through" : "font-bold"}>{formatSar(original)}</bdi>
                 </p>
                 {hasDiscount && (
                   <p className="flex justify-between gap-3 font-bold text-emerald-800">
                     <span>{isEnglish ? `Discount (${discountPercent}%)` : `الخصم (${discountPercent}٪)`}</span>
-                    <bdi>−{formatSar(discountValue)}</bdi>
+                    <bdi dir="ltr">−{formatSar(discountValue)}</bdi>
                   </p>
                 )}
               </div>
@@ -307,7 +322,7 @@ export default function ParticipationInvoice({
             {amountDue !== undefined ? (
               <div className="invoice-amount-due mt-3 flex justify-between gap-3 rounded-xl bg-[#0b3154] px-4 py-2.5 text-sm font-black text-white">
                 <span>{isEnglish ? "Amount due — unpaid" : "المبلغ المطلوب — غير مدفوع"}</span>
-                <bdi>{formatSar(amountDue)}</bdi>
+                <bdi dir="ltr">{formatSar(amountDue)}</bdi>
               </div>
             ) : (
               <p className="mt-3 border-t border-[#d7e2e9] pt-3 text-xs text-slate-600">
@@ -348,8 +363,8 @@ export default function ParticipationInvoice({
           <div className="relative flex flex-wrap items-center justify-between gap-2 text-[9px] sm:text-xs">
             <span className="font-black">{issuerName}</span>
             <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/85">
-              {invoiceSettings.phone && <bdi>{invoiceSettings.phone}</bdi>}
-              {invoiceSettings.email && <bdi>{invoiceSettings.email}</bdi>}
+              {invoiceSettings.phone && <bdi dir="ltr">{invoiceSettings.phone}</bdi>}
+              {invoiceSettings.email && <bdi dir="ltr">{invoiceSettings.email}</bdi>}
             </span>
           </div>
         </footer>

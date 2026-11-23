@@ -1648,8 +1648,8 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
   }
 
   body.invoice-printing > .invoice-print-copy .invoice-watermark {
-    width: 68mm !important;
-    height: 68mm !important;
+    max-width: 90% !important;
+    white-space: nowrap !important;
   }
 
   body.invoice-printing > .invoice-print-copy .invoice-meta {

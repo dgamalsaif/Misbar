@@ -389,6 +389,7 @@ export default function OpportunitySurvey() {
                   registrationId={registrationReceipt.id}
                   createdAt={registrationReceipt.createdAt}
                   invoiceSettings={contentSettings.invoiceSettings}
+                  watermarkSettings={contentSettings.watermarkSettings}
                   brand={contentSettings.brand}
                   language={language}
                   participant={{

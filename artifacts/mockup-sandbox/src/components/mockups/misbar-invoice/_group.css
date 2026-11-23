@@ -134,3 +134,182 @@
   --color-indigo-600: var(--color-blue-600);
   --color-indigo-700: var(--color-blue-700);
 }
+
+
+/* Invoice print rules copied from the app for PDF verification */
+@page {
+  size: A4 portrait;
+  margin: 7mm;
+}
+
+@media print {
+  body.invoice-printing {
+    background: #fff !important;
+  }
+
+  body.invoice-printing::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  body.invoice-printing > * {
+    display: none !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy,
+  body.invoice-printing > .invoice-print-copy * {
+    visibility: visible !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 196mm !important;
+    max-width: 196mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    font-size: 8pt !important;
+    line-height: 1.22 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-header {
+    padding: 3mm 5mm !important;
+    break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-logo {
+    width: 16mm !important;
+    height: 16mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-watermark {
+    max-width: 90% !important;
+    white-space: nowrap !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-meta {
+    margin: -2mm 5mm 3mm !important;
+    padding: 2.2mm !important;
+    gap: 1.5mm 3mm !important;
+    font-size: 7pt !important;
+    line-height: 1.2 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-section {
+    margin: 3mm 5mm 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-section-tab {
+    width: 55mm !important;
+    padding: 1.2mm 3mm !important;
+    gap: 2mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-section-tab > span {
+    width: 7mm !important;
+    height: 7mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-participant-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 1.5mm 4mm !important;
+    padding: 2.5mm 3mm !important;
+    font-size: 7pt !important;
+    line-height: 1.2 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-participant-grid p {
+    line-height: 1.2 !important;
+    padding-bottom: 1mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-line-item {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 2mm !important;
+    font-size: 7.5pt !important;
+    line-height: 1.2 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-line-item .mt-1 {
+    margin-top: 1mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-line-item .mt-2 {
+    margin-top: 1.5mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-details {
+    padding: 2.5mm 3mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-opportunity-amount {
+    padding: 2mm 3mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-fee-breakdown {
+    margin-top: 2mm !important;
+    padding-top: 2mm !important;
+    gap: 1.3mm !important;
+    font-size: 7pt !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-amount-due {
+    margin-top: 2mm !important;
+    padding: 2mm 3mm !important;
+    font-size: 8pt !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-applicability-note {
+    margin: 3mm 5mm 0 !important;
+    padding: 2mm 3mm !important;
+    font-size: 7pt !important;
+    line-height: 1.22 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-footer {
+    min-height: 0 !important;
+    margin: 3mm 5mm !important;
+    align-items: center !important;
+    break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-stamp {
+    width: 24mm !important;
+    height: 24mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-contact-footer {
+    padding: 2.5mm 5mm !important;
+    font-size: 7pt !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-screen-actions {
+    display: none !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy {
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+}
