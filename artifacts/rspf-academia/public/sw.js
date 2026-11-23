@@ -40,6 +40,35 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    self.registration.showNotification("تحديث بحثي جديد", {
+      body: "لديك تحديث جديد في مسبار. افتح صندوق الإشعارات للاطلاع عليه.",
+      icon: new URL("./favicon.svg", self.registration.scope).toString(),
+      badge: new URL("./favicon.svg", self.registration.scope).toString(),
+      tag: "misbar-research-update",
+      data: { type: "research-update" },
+      dir: "rtl",
+      lang: "ar",
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const inboxUrl = new URL("./notifications", self.registration.scope).toString();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+      const existing = clients.find((client) => new URL(client.url).origin === self.location.origin);
+      if (existing) {
+        await existing.navigate(inboxUrl);
+        return existing.focus();
+      }
+      return self.clients.openWindow(inboxUrl);
+    }),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (

@@ -214,6 +214,176 @@ export interface PublishSocialPostsResponse {
   message: string;
 }
 
+export interface ParticipantNotificationMessage {
+  message: string;
+}
+
+export interface ParticipantPushConfig {
+  enabled: boolean;
+  /** @nullable */
+  publicKey: string | null;
+}
+
+export interface ParticipantNotificationAccessRequest {
+  /** @maxLength 254 */
+  email: string;
+}
+
+export interface ParticipantNotificationAccessVerification {
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  token: string;
+}
+
+export interface ParticipantNotificationSession {
+  email: string;
+}
+
+export interface ParticipantNotification {
+  id: number;
+  opportunityId: number;
+  stage: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  /** @nullable */
+  readAt: string | null;
+}
+
+export interface ParticipantNotificationPreferences {
+  emailEnabled: boolean;
+  emailVerified: boolean;
+  pushEnabled: boolean;
+  pushAvailable: boolean;
+}
+
+export interface ParticipantPushDevice {
+  id: number;
+  deviceLabel: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ParticipantNotificationInbox {
+  notifications: ParticipantNotification[];
+  /** @minimum 0 */
+  unreadCount: number;
+  preferences: ParticipantNotificationPreferences;
+  pushDevices: ParticipantPushDevice[];
+}
+
+export interface ParticipantNotificationPreferenceUpdate {
+  emailEnabled: boolean;
+}
+
+export interface ParticipantPushSubscriptionKeys {
+  /**
+     * @minLength 20
+     * @maxLength 200
+     */
+  p256dh: string;
+  /**
+     * @minLength 8
+     * @maxLength 100
+     */
+  auth: string;
+}
+
+export interface ParticipantPushSubscriptionInput {
+  /** @maxLength 2048 */
+  endpoint: string;
+  keys: ParticipantPushSubscriptionKeys;
+}
+
+export interface ParticipantPushSubscriptionRemoval {
+  /** @maxLength 2048 */
+  endpoint: string;
+}
+
+export interface ParticipantNotificationUnsubscribe {
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  token: string;
+}
+
+export type ParticipantResearchUpdateInputStage = typeof ParticipantResearchUpdateInputStage[keyof typeof ParticipantResearchUpdateInputStage];
+
+
+export const ParticipantResearchUpdateInputStage = {
+  general_update: 'general_update',
+  seats_full: 'seats_full',
+  ethics_approved: 'ethics_approved',
+  submitted: 'submitted',
+  under_review: 'under_review',
+  accepted: 'accepted',
+  published: 'published',
+  completed: 'completed',
+} as const;
+
+export interface ParticipantResearchUpdateInput {
+  idempotencyKey: string;
+  stage: ParticipantResearchUpdateInputStage;
+  /**
+     * @minLength 1
+     * @maxLength 1500
+     */
+  message: string;
+}
+
+export type ProgramParticipantNotificationEventStatus = typeof ProgramParticipantNotificationEventStatus[keyof typeof ProgramParticipantNotificationEventStatus];
+
+
+export const ProgramParticipantNotificationEventStatus = {
+  pending: 'pending',
+  processing: 'processing',
+  completed: 'completed',
+  failed: 'failed',
+  unknown: 'unknown',
+  skipped: 'skipped',
+} as const;
+
+export interface ProgramParticipantNotificationEvent {
+  id: number;
+  opportunityId: number;
+  idempotencyKey: string;
+  stage: string;
+  title: string;
+  message: string;
+  status: ProgramParticipantNotificationEventStatus;
+  /** @minimum 0 */
+  totalRecipients: number;
+  /** @minimum 0 */
+  emailQueued: number;
+  /** @minimum 0 */
+  pushQueued: number;
+  /** @minimum 0 */
+  sent: number;
+  /** @minimum 0 */
+  failed: number;
+  /** @minimum 0 */
+  unknown: number;
+  /** @minimum 0 */
+  skipped: number;
+  emailAvailable: boolean;
+  pushAvailable: boolean;
+  lastError: string;
+  createdAt: string;
+}
+
+export interface ProgramParticipantNotifications {
+  events: ProgramParticipantNotificationEvent[];
+}
+
+export interface ParticipantNotificationRetryResponse {
+  message: string;
+  /** @minimum 1 */
+  queued: number;
+}
+
 export type CompleteOrcidAuthorizationParams = {
   /** @maxLength 4096 */
   code?: string;
@@ -222,3 +392,4 @@ export type CompleteOrcidAuthorizationParams = {
   /** @maxLength 4096 */
   error?: string;
 };
+

@@ -11,6 +11,8 @@ import orcidRouter from "./orcid";
 import socialOAuthRouter from "./socialOAuth";
 import socialPublishingRouter from "./socialPublishing";
 import socialSeatUpdatesRouter from "./socialSeatUpdates";
+import participantNotificationsRouter from "./participantNotifications";
+import adminParticipantNotificationsRouter from "./adminParticipantNotifications";
 import { COOKIE_NAME, getStaffSession, readSession } from "../middlewares/coordinatorAuth";
 import { isAllowedCoordinatorMutation } from "../lib/coordinatorPermissions";
 
@@ -44,5 +46,7 @@ router.use(orcidRouter);
 router.use(socialOAuthRouter);
 router.use(socialPublishingRouter);
 router.use(socialSeatUpdatesRouter);
+router.use(participantNotificationsRouter);
+router.use(adminParticipantNotificationsRouter);
 
 export default router;

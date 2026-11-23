@@ -26,6 +26,84 @@ export function isRegistrationEmailConfigured() {
   return Boolean(process.env["SMTP_HOST"]);
 }
 
+export function renderParticipantUpdateEmail(data: {
+  title: string;
+  stageLabel: string;
+  message: string;
+  inboxUrl: string;
+  unsubscribeUrl: string;
+}) {
+  const title = escapeHtml(data.title);
+  const stageLabel = escapeHtml(data.stageLabel);
+  const message = escapeHtml(data.message).replace(/\r?\n/g, "<br>");
+  const inboxUrl = escapeHtml(data.inboxUrl);
+  const unsubscribeUrl = escapeHtml(data.unsubscribeUrl);
+  return `
+    <div dir="rtl" style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;color:#14231f;line-height:1.9">
+      <div style="background:#0C3156;color:#fff;padding:22px 24px;border-radius:12px 12px 0 0">
+        <h1 style="margin:0;font-size:20px">تحديث جديد لبحثك — مسبار</h1>
+      </div>
+      <div style="padding:22px 24px;border:1px solid #e2e8f0;border-top:0;border-radius:0 0 12px 12px">
+        <p style="margin:0 0 10px;color:#117b59;font-weight:bold">${stageLabel}</p>
+        <h2 style="font-size:17px;line-height:1.7;margin:0 0 14px">${title}</h2>
+        <p style="margin:0 0 20px;white-space:normal">${message}</p>
+        <a href="${inboxUrl}" style="display:inline-block;background:#117b59;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">فتح صندوق الإشعارات</a>
+        <p style="margin:22px 0 0;padding-top:14px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b">
+          وصلك هذا التحديث لأن بريدك مسجل في هذه الفرصة البحثية.
+          <a href="${unsubscribeUrl}" style="color:#475569">إيقاف رسائل تحديثات البحث</a>
+        </p>
+      </div>
+    </div>`;
+}
+
+export async function sendParticipantNotificationAccessEmail(data: {
+  email: string;
+  accessUrl: string;
+}) {
+  const transport = createTransport();
+  if (!transport) throw new Error("إعداد البريد غير مكتمل على خادم الإنتاج.");
+  await transport.sendMail({
+    from: { name: "Misbar | مسبار", address: FROM_EMAIL },
+    to: data.email,
+    subject: "رابط الدخول الآمن إلى إشعارات مسبار",
+    html: `
+      <div dir="rtl" style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#14231f;line-height:1.9">
+        <div style="background:#0C3156;color:#fff;padding:22px;border-radius:10px 10px 0 0">
+          <h1 style="margin:0;font-size:20px">صندوق إشعارات مسبار</h1>
+        </div>
+        <div style="padding:22px;border:1px solid #e2e8f0;border-top:0;border-radius:0 0 10px 10px">
+          <p>استخدم الرابط التالي لفتح إشعارات الأبحاث المرتبطة ببريدك الإلكتروني. الرابط صالح لمدة 24 ساعة ويُستخدم مرة واحدة.</p>
+          <p><a href="${escapeHtml(data.accessUrl)}" style="display:inline-block;background:#117b59;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">فتح صندوق الإشعارات</a></p>
+          <p style="font-size:12px;color:#64748b">إذا لم تطلب هذا الرابط، يمكنك تجاهل الرسالة.</p>
+        </div>
+      </div>`,
+  });
+}
+
+export async function sendParticipantUpdateEmail(data: {
+  email: string;
+  title: string;
+  stageLabel: string;
+  message: string;
+  inboxUrl: string;
+  unsubscribeUrl: string;
+}) {
+  const transport = createTransport();
+  if (!transport) throw new Error("SMTP is not configured.");
+  const result = await transport.sendMail({
+    from: { name: "Misbar | مسبار", address: FROM_EMAIL },
+    to: data.email,
+    subject: `تحديث بحثي: ${data.stageLabel} — مسبار`,
+    html: renderParticipantUpdateEmail(data),
+  });
+  if (result.rejected?.some((address) => address.toLowerCase() === data.email.toLowerCase())) {
+    throw new Error("رفض خادم البريد استلام رسالة التحديث.");
+  }
+  if (Array.isArray(result.accepted) && result.accepted.length === 0) {
+    throw new Error("لم يؤكد خادم البريد قبول رسالة التحديث.");
+  }
+}
+
 export interface RegistrationEmailResult {
   configured: boolean;
   pending: boolean;

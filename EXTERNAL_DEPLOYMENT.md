@@ -48,6 +48,33 @@ Each eligible opportunity gets a manual preview. The backend applies the opportu
 
 After `0014_social_seat_updates.sql` is applied and the updated Render API is deployed, every successful registration for an active/open opportunity queues a new seat-count post to every connected, active social account. The post reports the total and remaining seats, including first-author and co-author counts, and follows the current title/specialty/image visibility settings. It never includes participant names, email addresses, phone numbers, or other registration details. This creates a separate public post per successful registration; it does not edit or replace earlier posts. Updates are queued only for accounts already connected when the event is processed. If no active account is connected, the event is marked skipped. Results and retry controls for clearly failed deliveries appear in the opportunity's social publishing dialog; uncertain provider results are not retried automatically to prevent duplicate posts.
 
+### Participant research-update notifications
+
+The owner can explicitly publish a research-stage update from the opportunity card in the admin dashboard. If an owner changes a research stage, the admin opens the same review dialog; nothing is sent until the owner writes and confirms the participant-facing message. Routine edits do not automatically notify participants. The update appears in each registered participant's secure inbox and is queued by email when SMTP is configured. Rejected registrations are excluded. Participants opt in separately to browser push notifications; lock-screen push text is generic and never includes research titles or participant details. Participants can turn off email updates or remove individual push-enabled browsers from their inbox.
+
+For browser push, generate a VAPID key pair locally from the repository root after dependencies are installed:
+
+```bash
+pnpm --filter @workspace/api-server exec web-push generate-vapid-keys
+```
+
+In the existing Render **srma-api** service, add these environment variables and save them:
+
+- `VAPID_PUBLIC_KEY`: the generated public key.
+- `VAPID_PRIVATE_KEY`: the generated private key. Treat it as a secret; keep it only in Render and never paste it into chat, Cloudflare, or source control.
+- `VAPID_SUBJECT`: a contact URI such as `mailto:your-admin-email@example.com` or an HTTPS page on the institution's domain.
+
+The email channel uses the existing Render SMTP variables. `PUBLIC_SITE_ORIGIN` must remain `https://srmaacademy.com` so email links return to the canonical site. Push notifications require HTTPS and a supported browser; inbox and email remain available when VAPID is not configured.
+
+Before deploying the matching API version, back up the existing Render PostgreSQL database and check the notification tables and `device_label` column. Apply only missing add-only migrations, in order, from the repository root using the existing Render database URL:
+
+```bash
+psql -v ON_ERROR_STOP=1 "$RENDER_DATABASE_URL" -f lib/db/migrations/0015_participant_notifications.sql
+psql -v ON_ERROR_STOP=1 "$RENDER_DATABASE_URL" -f lib/db/migrations/0016_participant_push_device_labels.sql
+```
+
+Use the existing Render PostgreSQL database only. These migrations create notification tables and add a device-label column; they do not alter or delete existing registration, opportunity, or payment data. No migration runs automatically at build or startup. After applying them and setting the Render variables, deploy the API and the Cloudflare Pages frontend/service worker from the approved repository branch.
+
 No migrations run during build, startup, or post-merge setup. The existing database and schema are used as-is. Keep the connection string only in Render's environment settings; never commit it or send it in chat.
 
 For an existing Render service, check its saved commands explicitly; updating this file alone does not guarantee those dashboard settings change:

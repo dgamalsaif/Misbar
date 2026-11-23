@@ -12,6 +12,7 @@ import FloatingButtons from "@/components/FloatingButtons";
 import BrandBackground from "@/components/BrandBackground";
 import Home from "@/pages/Home";
 import ParticipantPortal from "@/pages/ParticipantPortal";
+import ParticipantNotifications from "@/pages/ParticipantNotifications";
 import CoordinatorPortal from "@/pages/CoordinatorPortal";
 import SpecialRequests from "@/pages/SpecialRequests";
 import KnowledgeCenter from "@/pages/KnowledgeCenter";
@@ -83,6 +84,9 @@ function Router() {
           <Switch>
             <Route path="/" component={Home} />
             <Route path="/participant-portal" component={ParticipantPortal} />
+            <Route path="/notifications" component={ParticipantNotifications} />
+            <Route path="/notifications/verify" component={ParticipantNotifications} />
+            <Route path="/notifications/unsubscribe" component={ParticipantNotifications} />
             <Route path="/coordinator" component={CoordinatorPortal} />
             <Route path="/coordinator-portal" component={CoordinatorPortal} />
             <Route path="/special-requests" component={SpecialRequests} />
