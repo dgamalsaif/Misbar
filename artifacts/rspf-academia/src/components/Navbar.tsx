@@ -46,11 +46,6 @@ export default function Navbar() {
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          {nav.showInstall && (
-            <div className="hidden 2xl:block">
-              <InstallAppButton className="m-btn m-btn-ghost m-btn-sm" />
-            </div>
-          )}
           {nav.showCurrency && <CurrencyToggle currency={currency} onSelect={setCurrency} triggerClassName="hidden sm:inline-flex" />}
           <Link
             href="/notifications"
@@ -101,10 +96,10 @@ export default function Navbar() {
             {nav.showLanguage && (
               <LanguageMenu language={language} label={language === "ar" ? "اللغة" : "Language"} options={languageOptions} onSelect={(next) => { setLanguage(next); setMobileOpen(false); }} triggerClassName="flex w-full" mobile />
             )}
-            {nav.showInstall && <InstallAppButton className="m-btn m-btn-ghost w-full" />}
           </div>
         </div>
       )}
+      <InstallAppButton enabled={nav.showInstall} />
     </header>
   );
 }

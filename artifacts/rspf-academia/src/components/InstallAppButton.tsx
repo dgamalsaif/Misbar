@@ -1,8 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Download, Smartphone, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { DEFAULT_SITE_CONTENT_SETTINGS, getPwaIconUrl } from "@/lib/siteContentSettings";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
+import { useToast } from "@/hooks/use-toast";
+
+const INSTALL_DISMISSED_UNTIL_KEY = "misbar-install-prompt-dismissed-until";
+const INSTALL_MANUAL_PENDING_KEY = "misbar-install-manual-pending";
+const INSTALL_CONFIRMED_KEY = "misbar-install-confirmed";
+const INSTALL_DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -20,16 +26,47 @@ function isAppInstalled() {
     (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
-export default function InstallAppButton({ className = "" }: { className?: string }) {
+function hasConfirmedInstall() {
+  try {
+    return localStorage.getItem(INSTALL_CONFIRMED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function isPromptDismissed() {
+  try {
+    const dismissedUntil = Number(localStorage.getItem(INSTALL_DISMISSED_UNTIL_KEY) || 0);
+    return dismissedUntil > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+export default function InstallAppButton({ enabled = true }: { enabled?: boolean }) {
   const { direction, language, localize } = useLanguage();
   const { data: settings = DEFAULT_SITE_CONTENT_SETTINGS } = useSiteContentSettings();
-  const appName = settings.brand.appNameAr || settings.brand.appNameEn || settings.brand.siteNameAr || "Misbar";
+  const { toast } = useToast();
+  const appName = (language === "ar"
+    ? settings.brand.appNameAr || settings.brand.siteNameAr
+    : settings.brand.appNameEn || settings.brand.siteNameEn) || "Misbar";
   const appIcon = getPwaIconUrl(192, settings.brand);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
-  const [installed, setInstalled] = useState(isAppInstalled);
+  const [installed, setInstalled] = useState(() => isAppInstalled() || hasConfirmedInstall());
+  const [bannerVisible, setBannerVisible] = useState(false);
   const [installError, setInstallError] = useState(false);
+  const installToastShown = useRef(false);
+
+  const announceInstalled = () => {
+    if (installToastShown.current) return;
+    installToastShown.current = true;
+    toast({
+      title: localize("تم تثبيت التطبيق", "App installed"),
+      description: localize("يمكنك فتح مسبار من أيقونته على شاشة جهازك.", "Open Misbar from its icon on your device."),
+    });
+  };
 
   useEffect(() => {
     const captureInstall = (event: BeforeInstallPromptEvent) => {
@@ -42,20 +79,57 @@ export default function InstallAppButton({ className = "" }: { className?: strin
     displayMode.addEventListener("change", syncInstalledState);
     const onInstalled = () => {
       setInstalled(true);
+      setBannerVisible(false);
       setInstallEvent(null);
       setIsOpen(false);
       setInstalling(false);
+      try {
+        localStorage.setItem(INSTALL_CONFIRMED_KEY, "1");
+        localStorage.removeItem(INSTALL_MANUAL_PENDING_KEY);
+      } catch {
+        // Installation confirmation should still appear if browser storage is unavailable.
+      }
+      announceInstalled();
     };
     window.addEventListener("appinstalled", onInstalled);
+
+    if (isAppInstalled()) {
+      setInstalled(true);
+      try {
+        if (localStorage.getItem(INSTALL_MANUAL_PENDING_KEY) === "1") {
+          localStorage.setItem(INSTALL_CONFIRMED_KEY, "1");
+          localStorage.removeItem(INSTALL_MANUAL_PENDING_KEY);
+          announceInstalled();
+        }
+      } catch {
+        // The installed state can still be detected without browser storage.
+      }
+    }
+
     return () => {
       window.removeEventListener("beforeinstallprompt", captureInstall);
       displayMode.removeEventListener("change", syncInstalledState);
       window.removeEventListener("appinstalled", onInstalled);
     };
-  }, []);
+  }, [localize, toast]);
+
+  useEffect(() => {
+    if (!enabled || installed || isPromptDismissed()) {
+      setBannerVisible(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setBannerVisible(true), 1800);
+    return () => window.clearTimeout(timer);
+  }, [enabled, installed]);
 
   const install = async () => {
     if (!installEvent) {
+      try {
+        localStorage.setItem(INSTALL_MANUAL_PENDING_KEY, "1");
+      } catch {
+        // Manual installation instructions remain available without storage.
+      }
+      setIsOpen(true);
       return;
     }
     const pendingInstall = installEvent;
@@ -66,7 +140,17 @@ export default function InstallAppButton({ className = "" }: { className?: strin
       const choice = await pendingInstall.userChoice;
       if (choice.outcome === "accepted") {
         setInstalled(true);
+        setBannerVisible(false);
         setIsOpen(false);
+        try {
+          localStorage.setItem(INSTALL_CONFIRMED_KEY, "1");
+          localStorage.removeItem(INSTALL_MANUAL_PENDING_KEY);
+        } catch {
+          // Keep the install confirmation even when storage is unavailable.
+        }
+        announceInstalled();
+      } else {
+        setIsOpen(true);
       }
     } catch {
       setInstallError(true);
@@ -78,10 +162,56 @@ export default function InstallAppButton({ className = "" }: { className?: strin
 
   return (
     <>
-      <button type="button" onClick={() => setIsOpen(true)} data-testid="button-install-app" className={className} aria-label={localize("تحميل التطبيق", "Install app")}>
-        {installed ? <Check size={15} /> : <Download size={15} />}
-        {installed ? localize("التطبيق مثبت", "App installed") : localize("تحميل التطبيق", "Install app")}
-      </button>
+      {enabled && bannerVisible && !installed && (
+        <aside
+          role="status"
+          aria-live="polite"
+          data-testid="install-app-prompt"
+          className="fixed inset-x-3 bottom-24 z-[110] mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-emerald-200 bg-white/95 p-3 shadow-[0_16px_48px_-20px_rgba(9,56,42,.55)] backdrop-blur-xl sm:bottom-5 sm:gap-4 sm:p-4"
+          dir={direction}
+        >
+          <img
+            src={appIcon}
+            alt=""
+            onError={(event) => { event.currentTarget.hidden = true; }}
+            className="h-11 w-11 shrink-0 rounded-xl border border-emerald-100 object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-black text-slate-900">
+              {localize(`ثبّت تطبيق ${appName}`, `Install ${appName}`)}
+            </p>
+            <p className="mt-0.5 text-xs leading-5 text-slate-600">
+              {localize("وصول أسرع إلى الفرص وتحديثات أبحاثك.", "Quick access to opportunities and research updates.")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void install()}
+            disabled={installing}
+            data-testid="button-install-app"
+            className="m-btn m-btn-primary m-btn-sm shrink-0 disabled:opacity-60"
+          >
+            <Download size={15} />
+            {installing ? localize("جارٍ التثبيت", "Installing") : localize("تثبيت", "Install")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setBannerVisible(false);
+              try {
+                localStorage.setItem(INSTALL_DISMISSED_UNTIL_KEY, String(Date.now() + INSTALL_DISMISS_DURATION_MS));
+              } catch {
+                // The banner can still be dismissed for the current page view.
+              }
+            }}
+            data-testid="button-dismiss-install-prompt"
+            className="shrink-0 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            aria-label={localize("إغلاق إشعار التثبيت", "Dismiss install notice")}
+          >
+            <X size={17} />
+          </button>
+        </aside>
+      )}
       {isOpen && (
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-4" onClick={() => setIsOpen(false)} role="dialog" aria-modal="true" aria-label={localize(`تثبيت تطبيق ${appName}`, `Install ${appName} app`)}>
           <div className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm" />
