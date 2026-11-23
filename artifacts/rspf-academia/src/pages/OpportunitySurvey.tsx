@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Link } from "wouter";
 import {
   ShieldCheck,
@@ -68,6 +68,7 @@ export default function OpportunitySurvey() {
   const [researchExpDetails, setResearchExpDetails] = useState("");
   const [agreeFeesAndTasks, setAgreeFeesAndTasks] = useState<"agree" | "disagree" | "">("");
   const [loading, setLoading] = useState(false);
+  const submissionInFlight = useRef(false);
   const [done, setDone] = useState(false);
   const [registrationReceipt, setRegistrationReceipt] = useState<{
     id: number;
@@ -179,6 +180,7 @@ export default function OpportunitySurvey() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submissionInFlight.current) return;
     if (!selectedOpp) return;
     if (selectedOpp.status !== "open") {
       setError(localize("التسجيل مغلق لهذه الفرصة.", "Registration is closed for this opportunity."));
@@ -214,6 +216,7 @@ export default function OpportunitySurvey() {
       return;
     }
 
+    submissionInFlight.current = true;
     setLoading(true);
     setError("");
     const fullName = `${form.firstName.trim()} ${form.familyName.trim()}`.trim();
@@ -245,10 +248,11 @@ export default function OpportunitySurvey() {
       if (!response.ok) {
         throw new Error(resData.error || localize("حدث خطأ أثناء حفظ التسجيل", "Failed to save registration"));
       }
+      const parsedRegistrationId = Number(resData.id);
       setRegistrationReceipt(
-        typeof resData.id === "number"
+        Number.isSafeInteger(parsedRegistrationId) && parsedRegistrationId > 0
           ? {
-              id: resData.id,
+              id: parsedRegistrationId,
               createdAt: typeof resData.createdAt === "string" ? resData.createdAt : new Date().toISOString(),
               remainingSeats: typeof resData.remainingSeats === "number" ? resData.remainingSeats : null,
             }
@@ -288,6 +292,7 @@ export default function OpportunitySurvey() {
     } catch (err: any) {
       setError(err?.message || localize("حدث خطأ أثناء حفظ التسجيل", "Failed to save registration"));
     } finally {
+      submissionInFlight.current = false;
       setLoading(false);
     }
   };
@@ -408,6 +413,11 @@ export default function OpportunitySurvey() {
                   priceDiscountedSar={selectedOpp.priceDiscountedSar}
                   includedServices={isFieldVisible(selectedOpp, "price") ? selectedOpp.includedServices || [] : []}
                 />
+              )}
+              {contentSettings.invoiceSettings.enabled && !registrationReceipt && (
+                <p role="status" className="mx-auto mt-5 max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+                  {localize("تم حفظ التسجيل، لكن تعذّر إنشاء الفاتورة لعدم وصول رقم التسجيل. لا تُعد التسجيل؛ يرجى التواصل مع الإدارة.", "Your registration was saved, but the invoice could not be created because the registration number was missing. Do not register again; please contact the administrator.")}
+                </p>
               )}
 
               <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-xs font-bold text-slate-700">

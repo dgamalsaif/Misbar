@@ -1,4 +1,5 @@
-import { FileDown, Printer } from "lucide-react";
+import { useRef } from "react";
+import { FileDown } from "lucide-react";
 import type { BrandContactSettings, InvoiceSettings } from "@/lib/siteContentSettings";
 
 interface Props {
@@ -50,6 +51,7 @@ export default function ParticipationInvoice({
   priceDiscountedSar,
   includedServices,
 }: Props) {
+  const printing = useRef(false);
   const isEnglish = language === "en";
   const date = new Date(createdAt);
   const validDate = Number.isNaN(date.getTime()) ? new Date() : date;
@@ -75,16 +77,22 @@ export default function ParticipationInvoice({
     maximumFractionDigits: 2,
   }).format(value);
   const printInvoice = () => {
+    if (printing.current) return;
+    printing.current = true;
     const previousTitle = document.title;
     document.title = invoiceNumber;
     document.body.classList.add("invoice-printing");
+    let restoreTimer = 0;
     const restore = () => {
+      if (!printing.current) return;
+      printing.current = false;
       document.body.classList.remove("invoice-printing");
       document.title = previousTitle;
+      window.clearTimeout(restoreTimer);
     };
     window.addEventListener("afterprint", restore, { once: true });
     window.setTimeout(() => window.print(), 50);
-    window.setTimeout(restore, 30000);
+    restoreTimer = window.setTimeout(restore, 30000);
   };
   const lines = [
     { label: isEnglish ? "Participant" : "المشارك", value: participant.fullName },
@@ -97,7 +105,7 @@ export default function ParticipationInvoice({
   ].filter((line) => line.value.trim());
 
   return (
-    <div className="invoice-print-root mx-auto mt-6 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 text-right shadow-sm sm:p-7" dir={isEnglish ? "ltr" : "rtl"} lang={isEnglish ? "en" : "ar"}>
+    <div className="invoice-print-root mx-auto mt-6 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 text-right shadow-sm sm:p-7" data-testid="participation-invoice" dir={isEnglish ? "ltr" : "rtl"} lang={isEnglish ? "en" : "ar"}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
           {logoUrl && (
@@ -222,14 +230,6 @@ export default function ParticipationInvoice({
         >
           <FileDown size={17} />
           {isEnglish ? "Print or save as PDF" : "طباعة أو حفظ الفاتورة PDF"}
-        </button>
-        <button
-          type="button"
-          onClick={printInvoice}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
-        >
-          <Printer size={17} />
-          {isEnglish ? "Print" : "طباعة"}
         </button>
       </div>
       <p className="invoice-screen-actions mt-2 text-center text-xs text-slate-500">

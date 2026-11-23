@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, CheckCircle2, Loader2, UserRound, Building2, MapPin, AtSign, ExternalLink, MessageCircle, Send, Mail, Share2, GraduationCap, AlertTriangle, ShieldCheck } from "lucide-react";
 import CountrySelector from "./CountrySelector";
 import OrcidConnectButton from "./OrcidConnectButton";
@@ -60,6 +60,7 @@ export default function RegistrationModal({
   const [researchExpDetails, setResearchExpDetails] = useState("");
   const [agreeFeesAndTasks, setAgreeFeesAndTasks] = useState<"agree" | "disagree" | "">("");
   const [loading, setLoading] = useState(false);
+  const submissionInFlight = useRef(false);
   const [done, setDone] = useState(false);
   const [remainingSeats, setRemainingSeats] = useState<number | null>(null);
   const [registrationId, setRegistrationId] = useState<number | null>(null);
@@ -133,6 +134,7 @@ export default function RegistrationModal({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (submissionInFlight.current) return;
     setError("");
     const normalizedOrcid = form.orcid.trim() ? normalizeOrcidId(form.orcid) : "";
     if (form.orcid.trim() && !normalizedOrcid) {
@@ -166,6 +168,7 @@ export default function RegistrationModal({
       return;
     }
 
+    submissionInFlight.current = true;
     setLoading(true);
     try {
       const { firstName, familyName, ...registrationFields } = form;
@@ -201,7 +204,8 @@ export default function RegistrationModal({
       };
       if (!response.ok) throw new Error(submitError(result.error));
       setRemainingSeats(typeof result.remainingSeats === "number" ? result.remainingSeats : null);
-      setRegistrationId(typeof result.id === "number" ? result.id : null);
+      const parsedRegistrationId = Number(result.id);
+      setRegistrationId(Number.isSafeInteger(parsedRegistrationId) && parsedRegistrationId > 0 ? parsedRegistrationId : null);
       setRegistrationCreatedAt(typeof result.createdAt === "string" ? result.createdAt : new Date().toISOString());
 
       // Resolve specialty group link or research group link
@@ -268,6 +272,7 @@ export default function RegistrationModal({
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : localize("حدث خطأ غير متوقع", "An unexpected error occurred."));
     } finally {
+      submissionInFlight.current = false;
       setLoading(false);
     }
   };
@@ -326,6 +331,11 @@ export default function RegistrationModal({
                 priceDiscountedSar={priceDiscountedSar}
                 includedServices={showFeeDetails ? includedServices : []}
               />
+            )}
+            {!coordinatorEntry && contentSettings.invoiceSettings.enabled && registrationId === null && (
+              <p role="status" className="mx-auto mt-4 max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+                {localize("تم حفظ التسجيل، لكن تعذّر إنشاء الفاتورة لعدم وصول رقم التسجيل. لا تُعد التسجيل؛ يرجى التواصل مع الإدارة.", "Your registration was saved, but the invoice could not be created because the registration number was missing. Do not register again; please contact the administrator.")}
+              </p>
             )}
             <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-slate-500">{coordinatorEntry ? localize("تمت إضافة بيانات الطالب إلى لوحة التسجيلات بنجاح.", "The student's details have been added to the registrations dashboard.") : localize(`تم حفظ بياناتك وسيتم التواصل معك من فريق ${contentSettings.brand.siteNameAr} قريباً.`, `Your details have been saved and the ${contentSettings.brand.siteNameEn} team will contact you soon.`)}</p>
 
