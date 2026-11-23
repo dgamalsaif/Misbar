@@ -59,4 +59,3 @@ export function shouldQueueEmailNotification(emailEnabled: boolean, smtpAvailabl
 export function shouldQueuePushNotification(pushEnabled: boolean, pushAvailable: boolean) {
   return pushEnabled && pushAvailable;
 }
-

@@ -392,4 +392,3 @@ export type CompleteOrcidAuthorizationParams = {
   /** @maxLength 4096 */
   error?: string;
 };
-
