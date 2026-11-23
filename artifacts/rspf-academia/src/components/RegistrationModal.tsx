@@ -307,6 +307,7 @@ export default function RegistrationModal({
                 registrationId={registrationId}
                 createdAt={registrationCreatedAt}
                 invoiceSettings={contentSettings.invoiceSettings}
+                watermarkSettings={contentSettings.watermarkSettings}
                 brand={contentSettings.brand}
                 language={language}
                 participant={{

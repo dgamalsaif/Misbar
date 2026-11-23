@@ -1,0 +1,315 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Readex+Pro:wght@400;500;600;700&display=swap");
+
+:root {
+  /* Misbar palette — overwritten at runtime by ThemeSync from experience.theme */
+  --m-primary: #164f3a;
+  --m-gold: #b68b42;
+  --m-ink: #27382f;
+  --m-bg: #f1f3eb;
+  --m-surface: #fbfaf5;
+  --m-radius: 1rem;
+  --m-btn-radius: 999px;
+  --m-space: 1;
+  --m-heading-scale: 1;
+  --m-font-heading: 'Readex Pro', 'IBM Plex Sans Arabic', serif;
+  --m-font-body: 'IBM Plex Sans Arabic', 'Tajawal', sans-serif;
+  --m-primary-dark: color-mix(in oklab, var(--m-primary) 78%, black);
+  --m-primary-soft: color-mix(in oklab, var(--m-primary) 9%, var(--m-surface));
+  --m-gold-soft: color-mix(in oklab, var(--m-gold) 16%, var(--m-surface));
+  --m-line: color-mix(in oklab, var(--m-ink) 11%, transparent);
+  --m-muted: color-mix(in oklab, var(--m-ink) 62%, var(--m-bg));
+
+  --background: 80 22% 94%;
+  --foreground: 145 17% 19%;
+  --border: 82 13% 84%;
+  --input: 82 13% 84%;
+  --ring: 151 57% 20%;
+  --card: 50 38% 97%;
+  --card-foreground: 145 17% 19%;
+  --card-border: 82 13% 86%;
+  --popover: 50 38% 97%;
+  --popover-foreground: 145 17% 19%;
+  --popover-border: 82 13% 86%;
+  --primary: 151 57% 20%;
+  --primary-foreground: 50 38% 97%;
+  --secondary: 83 20% 91%;
+  --secondary-foreground: 145 17% 19%;
+  --muted: 83 18% 91%;
+  --muted-foreground: 147 10% 39%;
+  --accent: 39 37% 88%;
+  --accent-foreground: 145 17% 19%;
+  --destructive: 4 70% 46%;
+  --destructive-foreground: 48 100% 98%;
+
+  /* Re-tint Tailwind emerald/teal/amber scales so legacy pages, portals, admin and modals follow the theme. */
+  --color-emerald-50: color-mix(in oklab, var(--m-primary) 6%, white);
+  --color-emerald-100: color-mix(in oklab, var(--m-primary) 13%, white);
+  --color-emerald-200: color-mix(in oklab, var(--m-primary) 25%, white);
+  --color-emerald-300: color-mix(in oklab, var(--m-primary) 42%, white);
+  --color-emerald-400: color-mix(in oklab, var(--m-primary) 62%, white);
+  --color-emerald-500: color-mix(in oklab, var(--m-primary) 80%, white);
+  --color-emerald-600: var(--m-primary);
+  --color-emerald-700: color-mix(in oklab, var(--m-primary) 88%, black);
+  --color-emerald-800: color-mix(in oklab, var(--m-primary) 75%, black);
+  --color-emerald-900: color-mix(in oklab, var(--m-primary) 60%, black);
+  --color-teal-50: var(--color-emerald-50);
+  --color-teal-100: var(--color-emerald-100);
+  --color-teal-600: var(--color-emerald-600);
+  --color-teal-700: var(--color-emerald-700);
+  --color-amber-50: color-mix(in oklab, var(--m-gold) 9%, white);
+  --color-amber-100: color-mix(in oklab, var(--m-gold) 18%, white);
+  --color-amber-200: color-mix(in oklab, var(--m-gold) 32%, white);
+  --color-amber-300: color-mix(in oklab, var(--m-gold) 55%, white);
+  --color-amber-500: var(--m-gold);
+  --color-amber-600: color-mix(in oklab, var(--m-gold) 88%, black);
+  --color-amber-700: color-mix(in oklab, var(--m-gold) 72%, black);
+  --color-amber-800: color-mix(in oklab, var(--m-gold) 58%, black);
+  /* Rebind common legacy neutral utilities so one owner theme covers every
+     existing screen, not only the newly composed public pages. */
+  --color-white: var(--m-surface);
+  --color-slate-50: color-mix(in oklab, var(--m-bg) 72%, var(--m-surface));
+  --color-slate-100: color-mix(in oklab, var(--m-bg) 60%, var(--m-ink) 3%);
+  --color-slate-200: color-mix(in oklab, var(--m-bg) 45%, var(--m-ink) 8%);
+  --color-slate-300: color-mix(in oklab, var(--m-bg) 35%, var(--m-ink) 20%);
+  --color-slate-400: color-mix(in oklab, var(--m-ink) 40%, var(--m-bg));
+  --color-slate-500: color-mix(in oklab, var(--m-ink) 55%, var(--m-bg));
+  --color-slate-600: color-mix(in oklab, var(--m-ink) 70%, var(--m-bg));
+  --color-slate-700: color-mix(in oklab, var(--m-ink) 82%, black);
+  --color-slate-800: color-mix(in oklab, var(--m-ink) 92%, black);
+  --color-slate-900: var(--m-ink);
+  --color-gray-50: var(--color-slate-50);
+  --color-gray-100: var(--color-slate-100);
+  --color-gray-200: var(--color-slate-200);
+  --color-gray-500: var(--color-slate-500);
+  --color-gray-600: var(--color-slate-600);
+  --color-gray-700: var(--color-slate-700);
+  --color-gray-800: var(--color-slate-800);
+  --color-gray-900: var(--color-slate-900);
+  --color-slate-950: color-mix(in oklab, var(--m-ink) 88%, black);
+  --color-gray-300: var(--color-slate-300);
+  --color-gray-400: var(--color-slate-400);
+  --color-gray-700: var(--color-slate-700);
+  --color-gray-800: var(--color-slate-800);
+  --color-gray-950: var(--color-slate-950);
+  --color-zinc-50: var(--color-slate-50);
+  --color-zinc-100: var(--color-slate-100);
+  --color-zinc-200: var(--color-slate-200);
+  --color-zinc-300: var(--color-slate-300);
+  --color-zinc-400: var(--color-slate-400);
+  --color-zinc-500: var(--color-slate-500);
+  --color-zinc-600: var(--color-slate-600);
+  --color-zinc-700: var(--color-slate-700);
+  --color-zinc-800: var(--color-slate-800);
+  --color-zinc-900: var(--color-slate-900);
+  --color-neutral-50: var(--color-slate-50);
+  --color-neutral-100: var(--color-slate-100);
+  --color-neutral-200: var(--color-slate-200);
+  --color-neutral-300: var(--color-slate-300);
+  --color-neutral-400: var(--color-slate-400);
+  --color-neutral-500: var(--color-slate-500);
+  --color-neutral-600: var(--color-slate-600);
+  --color-neutral-700: var(--color-slate-700);
+  --color-neutral-800: var(--color-slate-800);
+  --color-neutral-900: var(--color-slate-900);
+  /* Legacy portals used blue and cyan as brand colors; bind those scales to the active owner palette. */
+  --color-blue-50: var(--color-emerald-50);
+  --color-blue-100: var(--color-emerald-100);
+  --color-blue-200: color-mix(in oklab, var(--m-primary) 25%, var(--m-surface));
+  --color-blue-300: color-mix(in oklab, var(--m-primary) 42%, var(--m-surface));
+  --color-blue-400: color-mix(in oklab, var(--m-primary) 62%, var(--m-surface));
+  --color-blue-500: color-mix(in oklab, var(--m-primary) 80%, var(--m-surface));
+  --color-blue-600: var(--m-primary);
+  --color-blue-700: color-mix(in oklab, var(--m-primary) 88%, black);
+  --color-blue-800: color-mix(in oklab, var(--m-primary) 75%, black);
+  --color-blue-900: color-mix(in oklab, var(--m-primary) 60%, black);
+  --color-sky-50: var(--color-blue-50);
+  --color-sky-100: var(--color-blue-100);
+  --color-sky-200: var(--color-blue-200);
+  --color-sky-500: var(--color-blue-500);
+  --color-sky-600: var(--color-blue-600);
+  --color-sky-700: var(--color-blue-700);
+  --color-indigo-50: var(--color-blue-50);
+  --color-indigo-100: var(--color-blue-100);
+  --color-indigo-500: var(--color-blue-500);
+  --color-indigo-600: var(--color-blue-600);
+  --color-indigo-700: var(--color-blue-700);
+}
+
+
+/* Invoice print rules copied from the app for PDF verification */
+@page {
+  size: A4 portrait;
+  margin: 7mm;
+}
+
+@media print {
+  body.invoice-printing {
+    background: #fff !important;
+  }
+
+  body.invoice-printing::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  body.invoice-printing > * {
+    display: none !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy,
+  body.invoice-printing > .invoice-print-copy * {
+    visibility: visible !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 196mm !important;
+    max-width: 196mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    font-size: 8pt !important;
+    line-height: 1.22 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-header {
+    padding: 3mm 5mm !important;
+    break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-logo {
+    width: 16mm !important;
+    height: 16mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-watermark {
+    max-width: 90% !important;
+    white-space: nowrap !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-meta {
+    margin: -2mm 5mm 3mm !important;
+    padding: 2.2mm !important;
+    gap: 1.5mm 3mm !important;
+    font-size: 7pt !important;
+    line-height: 1.2 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-section {
+    margin: 3mm 5mm 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-section-tab {
+    width: 55mm !important;
+    padding: 1.2mm 3mm !important;
+    gap: 2mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-section-tab > span {
+    width: 7mm !important;
+    height: 7mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-participant-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 1.5mm 4mm !important;
+    padding: 2.5mm 3mm !important;
+    font-size: 7pt !important;
+    line-height: 1.2 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-participant-grid p {
+    line-height: 1.2 !important;
+    padding-bottom: 1mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-line-item {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 2mm !important;
+    font-size: 7.5pt !important;
+    line-height: 1.2 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-line-item .mt-1 {
+    margin-top: 1mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-line-item .mt-2 {
+    margin-top: 1.5mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-details {
+    padding: 2.5mm 3mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-opportunity-amount {
+    padding: 2mm 3mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-fee-breakdown {
+    margin-top: 2mm !important;
+    padding-top: 2mm !important;
+    gap: 1.3mm !important;
+    font-size: 7pt !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-amount-due {
+    margin-top: 2mm !important;
+    padding: 2mm 3mm !important;
+    font-size: 8pt !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-applicability-note {
+    margin: 3mm 5mm 0 !important;
+    padding: 2mm 3mm !important;
+    font-size: 7pt !important;
+    line-height: 1.22 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-footer {
+    min-height: 0 !important;
+    margin: 3mm 5mm !important;
+    align-items: center !important;
+    break-inside: avoid !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-stamp {
+    width: 24mm !important;
+    height: 24mm !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-contact-footer {
+    padding: 2.5mm 5mm !important;
+    font-size: 7pt !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-screen-actions {
+    display: none !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy {
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+}
