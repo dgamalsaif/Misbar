@@ -52,6 +52,7 @@ export default function ParticipationInvoice({
   includedServices,
 }: Props) {
   const printing = useRef(false);
+  const invoiceElement = useRef<HTMLDivElement>(null);
   const isEnglish = language === "en";
   const date = new Date(createdAt);
   const validDate = Number.isNaN(date.getTime()) ? new Date() : date;
@@ -78,14 +79,23 @@ export default function ParticipationInvoice({
   }).format(value);
   const printInvoice = () => {
     if (printing.current) return;
+    const invoice = invoiceElement.current;
+    if (!invoice) return;
+
     printing.current = true;
     const previousTitle = document.title;
     document.title = invoiceNumber;
+    const printCopy = invoice.cloneNode(true) as HTMLElement;
+    printCopy.classList.add("invoice-print-copy");
+    printCopy.setAttribute("aria-hidden", "true");
+    printCopy.querySelectorAll(".invoice-screen-actions").forEach((element) => element.remove());
+    document.body.appendChild(printCopy);
     document.body.classList.add("invoice-printing");
     let restoreTimer = 0;
     const restore = () => {
       if (!printing.current) return;
       printing.current = false;
+      printCopy.remove();
       document.body.classList.remove("invoice-printing");
       document.title = previousTitle;
       window.clearTimeout(restoreTimer);
@@ -105,15 +115,15 @@ export default function ParticipationInvoice({
   ].filter((line) => line.value.trim());
 
   return (
-    <div className="invoice-print-root mx-auto mt-6 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 text-right shadow-sm sm:p-7" data-testid="participation-invoice" dir={isEnglish ? "ltr" : "rtl"} lang={isEnglish ? "en" : "ar"}>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+    <div ref={invoiceElement} className="invoice-print-root mx-auto mt-6 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 text-right shadow-sm sm:p-7" data-testid="participation-invoice" dir={isEnglish ? "ltr" : "rtl"} lang={isEnglish ? "en" : "ar"}>
+      <div className="invoice-header mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
           {logoUrl && (
             <img
               src={logoUrl}
               alt={isEnglish ? "Organization logo" : "شعار المؤسسة"}
               onError={(event) => { event.currentTarget.style.display = "none"; }}
-              className="h-14 w-14 rounded-lg object-contain"
+              className="invoice-logo h-14 w-14 rounded-lg object-contain"
             />
           )}
           <div>
@@ -131,7 +141,7 @@ export default function ParticipationInvoice({
         </div>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-xs">
+      <div className="invoice-meta mb-5 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-xs">
         <p><span className="font-bold text-slate-500">{isEnglish ? "Invoice no." : "رقم الفاتورة"}: </span><bdi className="font-bold text-slate-900">{invoiceNumber}</bdi></p>
         <p><span className="font-bold text-slate-500">{isEnglish ? "Date" : "التاريخ"}: </span>{formatDate(validDate)}</p>
         {invoiceSettings.phone && <p><span className="font-bold text-slate-500">{isEnglish ? "Phone" : "الهاتف"}: </span><bdi>{invoiceSettings.phone}</bdi></p>}
@@ -139,8 +149,8 @@ export default function ParticipationInvoice({
         {invoiceSettings.taxNumber && <p className="col-span-2"><span className="font-bold text-slate-500">{isEnglish ? "Tax number" : "الرقم الضريبي"}: </span><bdi>{invoiceSettings.taxNumber}</bdi></p>}
       </div>
 
-      <h3 className="mb-2 text-sm font-black text-slate-800">{isEnglish ? "Participant details" : "بيانات المشارك"}</h3>
-      <div className="mb-5 grid gap-2 rounded-xl border border-slate-200 p-3 text-sm sm:grid-cols-2">
+      <h3 className="invoice-section-title mb-2 text-sm font-black text-slate-800">{isEnglish ? "Participant details" : "بيانات المشارك"}</h3>
+      <div className="invoice-participant-grid mb-5 grid gap-2 rounded-xl border border-slate-200 p-3 text-sm sm:grid-cols-2">
         {lines.map((line) => (
           <p key={line.label} className="break-words">
             <span className="font-bold text-slate-500">{line.label}: </span>{line.value}
@@ -148,12 +158,12 @@ export default function ParticipationInvoice({
         ))}
       </div>
 
-      <h3 className="mb-2 text-sm font-black text-slate-800">{isEnglish ? "Description" : "تفاصيل الفاتورة"}</h3>
-       <div className="overflow-hidden rounded-xl border border-slate-200">
-        <div className="flex items-start justify-between gap-4 bg-slate-50 p-3 text-sm">
+      <h3 className="invoice-section-title mb-2 text-sm font-black text-slate-800">{isEnglish ? "Description" : "تفاصيل الفاتورة"}</h3>
+       <div className="invoice-details overflow-hidden rounded-xl border border-slate-200">
+        <div className="invoice-line-item flex items-start justify-between gap-4 bg-slate-50 p-3 text-sm">
           <div className="min-w-0">
             <p className="font-bold text-slate-900">{isEnglish ? invoiceSettings.itemDescriptionEn : invoiceSettings.itemDescriptionAr}</p>
-            <p className="mt-1 break-words text-xs text-slate-600">{opportunityLabel}</p>
+             <p dir="auto" className="mt-1 break-words text-xs text-slate-600">{opportunityLabel}</p>
              {specialty && <p className="mt-1 break-words text-xs text-slate-600"><span className="font-bold">{isEnglish ? "Specialty: " : "التخصص: "}</span>{specialty}</p>}
              {targetJournal && <p className="mt-1 break-words text-xs text-slate-600"><span className="font-bold">{isEnglish ? "Target journal: " : "المجلة المستهدفة: "}</span>{targetJournal}</p>}
             {showResearchReference && (
@@ -202,12 +212,12 @@ export default function ParticipationInvoice({
       </div>
 
        {(isEnglish ? invoiceSettings.applicabilityNoteEn : invoiceSettings.applicabilityNoteAr).trim() && (
-         <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+         <p className="invoice-applicability-note mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
            {isEnglish ? invoiceSettings.applicabilityNoteEn : invoiceSettings.applicabilityNoteAr}
          </p>
        )}
 
-      <div className="mt-5 flex min-h-24 items-end justify-between gap-4">
+      <div className="invoice-footer mt-5 flex min-h-24 items-end justify-between gap-4">
         <p className="max-w-[70%] whitespace-pre-line text-xs leading-5 text-slate-600">
           {isEnglish ? invoiceSettings.footerEn : invoiceSettings.footerAr}
         </p>
@@ -216,7 +226,7 @@ export default function ParticipationInvoice({
             src={invoiceSettings.stampUrl}
             alt={isEnglish ? "Official stamp" : "الختم الرسمي"}
             onError={(event) => { event.currentTarget.style.display = "none"; }}
-            className="h-20 w-20 shrink-0 object-contain"
+            className="invoice-stamp h-20 w-20 shrink-0 object-contain"
           />
         )}
       </div>

@@ -1593,28 +1593,33 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
 }
 
 @media print {
+  body.invoice-printing {
+    background: #fff !important;
+  }
+
   body.invoice-printing::before {
     content: none !important;
     display: none !important;
   }
 
-  body.invoice-printing * {
-    visibility: hidden !important;
+  body.invoice-printing > * {
+    display: none !important;
   }
 
-  body.invoice-printing .invoice-print-root,
-  body.invoice-printing .invoice-print-root * {
+  body.invoice-printing > .invoice-print-copy,
+  body.invoice-printing > .invoice-print-copy * {
     visibility: visible !important;
   }
 
-  body.invoice-printing .invoice-print-root {
+  body.invoice-printing > .invoice-print-copy {
     position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    inset: auto !important;
+    inset: 0 auto auto 0 !important;
     display: block !important;
+    box-sizing: border-box !important;
     width: 100% !important;
     max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     border: 0 !important;
@@ -1622,9 +1627,96 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
     background: #fff !important;
     color: #111827 !important;
     box-shadow: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    font-size: 10pt !important;
+    line-height: 1.3 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
-  body.invoice-printing .invoice-screen-actions {
+  body.invoice-printing > .invoice-print-copy .invoice-header {
+    gap: 0.55rem !important;
+    margin-bottom: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-logo {
+    width: 2.7rem !important;
+    height: 2.7rem !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-meta {
+    gap: 0.25rem 1rem !important;
+    margin-bottom: 0.6rem !important;
+    padding: 0.5rem !important;
+    font-size: 0.68rem !important;
+    line-height: 1.3 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-section-title {
+    margin-bottom: 0.25rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-participant-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.25rem 0.9rem !important;
+    margin-bottom: 0.6rem !important;
+    padding: 0.5rem !important;
+    font-size: 0.72rem !important;
+    line-height: 1.3 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-participant-grid p {
+    line-height: 1.3 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-line-item {
+    gap: 0.75rem !important;
+    padding: 0.55rem !important;
+    font-size: 0.78rem !important;
+    line-height: 1.3 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-line-item .mt-1 {
+    margin-top: 0.15rem !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-line-item .mt-2 {
+    margin-top: 0.25rem !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-details .p-3 {
+    padding: 0.45rem 0.55rem !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-applicability-note {
+    margin-top: 0.5rem !important;
+    padding: 0.5rem !important;
+    font-size: 0.68rem !important;
+    line-height: 1.35 !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-footer {
+    min-height: 0 !important;
+    margin-top: 0.5rem !important;
+    align-items: center !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-stamp {
+    width: 3.4rem !important;
+    height: 3.4rem !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-screen-actions {
     display: none !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy {
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
   }
 }
