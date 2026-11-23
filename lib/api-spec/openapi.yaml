@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: orcid
     description: ORCID account authorization for registration
+  - name: socialPublishing
+    description: Owner-only publishing of research opportunities to connected social accounts
 paths:
   /healthz:
     get:
@@ -77,6 +79,210 @@ paths:
                 type: string
         "400":
           description: OAuth state is missing, expired, or invalid
+  /social/meta/start:
+    post:
+      operationId: startMetaSocialAuthorization
+      tags: [socialPublishing]
+      summary: Start Meta account authorization
+      responses:
+        "200":
+          description: Authorization URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialOAuthStartResponse"
+        "403":
+          description: Owner authentication required
+        "503":
+          description: Meta application configuration is incomplete
+  /social/x/start:
+    post:
+      operationId: startXSocialAuthorization
+      tags: [socialPublishing]
+      summary: Start X account authorization
+      responses:
+        "200":
+          description: Authorization URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialOAuthStartResponse"
+        "403":
+          description: Owner authentication required
+        "503":
+          description: X application configuration is incomplete
+  /admin/social/connections:
+    get:
+      operationId: listSocialConnections
+      tags: [socialPublishing]
+      summary: List connected social accounts without credentials
+      responses:
+        "200":
+          description: Connections and server-side provider readiness
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialConnectionsResponse"
+        "403":
+          description: Owner authentication required
+  /admin/social/telegram:
+    post:
+      operationId: connectTelegramChannel
+      tags: [socialPublishing]
+      summary: Validate and connect a Telegram bot to a channel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectTelegramBody"
+      responses:
+        "201":
+          description: Connected channel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectTelegramResponse"
+        "400":
+          description: Bot token or channel permissions are invalid
+        "403":
+          description: Owner authentication required
+        "503":
+          description: Telegram or encryption service is unavailable
+  /admin/social/connections/{id}:
+    delete:
+      operationId: disconnectSocialConnection
+      tags: [socialPublishing]
+      summary: Disconnect a social account and erase its saved credentials
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      responses:
+        "204":
+          description: Disconnected
+        "403":
+          description: Owner authentication required
+        "404":
+          description: Connection not found
+  /admin/programs/{id}/social-preview:
+    get:
+      operationId: getProgramSocialPreview
+      tags: [socialPublishing]
+      summary: Preview a privacy-filtered social post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      responses:
+        "200":
+          description: Social post content and visibility decisions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialPublishingPreview"
+        "403":
+          description: Owner authentication required
+        "404":
+          description: Opportunity not found
+        "409":
+          description: Opportunity is not open for registration
+  /admin/programs/{id}/social-posts:
+    get:
+      operationId: listProgramSocialPosts
+      tags: [socialPublishing]
+      summary: List publication attempts for an opportunity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      responses:
+        "200":
+          description: Publication history by account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialPostsResponse"
+        "403":
+          description: Owner authentication required
+    post:
+      operationId: publishProgramToSocialAccounts
+      tags: [socialPublishing]
+      summary: Publish an opportunity to selected connected accounts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishSocialPostsBody"
+      responses:
+        "200":
+          description: Publication results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishSocialPostsResponse"
+        "207":
+          description: Some accounts failed or have an uncertain result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishSocialPostsResponse"
+        "400":
+          description: Invalid accounts selected
+        "403":
+          description: Owner authentication required
+        "404":
+          description: Opportunity not found
+        "409":
+          description: Opportunity is not open for registration
+  /admin/social/posts/{id}/retry:
+    post:
+      operationId: retrySocialPost
+      tags: [socialPublishing]
+      summary: Retry a publication that definitely failed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      responses:
+        "200":
+          description: Retry result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishSocialPostResult"
+        "207":
+          description: Retry failed or result is uncertain
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishSocialPostResult"
+        "403":
+          description: Owner authentication required
+        "404":
+          description: Publication record not found
+        "409":
+          description: Retry is unsafe or connection is unavailable
 components:
   schemas:
     HealthStatus:
@@ -86,4 +292,166 @@ components:
           type: string
       required:
         - status
+    SocialOAuthStartResponse:
+      type: object
+      properties:
+        authorizeUrl:
+          type: string
+      required: [authorizeUrl]
+    SocialConnection:
+      type: object
+      properties:
+        id:
+          type: number
+        platform:
+          type: string
+          enum: [facebook, instagram, x, telegram]
+        accountName:
+          type: string
+        status:
+          type: string
+          enum: [active, needs_reauth]
+        tokenExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        needsReauthorization:
+          type: boolean
+      required: [id, platform, accountName, status, tokenExpiresAt, needsReauthorization]
+    SocialProviderReadiness:
+      type: object
+      properties:
+        meta:
+          type: boolean
+        x:
+          type: boolean
+        telegram:
+          type: boolean
+      required: [meta, x, telegram]
+    SocialConnectionsResponse:
+      type: object
+      properties:
+        encryptionConfigured:
+          type: boolean
+        providers:
+          $ref: "#/components/schemas/SocialProviderReadiness"
+        connections:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialConnection"
+      required: [encryptionConfigured, providers, connections]
+    ConnectTelegramBody:
+      type: object
+      properties:
+        botToken:
+          type: string
+          minLength: 20
+          maxLength: 300
+        chatId:
+          type: string
+          minLength: 2
+          maxLength: 150
+      required: [botToken, chatId]
+    ConnectTelegramResponse:
+      type: object
+      properties:
+        connection:
+          $ref: "#/components/schemas/SocialConnection"
+      required: [connection]
+    SocialPublishingPreview:
+      type: object
+      properties:
+        opportunityId:
+          type: number
+        text:
+          type: string
+        shareUrl:
+          type: string
+        imageUrl:
+          type: string
+        titleVisible:
+          type: boolean
+        specialtyVisible:
+          type: boolean
+        opportunityImageVisible:
+          type: boolean
+      required: [opportunityId, text, shareUrl, imageUrl, titleVisible, specialtyVisible, opportunityImageVisible]
+    SocialPostRecord:
+      type: object
+      properties:
+        id:
+          type: number
+        platform:
+          type: string
+          enum: [facebook, instagram, x, telegram]
+        accountName:
+          type: string
+        status:
+          type: string
+          enum: [publishing, published, failed, unknown]
+        statusLabel:
+          type: string
+        content:
+          type: string
+        externalPostId:
+          type: string
+        lastError:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, platform, accountName, status, statusLabel, content, externalPostId, lastError, publishedAt, createdAt, updatedAt]
+    SocialPostsResponse:
+      type: object
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialPostRecord"
+      required: [posts]
+    PublishSocialPostsBody:
+      type: object
+      properties:
+        connectionIds:
+          type: array
+          minItems: 1
+          maxItems: 12
+          items:
+            type: number
+            minimum: 1
+      required: [connectionIds]
+    PublishSocialPostResult:
+      type: object
+      properties:
+        post:
+          oneOf:
+            - $ref: "#/components/schemas/SocialPostRecord"
+            - type: "null"
+        connectionId:
+          type: number
+        platform:
+          type: string
+          enum: [facebook, instagram, x, telegram]
+        accountName:
+          type: string
+        message:
+          type: string
+      required: [post, connectionId, platform, accountName, message]
+    PublishSocialPostsResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublishSocialPostResult"
+        message:
+          type: string
+      required: [results, message]
 

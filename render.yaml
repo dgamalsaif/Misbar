@@ -19,6 +19,18 @@ services:
         sync: false
       - key: ORCID_CLIENT_SECRET
         sync: false
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: META_GRAPH_API_VERSION
+        sync: false
+      - key: X_CLIENT_ID
+        sync: false
+      - key: SOCIAL_CREDENTIALS_ENCRYPTION_KEY
+        sync: false
+      - key: PUBLIC_SITE_ORIGIN
+        value: https://srmaacademy.com
       - key: CLERK_PUBLISHABLE_KEY
         sync: false
       - key: CLERK_SECRET_KEY

@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -b ../../lib/db && tsc -p tsconfig.json --noEmit",
+    "test:social-publishing": "node --import tsx --test src/lib/socialPublishing.test.ts src/routes/socialPublishing.test.ts",
     "sync:research-catalog": "node ./scripts/runCatalogSync.mjs",
     "test:import-concurrency": "node ./scripts/testConcurrentProgramImport.mjs",
     "test:seat-override-concurrency": "node ./scripts/testSeatOverrideConcurrency.mjs",

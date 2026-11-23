@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useClerk } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Plus, Pencil, Trash2, Eye, X, ChevronRight, LogOut, Search, Users, BookOpen, TrendingUp, AlertCircle, UserPlus, GraduationCap, Award, Landmark, LayoutDashboard, CreditCard, Settings, ClipboardList, CheckCircle, FlaskConical, Stethoscope, User, Clock, Copy, Check, Edit, FileSpreadsheet, Database, Layers, CheckSquare, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, X, ChevronRight, LogOut, Search, Users, BookOpen, TrendingUp, AlertCircle, UserPlus, GraduationCap, Award, Landmark, LayoutDashboard, CreditCard, Settings, ClipboardList, CheckCircle, FlaskConical, Stethoscope, User, Clock, Copy, Check, Edit, FileSpreadsheet, Database, Layers, CheckSquare, ExternalLink, Share2 } from "lucide-react";
 import { ResearchOpportunity, SPECIALTY_COLORS } from "@/lib/researchData";
 import { getOpportunitySharePath } from "@/lib/opportunityDisplay";
 import RegistrationModal from "@/components/RegistrationModal";
 import BulkEditModal from "@/components/BulkEditModal";
+import SocialPublishingDialog from "@/components/SocialPublishingDialog";
 import CoordinatorPortalSettingsPanel from "@/components/CoordinatorPortalSettingsPanel";
 import { CoordinatorPortalSettings, DEFAULT_COORDINATOR_PORTAL_SETTINGS } from "@/lib/coordinatorPortalSettings";
 import ContentControlPanel from "@/components/ContentControlPanel";
@@ -615,7 +616,7 @@ const STATUS_MAP: Record<string, { label: string, className: string }> = {
   published: { label: "تم النشر", className: "bg-[#e6f5ef] text-[#117b59]" },
 };
 
-function ProgramCard({ research, onRegister, onEdit, onDelete, canManage, isSelected, onToggleSelect }: any) {
+function ProgramCard({ research, onRegister, onEdit, onDelete, onSocialPublish, canManage, isSelected, onToggleSelect }: any) {
   const [copied, setCopied] = useState(false);
   const copyLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}${getOpportunitySharePath(research.id)}`);
@@ -767,6 +768,17 @@ function ProgramCard({ research, onRegister, onEdit, onDelete, canManage, isSele
           {copied ? 'تم النسخ' : 'نسخ رابط'}
         </button>
       </div>
+      {canManage && !isCompletedResearch && research.status === "open" && !isFull && (
+        <button
+          type="button"
+          onClick={() => onSocialPublish(research)}
+          data-testid={`button-social-publish-${research.id}`}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[#117b59]/20 bg-emerald-50 px-4 py-2.5 text-xs font-black text-[#117b59] transition-colors hover:bg-emerald-100"
+        >
+          <Share2 size={15} />
+          نشر عبر وسائل التواصل
+        </button>
+      )}
     </div>
   )
 }
@@ -793,6 +805,8 @@ export default function AdminDashboard() {
   const [newCategory, setNewCategory] = useState<NonNullable<ResearchOpportunity["category"]>>("active");
   const [editItem, setEditItem] = useState<ResearchOpportunity | null>(null);
   const [deleteItem, setDeleteItem] = useState<ResearchOpportunity | null>(null);
+  const [socialPublishItem, setSocialPublishItem] = useState<ResearchOpportunity | null>(null);
+  const [socialOAuthNotice, setSocialOAuthNotice] = useState("");
   const [studentResearch, setStudentResearch] = useState<ResearchOpportunity | null>(null);
   const [portalSettings, setPortalSettings] = useState<CoordinatorPortalSettings>(DEFAULT_COORDINATOR_PORTAL_SETTINGS);
   const [portalSettingsSaving, setPortalSettingsSaving] = useState(false);
@@ -810,6 +824,24 @@ export default function AdminDashboard() {
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
   const ownerWorkspace = location === "/admin";
+
+  useEffect(() => {
+    const result = new URLSearchParams(window.location.search).get("social");
+    if (!result) return;
+    const messages: Record<string, string> = {
+      "meta-connected": "تم ربط حسابات Meta المتاحة. يمكنك اختيار الحساب عند نشر الفرصة.",
+      "meta-no-pages": "تم التفويض، لكن لم تُعثر على صفحة Facebook بصلاحية النشر أو حساب Instagram احترافي مرتبط بها.",
+      "meta-cancelled": "تم إلغاء ربط Meta.",
+      "meta-state-error": "تعذر التحقق من طلب ربط Meta. ابدأ الربط من جديد.",
+      "meta-failed": "لم يكتمل ربط Meta. راجع إعداد التطبيق والصلاحيات وعنوان العودة.",
+      "x-connected": "تم ربط حساب X.",
+      "x-cancelled": "تم إلغاء ربط X.",
+      "x-state-error": "تعذر التحقق من طلب ربط X. ابدأ الربط من جديد.",
+      "x-failed": "لم يكتمل ربط X. راجع إعداد التطبيق وعنوان العودة وصلاحية النشر.",
+    };
+    setSocialOAuthNotice(messages[result] || "اكتملت محاولة ربط حساب التواصل.");
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
+  }, []);
 
   useEffect(() => {
     const workspace = ownerWorkspace ? "owner" : "coordinator";
@@ -1306,6 +1338,11 @@ export default function AdminDashboard() {
       </header>
 
       <div className="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {socialOAuthNotice && (
+          <p role="status" className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-bold text-emerald-900" data-testid="status-social-oauth">
+            {socialOAuthNotice}
+          </p>
+        )}
 
         {/* STATS ROW */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
@@ -1636,6 +1673,7 @@ export default function AdminDashboard() {
                             onRegister={setStudentResearch}
                             onEdit={setEditItem}
                             onDelete={setDeleteItem}
+                            onSocialPublish={setSocialPublishItem}
                             canManage={canManage}
                             isSelected={selectedIds.has(r.id)}
                             onToggleSelect={() => toggleSelect(r.id)}
@@ -1884,6 +1922,13 @@ export default function AdminDashboard() {
           totalCount={research.length}
           specialtyOptions={contentSettings.specialtyOptions}
           onSuccess={handleBatchSuccess}
+        />
+      )}
+
+      {canManage && socialPublishItem && (
+        <SocialPublishingDialog
+          opportunity={socialPublishItem}
+          onClose={() => setSocialPublishItem(null)}
         />
       )}
 

@@ -13,6 +13,8 @@ Coordinator access codes remain in PostgreSQL and do not use Clerk.
 
 ORCID OAuth is handled by the Express API on Render. Cloudflare forwards the same-origin `/api/*` requests to that API.
 
+Social publishing is also handled only by the Render API and the existing Render PostgreSQL database. Cloudflare Pages and the API Worker do not store social credentials.
+
 ## 1. Render
 
 1. Push this repository to GitHub.
@@ -26,6 +28,23 @@ For ORCID, add `ORCID_CLIENT_ID` and `ORCID_CLIENT_SECRET` as secrets in the Ren
 In the ORCID API application, use `https://srmaacademy.com` as the application URL and register `https://srmaacademy.com/api/orcid/callback` as a redirect URI. If participants can start from `www.srmaacademy.com`, register `https://www.srmaacademy.com/api/orcid/callback` as a separate URI too.
 
 The ORCID Public API registration page limits use to non-commercial applications. Confirm with ORCID that using the API inside Misbar's paid research services is permitted before adding or enabling production credentials.
+
+### Social publishing setup
+
+Social accounts are connected by the owner from the opportunity card's **نشر عبر وسائل التواصل** action. Saving or editing an opportunity never publishes it automatically.
+
+Before enabling it, configure the following on the existing `srma-api` Render Web Service. Add secrets in **Environment** (not Cloudflare Pages, the Worker, or source control):
+
+- `SOCIAL_CREDENTIALS_ENCRYPTION_KEY`: generate a 32-byte key locally with `openssl rand -base64 32`, then paste the result directly into Render. Do not paste it into chat. Keep the same key across redeploys; replacing it makes already stored social tokens unreadable.
+- `META_APP_ID`, `META_APP_SECRET`, and `META_GRAPH_API_VERSION`: Meta app credentials and a currently supported Graph API version. Register `https://srmaacademy.com/api/social/meta/callback` as an exact OAuth redirect URI. The Meta app must request page publishing permissions; Instagram publishing requires a professional Instagram account linked to a Facebook Page.
+- `X_CLIENT_ID`: the X developer app's OAuth 2.0 client ID. Register `https://srmaacademy.com/api/social/x/callback` as its exact callback URL and allow `users.read`, `tweet.read`, `tweet.write`, and `offline.access`. Set `X_CLIENT_SECRET` in Render too only if the X app is configured as a confidential client. X may require a paid API access level for posting.
+- `PUBLIC_SITE_ORIGIN=https://srmaacademy.com` is already included in `render.yaml`.
+
+After saving Render variables, redeploy `srma-api`. Then the owner can select **ربط Facebook وInstagram** or **ربط حساب X** in the publishing dialog and approve the official authorization screen. For Telegram, create a bot with BotFather, add it to the destination channel as an administrator with permission to post, and enter the token and channel ID/name in the dialog. Telegram validates the bot and permissions before storing its token encrypted in Render PostgreSQL; the token is never returned to the browser after saving.
+
+The add-only `lib/db/migrations/0013_social_publishing.sql` migration creates the connection and publication-history tables. It is not run by build or app startup. The social API cannot be used until this migration is deliberately applied to the existing Render PostgreSQL database; do not run it against a Replit database and do not use `drizzle-kit push` or `push-force`. Keep the normal deployment migration approval and backup process. The API encrypts access credentials before saving them, and stores per-account status so successful posts are not sent twice. If a provider request times out after sending, the result is marked uncertain and requires checking the social account before any retry.
+
+Each eligible opportunity gets a manual preview. The backend applies the opportunity's public visibility settings again before publishing: a hidden title or specialty is omitted, and a hidden opportunity image is replaced by the site's general share image. Coordinators cannot connect accounts or publish. Publication is limited to opportunities that are open and still have available seats.
 
 No migrations run during build, startup, or post-merge setup. The existing database and schema are used as-is. Keep the connection string only in Render's environment settings; never commit it or send it in chat.
 
