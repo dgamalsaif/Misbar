@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Smartphone, X } from "lucide-react";
+import { Check, Download, Smartphone, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { DEFAULT_SITE_CONTENT_SETTINGS, getPwaIconUrl } from "@/lib/siteContentSettings";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
@@ -15,6 +15,11 @@ declare global {
   }
 }
 
+function isAppInstalled() {
+  return window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
 export default function InstallAppButton({ className = "" }: { className?: string }) {
   const { direction, language, localize } = useLanguage();
   const { data: settings = DEFAULT_SITE_CONTENT_SETTINGS } = useSiteContentSettings();
@@ -23,22 +28,29 @@ export default function InstallAppButton({ className = "" }: { className?: strin
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [installed, setInstalled] = useState(isAppInstalled);
+  const [installError, setInstallError] = useState(false);
 
   useEffect(() => {
     const captureInstall = (event: BeforeInstallPromptEvent) => {
       event.preventDefault();
       setInstallEvent(event);
     };
+    const displayMode = window.matchMedia("(display-mode: standalone)");
+    const syncInstalledState = () => setInstalled(isAppInstalled());
     window.addEventListener("beforeinstallprompt", captureInstall);
-    const installed = () => {
+    displayMode.addEventListener("change", syncInstalledState);
+    const onInstalled = () => {
+      setInstalled(true);
       setInstallEvent(null);
       setIsOpen(false);
       setInstalling(false);
     };
-    window.addEventListener("appinstalled", installed);
+    window.addEventListener("appinstalled", onInstalled);
     return () => {
       window.removeEventListener("beforeinstallprompt", captureInstall);
-      window.removeEventListener("appinstalled", installed);
+      displayMode.removeEventListener("change", syncInstalledState);
+      window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
 
@@ -46,15 +58,20 @@ export default function InstallAppButton({ className = "" }: { className?: strin
     if (!installEvent) {
       return;
     }
+    const pendingInstall = installEvent;
     setInstalling(true);
+    setInstallError(false);
     try {
-      await installEvent.prompt();
-      const choice = await installEvent.userChoice;
+      await pendingInstall.prompt();
+      const choice = await pendingInstall.userChoice;
       if (choice.outcome === "accepted") {
-        setInstallEvent(null);
+        setInstalled(true);
         setIsOpen(false);
       }
+    } catch {
+      setInstallError(true);
     } finally {
+      setInstallEvent(null);
       setInstalling(false);
     }
   };
@@ -62,8 +79,8 @@ export default function InstallAppButton({ className = "" }: { className?: strin
   return (
     <>
       <button type="button" onClick={() => setIsOpen(true)} data-testid="button-install-app" className={className} aria-label={localize("تحميل التطبيق", "Install app")}>
-        <Download size={15} />
-        {localize("تحميل التطبيق", "Install app")}
+        {installed ? <Check size={15} /> : <Download size={15} />}
+        {installed ? localize("التطبيق مثبت", "App installed") : localize("تحميل التطبيق", "Install app")}
       </button>
       {isOpen && (
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-4" onClick={() => setIsOpen(false)} role="dialog" aria-modal="true" aria-label={localize(`تثبيت تطبيق ${appName}`, `Install ${appName} app`)}>
@@ -77,7 +94,12 @@ export default function InstallAppButton({ className = "" }: { className?: strin
                 <h2 className="mt-1 text-lg font-black text-slate-800">{appName}</h2>
               </div>
             </div>
-            {installEvent ? (
+            {installed ? (
+              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4" role="status">
+                <div className="flex items-center gap-2 text-[#117b59]"><Check size={18} /><h3 className="text-sm font-black">{localize("التطبيق مثبت على جهازك", "The app is installed")}</h3></div>
+                <p className="mt-2 text-xs leading-6 text-slate-600">{localize("يمكنك فتح مسبار من أيقونته على الشاشة الرئيسية. ستُحدّث النسخة عند توفر اتصال بالإنترنت.", "Open Misbar from its home-screen icon. The app updates when an internet connection is available.")}</p>
+              </div>
+            ) : installEvent ? (
               <>
                 <p className="mt-5 text-sm leading-7 text-slate-600">{localize("ثبّت المنصة على جهازك للوصول السريع إلى الفرص البحثية وبوابة المنسق مباشرة من شاشة الهاتف أو سطح المكتب.", "Install the platform for quick access to research opportunities and the coordinator portal from your phone or desktop.")}</p>
                 <button type="button" onClick={() => void install()} disabled={installing} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#117b59] px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-900/15 transition hover:bg-[#0c6549] disabled:cursor-wait disabled:opacity-70">
@@ -100,6 +122,11 @@ export default function InstallAppButton({ className = "" }: { className?: strin
                     : "Icon cropping can differ: iPhone uses rounded corners, while Android may use a circle or launcher-specific mask. Keep important artwork centered."}</p>
                 </div>
               </div>
+            )}
+            {installError && !installed && (
+              <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-6 text-amber-900" role="alert">
+                {localize("لم يكتمل التثبيت من هذه النافذة. افتح قائمة المتصفح واتبع تعليمات جهازك أعلاه.", "Installation did not finish in this dialog. Open your browser menu and follow the device instructions above.")}
+              </p>
             )}
           </section>
         </div>
