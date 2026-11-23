@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useClerk } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Plus, Pencil, Trash2, Eye, X, ChevronRight, LogOut, Search, Users, BookOpen, TrendingUp, AlertCircle, UserPlus, GraduationCap, Award, Landmark, LayoutDashboard, CreditCard, Settings, ClipboardList, CheckCircle, FlaskConical, Stethoscope, User, Clock, Copy, Check, Edit, FileSpreadsheet, Database, Layers, CheckSquare, ExternalLink, Share2, Bell } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, X, ChevronRight, LogOut, Search, Users, BookOpen, TrendingUp, AlertCircle, UserPlus, GraduationCap, Award, Landmark, CreditCard, Settings, ClipboardList, CheckCircle, FlaskConical, Stethoscope, User, Clock, Copy, Check, Edit, FileSpreadsheet, Layers, CheckSquare, ExternalLink, Share2, Bell } from "lucide-react";
 import { ResearchOpportunity, SPECIALTY_COLORS } from "@/lib/researchData";
 import { getOpportunitySharePath } from "@/lib/opportunityDisplay";
 import RegistrationModal from "@/components/RegistrationModal";
@@ -12,6 +12,7 @@ import ParticipantResearchUpdateDialog from "@/components/ParticipantResearchUpd
 import CoordinatorPortalSettingsPanel from "@/components/CoordinatorPortalSettingsPanel";
 import { CoordinatorPortalSettings, DEFAULT_COORDINATOR_PORTAL_SETTINGS } from "@/lib/coordinatorPortalSettings";
 import ContentControlPanel from "@/components/ContentControlPanel";
+import AdminSettingsHub from "@/components/AdminSettingsHub";
 import { checkExperienceSettings } from "../../../../lib/site-experience";
 import { useExperienceDraft } from "@/lib/experience-draft";
 import { DEFAULT_SITE_CONTENT_SETTINGS, OpportunityFieldId, SiteContentSettings, normalizeSiteContentSettings } from "@/lib/siteContentSettings";
@@ -808,7 +809,7 @@ export default function AdminDashboard() {
   const [categoryFilter, setCategoryFilter] = useState<NonNullable<ResearchOpportunity["category"]>>("active");
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
   const [loadingPrograms, setLoadingPrograms] = useState(true);
-  const [view, setView] = useState<"programs" | "payments" | "settings" | "portal-settings" | "content-settings" | "data-management">("programs");
+  const [view, setView] = useState<"programs" | "payments" | "settings-home" | "settings" | "portal-settings" | "content-settings" | "data-management">("programs");
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [paymentFormOpen, setPaymentFormOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -823,6 +824,7 @@ export default function AdminDashboard() {
   const [portalSettingsSaving, setPortalSettingsSaving] = useState(false);
   const [portalSettingsMessage, setPortalSettingsMessage] = useState("");
   const [contentSettings, setContentSettings] = useState<SiteContentSettings>(DEFAULT_SITE_CONTENT_SETTINGS);
+  const [contentSettingsFocus, setContentSettingsFocus] = useState<string | undefined>();
   const savedAppIconUrl = useRef(DEFAULT_SITE_CONTENT_SETTINGS.brand.appIconUrl);
   const [contentSettingsSaving, setContentSettingsSaving] = useState(false);
   const [contentSettingsMessage, setContentSettingsMessage] = useState("");
@@ -835,6 +837,7 @@ export default function AdminDashboard() {
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
   const ownerWorkspace = location === "/admin";
+  const isOwnerSettingsView = view === "settings-home" || view === "settings" || view === "portal-settings" || view === "content-settings" || view === "data-management";
 
   useEffect(() => {
     const result = new URLSearchParams(window.location.search).get("social");
@@ -1452,68 +1455,38 @@ export default function AdminDashboard() {
             </button>
           )}
 
-{canManage && (
-          <button
-            onClick={() => setView('settings')}
-            className={`flex shrink-0 whitespace-nowrap items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
-              view === 'settings'
-                ? 'bg-[#117b59] text-white shadow-xs'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <Settings size={16} />
-            <span>{settingsNav.navLabels["settings"][adminLanguage]}</span>
-          </button>
-          )}
-
           {canManage && (
             <button
-              onClick={() => setView('portal-settings')}
-              data-testid="button-portal-settings"
-              className={`flex shrink-0 whitespace-nowrap items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
-                view === 'portal-settings'
-                  ? 'bg-[#117b59] text-white shadow-xs'
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
-              }`}
-            >
-              <LayoutDashboard size={16} />
-              <span>{settingsNav.navLabels["portal-settings"][adminLanguage]}</span>
-            </button>
-          )}
-
-          {canManage && (
-            <button
-              onClick={() => setView('content-settings')}
+              onClick={() => setView("settings-home")}
               data-testid="button-content-settings"
+              aria-label={adminLanguage === "ar" ? "فتح مركز إعدادات الموقع" : "Open site settings center"}
+              aria-current={isOwnerSettingsView ? "page" : undefined}
               className={`flex shrink-0 whitespace-nowrap items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
-                view === 'content-settings'
-                  ? 'bg-[#117b59] text-white shadow-xs'
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
+                isOwnerSettingsView
+                  ? "bg-[#117b59] text-white shadow-xs"
+                  : "text-slate-700 hover:text-slate-900 hover:bg-white/60"
               }`}
             >
-              <Edit size={16} />
-              <span>{settingsNav.navLabels["content-settings"][adminLanguage]}</span>
-            </button>
-          )}
-
-          {ownerWorkspace && (
-            <button
-              onClick={() => setView('data-management')}
-              data-testid="button-data-management"
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
-                view === 'data-management'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
-              }`}
-            >
-              <Database size={16} />
-              <span>{settingsNav.navLabels["data-management"][adminLanguage]}</span>
+              <Settings size={16} />
+              <span>{adminLanguage === "ar" ? "مركز الإعدادات" : "Settings center"}</span>
             </button>
           )}
         </div>
 
         {/* CONTENT AREA */}
         <div className="mt-4">
+
+          {view === "settings-home" && canManage && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <AdminSettingsHub
+                showDataManagement={ownerWorkspace}
+                onNavigate={(targetView, focusSection) => {
+                  if (targetView === "content-settings") setContentSettingsFocus(focusSection);
+                  setView(targetView);
+                }}
+              />
+            </div>
+          )}
 
           {/* PROGRAMS VIEW */}
           {view === "programs" && (
@@ -1791,7 +1764,7 @@ export default function AdminDashboard() {
           {view === "content-settings" && canManage && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <ContentControlPanel settings={contentSettings} onChange={setContentSettings} onSave={() => void saveContentSettings()} saving={contentSettingsSaving || inquirySaving} message={contentSettingsMessage}
-                onSaveInquiry={() => void saveInquirySettings()} inquirySaving={inquirySaving} inquiryMessage={inquiryMessage} />
+                onSaveInquiry={() => void saveInquirySettings()} inquirySaving={inquirySaving} inquiryMessage={inquiryMessage} focusSection={contentSettingsFocus} />
             </div>
           )}
 

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Eye, EyeOff, Palette, Save, SlidersHorizontal, Image, Phone, Mail, Link as LinkIcon, FileText, Send, Share2, ExternalLink, MessageCircle, Check, GraduationCap, ShieldCheck, Plus, Trash2, AlertTriangle, Upload, X } from "lucide-react";
-import { useState, useRef, useId } from "react";
+import { useEffect, useState, useRef, useId } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import SiteShareImageSettings from "@/components/SiteShareImageSettings";
 import InvoiceSettingsPanel from "@/components/InvoiceSettingsPanel";
@@ -17,9 +17,10 @@ interface Props {
   onSaveInquiry?: () => void;
   inquirySaving?: boolean;
   inquiryMessage?: string;
+  focusSection?: string;
 }
 
-export default function ContentControlPanel({ settings, onChange, onSave, saving, message, onSaveInquiry, inquirySaving, inquiryMessage }: Props) {
+export default function ContentControlPanel({ settings, onChange, onSave, saving, message, onSaveInquiry, inquirySaving, inquiryMessage, focusSection }: Props) {
   const [specialtyDraft, setSpecialtyDraft] = useState({ nameAr: "", nameEn: "", groupUrl: "" });
   const [journalDraft, setJournalDraft] = useState({ nameAr: "", nameEn: "", issn: "", pubmed: "", scopus: "", wos: "", specialty: "" });
   const [degreeDraft, setDegreeDraft] = useState({ nameAr: "", nameEn: "" });
@@ -41,6 +42,19 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
   const [appIconPreviewError, setAppIconPreviewError] = useState(false);
   const appIconFileInput = useRef<HTMLInputElement>(null);
   const [invoiceAssetsUploading, setInvoiceAssetsUploading] = useState(false);
+  useEffect(() => {
+    if (!focusSection) return;
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(focusSection);
+      if (!target) return;
+      if (target instanceof HTMLDetailsElement && !target.open) {
+        target.querySelector("summary")?.click();
+      }
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusSection]);
+
   const update = <K extends keyof SiteContentSettings>(key: K, value: SiteContentSettings[K]) => {
     const next: SiteContentSettings = { ...latestSettings.current, [key]: value };
     if (key === "primaryColor" && typeof value === "string") {
@@ -279,9 +293,11 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
         </div>
       </div>
 
-      <ExperienceControlPanel settings={settings} onChange={onChange} />
+      <div id="settings-experience" className="scroll-mt-28">
+        <ExperienceControlPanel settings={settings} onChange={onChange} />
+      </div>
 
-      <Panel title="إعدادات الفاتورة" icon={FileText}>
+      <Panel id="settings-invoice" title="إعدادات الفاتورة" icon={FileText}>
         <InvoiceSettingsPanel
           settings={settings.invoiceSettings}
           fallbackLogoUrl={settings.brand.logoUrl}
@@ -290,13 +306,13 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
         />
       </Panel>
 
-      <Panel title="العلامة المائية للفرص" icon={ShieldCheck}>
+      <Panel id="settings-watermark" title="العلامة المائية للفرص" icon={ShieldCheck}>
         <WatermarkSettingsPanel settings={settings.watermarkSettings} onChange={(watermarkSettings) => update("watermarkSettings", watermarkSettings)} />
       </Panel>
 
       <div className="grid gap-6 xl:grid-cols-12">
         <div className="space-y-6 xl:col-span-8">
-          <Panel title="إعدادات الهوية والتواصل" icon={Palette}>
+          <Panel id="settings-identity" title="إعدادات الهوية والتواصل" icon={Palette}>
             <SiteShareImageSettings value={settings.brand.socialShareImageUrl || ""} onChange={(value) => updateBrand("socialShareImageUrl", value)} onBusyChange={setShareImageBusy} version={settings.brand.socialShareImageVersion} />
             <div className="grid gap-4 md:grid-cols-2">
               <TextField label="اسم المنصة (عربي)" value={settings.brand.siteNameAr} onChange={(v) => updateBrand("siteNameAr", v)} />
@@ -1377,7 +1393,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
             </div>
           </Panel>
 
-          <Panel title="نصوص الصفحات العامة" icon={FileText}>
+          <Panel id="settings-public-pages" title="نصوص الصفحات العامة" icon={FileText}>
             <div className="mb-4 flex flex-wrap gap-2 border-b border-slate-100 pb-4">
               {(Object.keys(settings.pages) as PublicPageId[]).map((pageId) => {
                 const label = pageId === "home" ? "الرئيسية" : pageId === "participant" ? "بوابة المشارك" : pageId === "knowledge" ? "مركز المعرفة" : pageId === "about" ? "عن الأكاديمية" : pageId === "faq" ? "الأسئلة الشائعة" : pageId === "specialRequests" ? "الطلبات الخاصة" : "تفاصيل الفرصة";
@@ -1447,7 +1463,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
             </div>
           </Panel>
 
-          <Panel title="نصوص النماذج والبوابات" icon={SlidersHorizontal}>
+          <Panel id="settings-portal-copy" title="نصوص النماذج والبوابات" icon={SlidersHorizontal}>
             <div className="grid gap-4 md:grid-cols-2">
               <TextField label="عنوان بوابة المشارك (عربي)" value={settings.participantTitle} onChange={(value) => update("participantTitle", value)} />
               <TextField label="Participant portal title (English)" value={settings.participantTitleEn} onChange={(value) => update("participantTitleEn", value)} />
@@ -1465,7 +1481,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
             </div>
           </Panel>
 
-          <Panel title="تحويل بيانات التسجيل وإعادة التوجيه (المشاركون والمنسقون)" icon={Send}>
+          <Panel id="settings-redirect" title="تحويل بيانات التسجيل وإعادة التوجيه (المشاركون والمنسقون)" icon={Send}>
             <p className="mb-4 text-xs leading-6 text-slate-500">
               تحكم بالكامل في ما يحدث بعد أن يُدخل المشارك أو المنسق بياناته: أين يتم تحويله (رقم واتساب، بريد إلكتروني، تيليجرام، ماسنجر، إنستجرام، أو رابط مخصص)، وما نص الرسالة المُرسلة تلقائياً.
             </p>
@@ -1622,7 +1638,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
             )}
           </Panel>
 
-          <Panel title="التخصصات المتاحة وروابط المجموعات" icon={SlidersHorizontal}>
+          <Panel id="settings-specialties" title="التخصصات المتاحة وروابط المجموعات" icon={SlidersHorizontal}>
             <p className="mb-5 text-sm leading-6 text-slate-500">
               أضف التخصصات ورابط مجموعة كل تخصص (قروب واتساب أو تيليجرام للتخصص). يُحفظ رابط المجموعة في قاعدة البيانات ويظهر للمشتركين عند التسجيل في بحوث هذا التخصص.
             </p>
@@ -1681,7 +1697,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
             </div>
           </Panel>
 
-          <Panel title="المجلات والفهرسة العلمية" icon={SlidersHorizontal}>
+          <Panel id="settings-journals" title="المجلات والفهرسة العلمية" icon={SlidersHorizontal}>
             <p className="mb-5 text-sm leading-6 text-slate-500">أضف المجلات أو عدّل أسماءها وبياناتها ورتّب ظهورها. أسماء المجلات المحفوظة تظهر أيضاً في شريط الصفحة الرئيسية؛ هذا لا يعني وجود شراكة أو ضمان نشر.</p>
             <div className="grid gap-3 md:grid-cols-2">
               <TextField label="اسم المجلة بالعربية" value={journalDraft.nameAr} onChange={(value) => setJournalDraft({ ...journalDraft, nameAr: value })} />
@@ -1722,7 +1738,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
             </div>
           </Panel>
 
-          <Panel title="حقول التسجيل" icon={SlidersHorizontal}>
+          <Panel id="settings-registration-fields" title="حقول التسجيل" icon={SlidersHorizontal}>
             <p className="mb-5 text-sm leading-6 text-slate-500">يمكنك تغيير التسمية والنص المساعد واللون، وتحديد ظهور الحقل وإلزاميته بشكل مستقل للمشترك والمنسق. اختيار الدولة ومفتاح الاتصال ورقم واتساب إلزامية للمشارك والمنسق؛ يظهر اختيار الدولة قبل المدينة ثم رقم واتساب مع مفتاحها المحدد. الأسهم تغيّر ترتيب الحقول الأخرى.</p>
             <div className="space-y-4">
               {settings.registrationFields.map((field, index) => (
@@ -1757,7 +1773,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
           </Panel>
 
           {/* New Panel: التحكم ببيانات التسجيل المتقدمة (الدرجة الأكاديمية، الخبرات، وإقرار الرسوم والمهام) */}
-          <Panel title="بيانات التسجيل والشروط (الدرجة، الخبرات، وإقرار الرسوم والمهام)" icon={ShieldCheck}>
+          <Panel id="settings-registration-requirements" title="بيانات التسجيل والشروط (الدرجة، الخبرات، وإقرار الرسوم والمهام)" icon={ShieldCheck}>
             <p className="mb-6 text-sm leading-6 text-slate-500">
               تحكم كامل في خيارات استمارة التسجيل: تحديد الدرجات الأكاديمية (امتياز، استشاري، رزدنت، وغيرها)، تفعيل وتخصيص سؤال الخبرات البحثية السابقة، وإدارة شرط وإقرار دفع رسوم التحليل والنشر والالتزام بالمهام في النطاق الزمني المحدد مع إمكانية منع التسجيل في حال الرفض.
             </p>
@@ -2020,7 +2036,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
               </div>
             </div>
           </Panel>
-          <Panel title="إلزام حقول الفرصة" icon={SlidersHorizontal}>
+          <Panel id="settings-opportunity-required" title="إلزام حقول الفرصة" icon={SlidersHorizontal}>
             <p className="mb-5 text-sm leading-6 text-slate-500">حدّد الحقول التي تريد إلزام المالك بإدخالها عند إضافة أو تعديل فرصة. جميعها اختيارية حالياً.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {OPPORTUNITY_FIELDS.map((field) => {
@@ -2032,7 +2048,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
         </div>
 
         <div className="space-y-6 xl:col-span-4">
-          <Panel title="ألوان الواجهة" icon={Palette}>
+          <Panel id="settings-colors" title="ألوان الواجهة" icon={Palette}>
             <div className="space-y-4">
               <p className="text-xs leading-5 text-slate-500">تتزامن هذه الألوان مع الهوية البصرية العامة وتظهر على بقية صفحات الموقع.</p>
               <ColorField label="اللون الرئيسي" value={settings.experience.theme.primary} onChange={(value) => update("primaryColor", value)} />
@@ -2040,7 +2056,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
               <ColorField label="خلفية البطاقة" value={settings.experience.theme.surface} onChange={(value) => update("cardBackgroundColor", value)} />
             </div>
           </Panel>
-           <Panel title="عرض الفرص حسب التخصص" icon={SlidersHorizontal}>
+           <Panel id="settings-opportunity-layout" title="عرض الفرص حسب التخصص" icon={SlidersHorizontal}>
              <p className="mb-4 text-xs leading-5 text-slate-500">ينطبق هذا الاختيار على بوابة المشارك ولوحة المنسق بعد تسجيل الدخول.</p>
              <label className="mb-2 block text-xs font-bold text-slate-500">طريقة عرض فرص كل تخصص</label>
              <select
@@ -2053,7 +2069,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                <option value="scroll">شريط تمرير أفقي</option>
              </select>
            </Panel>
-            <Panel title="فلاتر بوابة المشارك" icon={SlidersHorizontal}>
+             <Panel id="settings-opportunity-filters" title="فلاتر بوابة المشارك" icon={SlidersHorizontal}>
               <p className="mb-4 text-xs leading-5 text-slate-500">اختر الفلاتر التي تظهر للزوار. لا يعرض الفلتر أي معلومة أخفاها إعداد الفرصة نفسه.</p>
               <div className="space-y-2">
                 {([
@@ -2078,7 +2094,7 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
                 ))}
               </div>
             </Panel>
-          <Panel title="إظهار تفاصيل جميع الفرص البحثية" icon={Eye}>
+          <Panel id="settings-opportunity-visibility" title="إظهار تفاصيل جميع الفرص البحثية" icon={Eye}>
             <p className="mb-4 text-sm leading-6 text-slate-600">مفتاح موحد للموقع العام وصفحات الفرص والتسجيل. عند الإخفاء يبقى العنوان الإنجليزي ورقم الفرصة والتسجيل متاحًا، وتختفي الصورة والتخصص والوصف وبقية التفاصيل من الصفحة. معاينة الرابط تبقى بعنوان الفرصة وصورتها.</p>
             <button
               type="button"
@@ -2101,10 +2117,10 @@ export default function ContentControlPanel({ settings, onChange, onSave, saving
   );
 }
 
-function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Palette; children: React.ReactNode }) {
+function Panel({ id, title, icon: Icon, children }: { id?: string; title: string; icon: typeof Palette; children: React.ReactNode }) {
   const [open, setOpen] = useState(title.includes("هوية") || title.includes("الفاتورة") || title === "إظهار تفاصيل جميع الفرص البحثية" || title === "فلاتر بوابة المشارك");
   return (
-    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <details id={id} open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className="group scroll-mt-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 outline-none transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 sm:px-5 [&::-webkit-details-marker]:hidden">
         <span className="rounded-xl bg-[#e6f5ef] p-2 text-[#117b59]"><Icon size={18} aria-hidden="true" /></span>
         <h2 className="flex-1 text-sm font-bold leading-6 text-slate-800 sm:text-base">{title}</h2>
