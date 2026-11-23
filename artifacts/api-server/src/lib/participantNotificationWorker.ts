@@ -1,4 +1,3 @@
-import webPush from "web-push";
 import {
   db,
   participantNotificationAccessTokensTable,
@@ -21,6 +20,11 @@ import {
   hashNotificationToken,
 } from "./participantNotificationSecurity";
 import { getParticipantPushConfig } from "./participantNotificationService";
+import {
+  classifyEmailDeliveryError,
+  classifyPushDeliveryError,
+  type NotificationDeliveryResult,
+} from "./participantNotificationRules";
 
 const WORKER_INTERVAL_MS = 4_000;
 const MAX_BATCH_SIZE = 8;
@@ -29,32 +33,10 @@ let workerRunning = false;
 let workerTimer: NodeJS.Timeout | undefined;
 
 type ClaimedDelivery = typeof participantNotificationDeliveriesTable.$inferSelect;
-type DeliveryResult = "sent" | "failed" | "unknown" | "skipped";
-
 function getErrorCode(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error
     ? String((error as { code?: unknown }).code || "")
     : "";
-}
-
-function getPushStatusCode(error: unknown) {
-  return typeof error === "object" && error !== null && "statusCode" in error
-    ? Number((error as { statusCode?: unknown }).statusCode)
-    : 0;
-}
-
-function classifyEmailError(error: unknown): DeliveryResult {
-  const code = getErrorCode(error).toUpperCase();
-  return ["ETIMEDOUT", "ECONNECTION", "ECONNRESET", "ESOCKET", "ETLS"].includes(code)
-    ? "unknown"
-    : "failed";
-}
-
-function classifyPushError(error: unknown): DeliveryResult {
-  const statusCode = getPushStatusCode(error);
-  if (statusCode === 404 || statusCode === 410) return "skipped";
-  if (statusCode >= 400 && statusCode < 500) return "failed";
-  return "unknown";
 }
 
 async function issueOneTimeToken(email: string, purpose: "access" | "unsubscribe", ttlMs: number) {
@@ -110,7 +92,7 @@ async function claimNextDelivery(): Promise<{ delivery: ClaimedDelivery | null; 
   });
 }
 
-async function sendEmailDelivery(delivery: ClaimedDelivery): Promise<DeliveryResult> {
+async function sendEmailDelivery(delivery: ClaimedDelivery): Promise<NotificationDeliveryResult> {
   const [notification] = await db.select().from(participantNotificationsTable).where(and(
     eq(participantNotificationsTable.eventId, delivery.eventId),
     eq(participantNotificationsTable.recipientEmail, delivery.recipientEmail),
@@ -144,7 +126,7 @@ async function sendEmailDelivery(delivery: ClaimedDelivery): Promise<DeliveryRes
         ]),
         eq(participantNotificationAccessTokensTable.email, delivery.recipientEmail),
       ));
-    const result = classifyEmailError(error);
+    const result = classifyEmailDeliveryError(error);
     logger.warn({
       deliveryId: delivery.id,
       result,
@@ -154,7 +136,7 @@ async function sendEmailDelivery(delivery: ClaimedDelivery): Promise<DeliveryRes
   }
 }
 
-async function sendPushDelivery(delivery: ClaimedDelivery): Promise<DeliveryResult> {
+async function sendPushDelivery(delivery: ClaimedDelivery): Promise<NotificationDeliveryResult> {
   if (!delivery.pushSubscriptionId) return "failed";
   const [subscription] = await db.select().from(participantPushSubscriptionsTable).where(and(
     eq(participantPushSubscriptionsTable.id, delivery.pushSubscriptionId),
@@ -166,6 +148,7 @@ async function sendPushDelivery(delivery: ClaimedDelivery): Promise<DeliveryResu
   const config = getParticipantPushConfig();
   if (!config.enabled || !config.publicKey) return "failed";
   try {
+    const { default: webPush } = await import("web-push");
     webPush.setVapidDetails(config.subject, config.publicKey, config.privateKey);
     await webPush.sendNotification({
       endpoint: subscription.endpoint,
@@ -173,8 +156,10 @@ async function sendPushDelivery(delivery: ClaimedDelivery): Promise<DeliveryResu
     }, buildGenericResearchPushPayload(), { TTL: 3600, urgency: "normal" });
     return "sent";
   } catch (error) {
-    const statusCode = getPushStatusCode(error);
-    const result = classifyPushError(error);
+    const statusCode = typeof error === "object" && error !== null && "statusCode" in error
+      ? Number((error as { statusCode?: unknown }).statusCode)
+      : 0;
+    const result = classifyPushDeliveryError(error);
     if (statusCode === 404 || statusCode === 410) {
       await db.update(participantPushSubscriptionsTable).set({
         status: "inactive",
@@ -226,7 +211,7 @@ async function finalizeEvent(eventId: number) {
 }
 
 async function processDelivery(delivery: ClaimedDelivery) {
-  let result: DeliveryResult;
+  let result: NotificationDeliveryResult;
   try {
     result = delivery.channel === "email"
       ? await sendEmailDelivery(delivery)

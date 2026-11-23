@@ -8,7 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -b ../../lib/db && tsc -p tsconfig.json --noEmit",
-    "test:participant-notifications": "node --import tsx --test src/lib/participantNotificationSecurity.test.ts src/lib/participantNotificationMailer.test.ts src/lib/participantNotificationPermissions.test.ts",
+    "test:participant-notifications": "node --import tsx --test src/lib/participantNotificationSecurity.test.ts src/lib/participantNotificationMailer.test.ts src/lib/participantNotificationPermissions.test.ts src/lib/participantNotificationRules.test.ts",
     "test:social-publishing": "node --import tsx --test src/lib/socialPublishing.test.ts src/routes/socialPublishing.test.ts src/routes/socialSeatUpdates.test.ts",
     "test:registration-lifecycle": "cd ../.. && node --import tsx --test artifacts/api-server/src/lib/registrationLifecycle.test.ts",
     "sync:research-catalog": "node ./scripts/runCatalogSync.mjs",

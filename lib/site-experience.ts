@@ -11,7 +11,7 @@
 /* ------------------------------------------------------------------ enums */
 
 export const ROUTE_IDS = [
-  "home", "participant", "coordinator", "specialRequests", "knowledge", "knowledgeArticle",
+  "home", "participant", "notifications", "coordinator", "specialRequests", "knowledge", "knowledgeArticle",
   "about", "faq", "researchDetail", "survey", "register", "admin", "adminSubmissions",
   "coordinatorDashboard", "coordinatorSubmissions", "ownerAdmin", "signIn", "signUp", "notFound",
 ] as const;
@@ -25,7 +25,7 @@ export const LINKABLE_ROUTES = {
 export type LinkableRouteId = keyof typeof LINKABLE_ROUTES;
 export const LINKABLE_ROUTE_IDS = Object.keys(LINKABLE_ROUTES) as LinkableRouteId[];
 
-export const PRIVATE_ROUTE_IDS: RouteId[] = ["admin", "adminSubmissions", "coordinatorDashboard", "coordinatorSubmissions", "ownerAdmin", "signIn", "signUp", "coordinator"];
+export const PRIVATE_ROUTE_IDS: RouteId[] = ["admin", "adminSubmissions", "coordinatorDashboard", "coordinatorSubmissions", "ownerAdmin", "signIn", "signUp", "coordinator", "notifications"];
 
 export const THEME_PRESETS = [
   "misbar",
@@ -416,6 +416,7 @@ export const DEFAULT_EXPERIENCE_SETTINGS: ExperienceSettings = {
   pageChrome: {
     home: chrome("مسبار", "Misbar"),
     participant: chrome("الفرص البحثية", "Research opportunities"),
+    notifications: chrome("إشعارات المشاركين", "Participant notifications"),
     coordinator: chrome("للمنسقين", "For coordinators"),
     specialRequests: chrome("خدمات بحثية", "Research services"),
     knowledge: chrome("مركز المعرفة", "Knowledge Center"),
@@ -441,6 +442,7 @@ export const DEFAULT_EXPERIENCE_SETTINGS: ExperienceSettings = {
     participant: seo("الفرص البحثية للأطباء | مسبار", "Research Opportunities | Misbar",
       "فرص بحثية مفتوحة حسب التخصص لدعم ملف البورد السعودي والزمالة الطبية والترقية الأكاديمية — بدون وعود بالقبول.",
       "Open research opportunities by specialty to support Saudi board, fellowship and academic promotion profiles — without promises of acceptance."),
+    notifications: seo("إشعارات المشاركين | مسبار", "Participant updates | Misbar", "", "", true),
     coordinator: seo("بوابة المنسق | مسبار", "Coordinator Portal | Misbar", "دخول المنسقين لتسجيل المشاركين.", "Coordinator access for registering participants.", true),
     specialRequests: seo("خدمات بحثية طبية | مسبار", "Medical Research Services | Misbar",
       "تصميم الدراسة، التحليل الإحصائي، واختيار المجلات المفهرسة للأطباء.", "Study design, statistics and indexed journal selection for physicians."),
@@ -1056,6 +1058,7 @@ export function resolveRouteId(pathname: string): RouteId {
   const p = pathname.replace(/\/+$/, "") || "/";
   if (p === "/") return "home";
   if (p === "/participant-portal") return "participant";
+  if (p === "/notifications" || p.startsWith("/notifications/")) return "notifications";
   if (p === "/coordinator" || p === "/coordinator-portal") return "coordinator";
   if (p === "/special-requests") return "specialRequests";
   if (p === "/knowledge-center") return "knowledge";
@@ -1078,6 +1081,7 @@ export function resolveRouteId(pathname: string): RouteId {
 export const ROUTE_LABELS: Record<RouteId, { ar: string; path: string }> = {
   home: { ar: "الرئيسية", path: "/" },
   participant: { ar: "بوابة المشارك (الفرص)", path: "/participant-portal" },
+  notifications: { ar: "إشعارات المشاركين", path: "/notifications" },
   coordinator: { ar: "دخول المنسق", path: "/coordinator, /coordinator-portal" },
   specialRequests: { ar: "الخدمات", path: "/special-requests" },
   knowledge: { ar: "مركز المعرفة", path: "/knowledge-center" },

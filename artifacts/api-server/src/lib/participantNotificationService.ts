@@ -12,6 +12,13 @@ import {
 import { and, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { isRegistrationEmailConfigured } from "./mailer";
 import { isSupportedWebPushEndpoint } from "./participantNotificationSecurity";
+import {
+  eligibleNotificationEmails,
+  isSameNotificationEvent,
+  RETRYABLE_DELIVERY_STATUSES,
+  shouldQueueEmailNotification,
+  shouldQueuePushNotification,
+} from "./participantNotificationRules";
 
 export const UPDATE_STAGES = [
   "general_update",
@@ -170,12 +177,12 @@ export async function publishParticipantResearchUpdate(input: {
         .where(eq(participantNotificationEventsTable.idempotencyKey, input.idempotencyKey))
         .limit(1);
       if (!existing) return { ok: false as const, status: 503, message: "تعذر حفظ سجل التحديث." };
-      if (
-        existing.opportunityId !== opportunity.id ||
-        existing.stage !== input.stage ||
-        existing.title !== title ||
-        existing.message !== message
-      ) {
+      if (!isSameNotificationEvent(existing, {
+        opportunityId: opportunity.id,
+        stage: input.stage,
+        title,
+        message,
+      })) {
         return { ok: false as const, status: 409, message: "مفتاح الطلب استُخدم سابقاً لمحتوى مختلف." };
       }
       return { ok: true as const, eventId: existing.id, duplicate: true };
@@ -183,13 +190,12 @@ export async function publishParticipantResearchUpdate(input: {
 
     const registrations = await tx.select({
       email: registrationsTable.email,
+      status: registrationsTable.status,
     }).from(registrationsTable).where(and(
       eq(registrationsTable.researchId, opportunity.id),
       notInArray(registrationsTable.status, ["rejected", "deleted"]),
     ));
-    const recipients = [...new Set(registrations
-      .map((registration) => registration.email.trim().toLowerCase())
-      .filter((email) => email.length > 0))];
+    const recipients = eligibleNotificationEmails(registrations);
     const pushConfig = getParticipantPushConfig();
     let deliveryCount = 0;
 
@@ -214,7 +220,7 @@ export async function publishParticipantResearchUpdate(input: {
         ],
       });
 
-      if (preferences?.emailEnabled && process.env.SMTP_HOST?.trim()) {
+      if (shouldQueueEmailNotification(preferences?.emailEnabled ?? false, isRegistrationEmailConfigured())) {
         const [delivery] = await tx.insert(participantNotificationDeliveriesTable).values({
           eventId: createdEvent.id,
           recipientEmail: email,
@@ -224,7 +230,7 @@ export async function publishParticipantResearchUpdate(input: {
         if (delivery) deliveryCount += 1;
       }
 
-      if (preferences?.pushEnabled && pushConfig.enabled) {
+      if (shouldQueuePushNotification(preferences?.pushEnabled ?? false, pushConfig.enabled)) {
         const subscriptions = await tx.select({
           id: participantPushSubscriptionsTable.id,
         }).from(participantPushSubscriptionsTable).where(and(
@@ -285,7 +291,7 @@ export async function retryParticipantNotificationEvent(eventId: number) {
       updatedAt: new Date(),
     }).where(and(
       eq(participantNotificationDeliveriesTable.eventId, eventId),
-      eq(participantNotificationDeliveriesTable.status, "failed"),
+      inArray(participantNotificationDeliveriesTable.status, RETRYABLE_DELIVERY_STATUSES),
     )).returning({ id: participantNotificationDeliveriesTable.id });
     if (!failedDeliveries.length) {
       return { ok: false as const, status: 409, message: "لا توجد عمليات إرسال فاشلة مؤكدة لإعادة المحاولة." };
@@ -454,11 +460,14 @@ export async function markParticipantNotificationRead(email: string, notificatio
 }
 
 export async function getRegistrationEmailsForOpportunity(opportunityId: number) {
-  const rows = await db.select({ email: registrationsTable.email })
+  const rows = await db.select({
+    email: registrationsTable.email,
+    status: registrationsTable.status,
+  })
     .from(registrationsTable)
     .where(and(
       eq(registrationsTable.researchId, opportunityId),
       notInArray(registrationsTable.status, ["rejected", "deleted"]),
     ));
-  return [...new Set(rows.map((row) => row.email.trim().toLowerCase()).filter(Boolean))];
+  return eligibleNotificationEmails(rows);
 }
