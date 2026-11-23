@@ -8,6 +8,9 @@ import coordinatorPortalSettingsRouter from "./coordinatorPortalSettings";
 import siteContentSettingsRouter from "./siteContentSettings";
 import adminRouter from "./admin";
 import orcidRouter from "./orcid";
+import socialOAuthRouter from "./socialOAuth";
+import socialPublishingRouter from "./socialPublishing";
+import socialSeatUpdatesRouter from "./socialSeatUpdates";
 import { COOKIE_NAME, getStaffSession, readSession } from "../middlewares/coordinatorAuth";
 import { isAllowedCoordinatorMutation } from "../lib/coordinatorPermissions";
 
@@ -38,5 +41,8 @@ router.use(coordinatorPortalSettingsRouter);
 router.use(siteContentSettingsRouter);
 router.use(adminRouter);
 router.use(orcidRouter);
+router.use(socialOAuthRouter);
+router.use(socialPublishingRouter);
+router.use(socialSeatUpdatesRouter);
 
 export default router;

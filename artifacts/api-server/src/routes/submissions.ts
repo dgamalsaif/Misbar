@@ -1,5 +1,14 @@
 import { Router, type Request, type Response } from "express";
-import { db, coordinatorsTable, registrationsTable, researchProgramsTable, serviceRequestsTable, insertRegistrationSchema, insertServiceRequestSchema } from "@workspace/db";
+import {
+  db,
+  coordinatorsTable,
+  registrationsTable,
+  researchProgramsTable,
+  serviceRequestsTable,
+  socialSeatUpdateEventsTable,
+  insertRegistrationSchema,
+  insertServiceRequestSchema,
+} from "@workspace/db";
 import { desc, eq, sql } from "drizzle-orm";
 import { sendServiceRequestEmail } from "../lib/mailer";
 import { type StaffSession, requireCoordinator, requireOwner } from "../middlewares/coordinatorAuth";
@@ -142,6 +151,10 @@ async function createRegistration(req: Request, res: Response, coordinatorId: nu
         researchTitle,
         coordinatorId,
       });
+      const registrationId = Number(registration.id);
+      if (!Number.isSafeInteger(registrationId) || registrationId < 1) {
+        throw new Error("Registration INSERT did not return a valid id");
+      }
       await tx.update(researchProgramsTable).set({
         firstAuthorSeatsLeft,
         coAuthorSeatsLeft,
@@ -149,6 +162,16 @@ async function createRegistration(req: Request, res: Response, coordinatorId: nu
         status: seatsLeft === 0 ? "seats_full" : program.status,
         updatedAt: new Date(),
       }).where(eq(researchProgramsTable.id, program.id));
+      await tx.insert(socialSeatUpdateEventsTable).values({
+        registrationId,
+        opportunityId: program.id,
+        seatsLeft,
+        totalSeats: program.totalSeats,
+        firstAuthorSeatsLeft,
+        coAuthorSeatsLeft,
+        status: "pending",
+        updatedAt: new Date(),
+      });
       let resolvedGroupUrl = program.researchGroupUrl || "";
       if (!resolvedGroupUrl) {
         const specAr = (program.specialtyAr || "").trim().toLowerCase();
