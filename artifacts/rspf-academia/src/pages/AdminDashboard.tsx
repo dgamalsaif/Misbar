@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useClerk } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Plus, Pencil, Trash2, Eye, X, ChevronRight, LogOut, Search, Users, BookOpen, TrendingUp, AlertCircle, UserPlus, GraduationCap, Award, Landmark, LayoutDashboard, CreditCard, Settings, ClipboardList, CheckCircle, FlaskConical, Stethoscope, User, Clock, Copy, Check, Edit, FileSpreadsheet, Database, Layers, CheckSquare, ExternalLink, Share2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, X, ChevronRight, LogOut, Search, Users, BookOpen, TrendingUp, AlertCircle, UserPlus, GraduationCap, Award, Landmark, LayoutDashboard, CreditCard, Settings, ClipboardList, CheckCircle, FlaskConical, Stethoscope, User, Clock, Copy, Check, Edit, FileSpreadsheet, Database, Layers, CheckSquare, ExternalLink, Share2, Bell } from "lucide-react";
 import { ResearchOpportunity, SPECIALTY_COLORS } from "@/lib/researchData";
 import { getOpportunitySharePath } from "@/lib/opportunityDisplay";
 import RegistrationModal from "@/components/RegistrationModal";
 import BulkEditModal from "@/components/BulkEditModal";
 import SocialPublishingDialog from "@/components/SocialPublishingDialog";
+import ParticipantResearchUpdateDialog from "@/components/ParticipantResearchUpdateDialog";
 import CoordinatorPortalSettingsPanel from "@/components/CoordinatorPortalSettingsPanel";
 import { CoordinatorPortalSettings, DEFAULT_COORDINATOR_PORTAL_SETTINGS } from "@/lib/coordinatorPortalSettings";
 import ContentControlPanel from "@/components/ContentControlPanel";
@@ -616,7 +617,7 @@ const STATUS_MAP: Record<string, { label: string, className: string }> = {
   published: { label: "تم النشر", className: "bg-[#e6f5ef] text-[#117b59]" },
 };
 
-function ProgramCard({ research, onRegister, onEdit, onDelete, onSocialPublish, canManage, isSelected, onToggleSelect }: any) {
+function ProgramCard({ research, onRegister, onEdit, onDelete, onSocialPublish, onNotify, canManage, isSelected, onToggleSelect }: any) {
   const [copied, setCopied] = useState(false);
   const copyLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}${getOpportunitySharePath(research.id)}`);
@@ -662,6 +663,15 @@ function ProgramCard({ research, onRegister, onEdit, onDelete, onSocialPublish, 
             >
               <Trash2 size={15} />
               حذف
+            </button>
+            <button
+              type="button"
+              onClick={() => onNotify(research)}
+              title="إشعار المشاركين بتحديث البحث"
+              aria-label="إشعار المشاركين بتحديث البحث"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-sky-700 hover:bg-sky-50 transition-colors"
+            >
+              <Bell size={15} />
             </button>
           </div>
 
@@ -806,6 +816,7 @@ export default function AdminDashboard() {
   const [editItem, setEditItem] = useState<ResearchOpportunity | null>(null);
   const [deleteItem, setDeleteItem] = useState<ResearchOpportunity | null>(null);
   const [socialPublishItem, setSocialPublishItem] = useState<ResearchOpportunity | null>(null);
+  const [participantNotificationItem, setParticipantNotificationItem] = useState<ResearchOpportunity | null>(null);
   const [socialOAuthNotice, setSocialOAuthNotice] = useState("");
   const [studentResearch, setStudentResearch] = useState<ResearchOpportunity | null>(null);
   const [portalSettings, setPortalSettings] = useState<CoordinatorPortalSettings>(DEFAULT_COORDINATOR_PORTAL_SETTINGS);
@@ -985,8 +996,12 @@ export default function AdminDashboard() {
       if (!response.ok) {
         return { error: data.error || (response.status === 403 ? "يلزم تسجيل الدخول بحساب مصرح له." : "تعذر تعديل الفرصة البحثية.") };
       }
-      setResearch((items) => items.map((item) => item.id === (data as ResearchOpportunity).id ? (data as ResearchOpportunity) : item));
+      const updatedResearch = data as ResearchOpportunity;
+      const participantStages = new Set(["seats_full", "ethics_approved", "submitted", "under_review", "accepted", "published"]);
+      const stageChanged = editItem.status !== updatedResearch.status && participantStages.has(updatedResearch.status);
+      setResearch((items) => items.map((item) => item.id === updatedResearch.id ? updatedResearch : item));
       setEditItem(null);
+      if (stageChanged) setParticipantNotificationItem(updatedResearch);
     } catch {
       return { error: "تعذر الاتصال بالخادم. يرجى المحاولة لاحقاً." };
     }
@@ -1674,6 +1689,7 @@ export default function AdminDashboard() {
                             onEdit={setEditItem}
                             onDelete={setDeleteItem}
                             onSocialPublish={setSocialPublishItem}
+                            onNotify={setParticipantNotificationItem}
                             canManage={canManage}
                             isSelected={selectedIds.has(r.id)}
                             onToggleSelect={() => toggleSelect(r.id)}
@@ -1929,6 +1945,13 @@ export default function AdminDashboard() {
         <SocialPublishingDialog
           opportunity={socialPublishItem}
           onClose={() => setSocialPublishItem(null)}
+        />
+      )}
+
+      {canManage && participantNotificationItem && (
+        <ParticipantResearchUpdateDialog
+          research={participantNotificationItem}
+          onClose={() => setParticipantNotificationItem(null)}
         />
       )}
 

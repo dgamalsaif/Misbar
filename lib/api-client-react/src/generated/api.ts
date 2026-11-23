@@ -29,6 +29,22 @@ import type {
   ConnectTelegramBody,
   ConnectTelegramResponse,
   HealthStatus,
+  ParticipantNotification,
+  ParticipantNotificationAccessRequest,
+  ParticipantNotificationAccessVerification,
+  ParticipantNotificationInbox,
+  ParticipantNotificationMessage,
+  ParticipantNotificationPreferenceUpdate,
+  ParticipantNotificationPreferences,
+  ParticipantNotificationRetryResponse,
+  ParticipantNotificationSession,
+  ParticipantNotificationUnsubscribe,
+  ParticipantPushConfig,
+  ParticipantPushSubscriptionInput,
+  ParticipantPushSubscriptionRemoval,
+  ParticipantResearchUpdateInput,
+  ProgramParticipantNotificationEvent,
+  ProgramParticipantNotifications,
   PublishSocialPostResult,
   PublishSocialPostsBody,
   PublishSocialPostsResponse,
@@ -119,6 +135,7 @@ export const getHealthCheckQueryKey = () => {
     `/api/healthz`
     ] as const;
     }
+
 
 export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
@@ -1342,4 +1359,1104 @@ export const useRetrySocialPost = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getRetrySocialPostMutationOptions(options), queryClient);
+    }
+
+export const getGetParticipantNotificationPushConfigUrl = () => {
+
+
+
+
+  return `/api/participant/notifications/push-config`
+}
+
+/**
+ * @summary Get public Web Push configuration
+ */
+export const getParticipantNotificationPushConfig = async ( options?: Parameters<typeof customFetch>[1]): Promise<ParticipantPushConfig> => {
+
+  return customFetch<ParticipantPushConfig>(getGetParticipantNotificationPushConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetParticipantNotificationPushConfigQueryKey = () => {
+    return [
+    `/api/participant/notifications/push-config`
+    ] as const;
+    }
+
+
+export const getGetParticipantNotificationPushConfigQueryOptions = <TData = Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetParticipantNotificationPushConfigQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>> = ({ signal }) => getParticipantNotificationPushConfig({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetParticipantNotificationPushConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>>
+export type GetParticipantNotificationPushConfigQueryError = ErrorType<unknown>
+
+
+/** @summary Get public Web Push configuration */
+export function useGetParticipantNotificationPushConfig<TData = Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Get public Web Push configuration */
+export function useGetParticipantNotificationPushConfig<TData = Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Get public Web Push configuration */
+export function useGetParticipantNotificationPushConfig<TData = Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Get public Web Push configuration */
+export function useGetParticipantNotificationPushConfig<TData = Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getParticipantNotificationPushConfig>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetParticipantNotificationPushConfigQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRequestParticipantNotificationAccessUrl = () => {
+
+
+
+
+  return `/api/participant/notifications/access-link`
+}
+
+/**
+ * @summary Request an email link to access the participant inbox
+ */
+export const requestParticipantNotificationAccess = async (participantNotificationAccessRequest: ParticipantNotificationAccessRequest, options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotificationMessage> => {
+
+  return customFetch<ParticipantNotificationMessage>(getRequestParticipantNotificationAccessUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(participantNotificationAccessRequest)
+  }
+);}
+
+
+
+
+
+export const getRequestParticipantNotificationAccessMutationKey = () => ['requestParticipantNotificationAccess'] as const;
+
+export const getRequestParticipantNotificationAccessMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestParticipantNotificationAccess>>, TError,RequestParticipantNotificationAccessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestParticipantNotificationAccess>>, TError,RequestParticipantNotificationAccessMutationVariables, TContext> => {
+
+const mutationKey = getRequestParticipantNotificationAccessMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestParticipantNotificationAccess>>, RequestParticipantNotificationAccessMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestParticipantNotificationAccess(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestParticipantNotificationAccessMutationResult = NonNullable<Awaited<ReturnType<typeof requestParticipantNotificationAccess>>>
+    export type RequestParticipantNotificationAccessMutationBody = BodyType<ParticipantNotificationAccessRequest>
+    export type RequestParticipantNotificationAccessMutationError = ErrorType<void>
+    export type RequestParticipantNotificationAccessMutationVariables = {data: BodyType<ParticipantNotificationAccessRequest>}
+
+    /** @summary Request an email link to access the participant inbox */
+export const useRequestParticipantNotificationAccess = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestParticipantNotificationAccess>>, TError,RequestParticipantNotificationAccessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestParticipantNotificationAccess>>,
+        TError,
+        RequestParticipantNotificationAccessMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestParticipantNotificationAccessMutationOptions(options), queryClient);
+    }
+
+export const getVerifyParticipantNotificationAccessUrl = () => {
+
+
+
+
+  return `/api/participant/notifications/verify`
+}
+
+/**
+ * @summary Verify a one-time email link and start a participant session
+ */
+export const verifyParticipantNotificationAccess = async (participantNotificationAccessVerification: ParticipantNotificationAccessVerification, options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotificationSession> => {
+
+  return customFetch<ParticipantNotificationSession>(getVerifyParticipantNotificationAccessUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(participantNotificationAccessVerification)
+  }
+);}
+
+
+
+
+
+export const getVerifyParticipantNotificationAccessMutationKey = () => ['verifyParticipantNotificationAccess'] as const;
+
+export const getVerifyParticipantNotificationAccessMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyParticipantNotificationAccess>>, TError,VerifyParticipantNotificationAccessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyParticipantNotificationAccess>>, TError,VerifyParticipantNotificationAccessMutationVariables, TContext> => {
+
+const mutationKey = getVerifyParticipantNotificationAccessMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyParticipantNotificationAccess>>, VerifyParticipantNotificationAccessMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyParticipantNotificationAccess(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyParticipantNotificationAccessMutationResult = NonNullable<Awaited<ReturnType<typeof verifyParticipantNotificationAccess>>>
+    export type VerifyParticipantNotificationAccessMutationBody = BodyType<ParticipantNotificationAccessVerification>
+    export type VerifyParticipantNotificationAccessMutationError = ErrorType<void>
+    export type VerifyParticipantNotificationAccessMutationVariables = {data: BodyType<ParticipantNotificationAccessVerification>}
+
+    /** @summary Verify a one-time email link and start a participant session */
+export const useVerifyParticipantNotificationAccess = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyParticipantNotificationAccess>>, TError,VerifyParticipantNotificationAccessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof verifyParticipantNotificationAccess>>,
+        TError,
+        VerifyParticipantNotificationAccessMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyParticipantNotificationAccessMutationOptions(options), queryClient);
+    }
+
+export const getListParticipantNotificationsUrl = () => {
+
+
+
+
+  return `/api/participant/notifications`
+}
+
+/**
+ * @summary List notices for the verified participant email
+ */
+export const listParticipantNotifications = async ( options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotificationInbox> => {
+
+  return customFetch<ParticipantNotificationInbox>(getListParticipantNotificationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListParticipantNotificationsQueryKey = () => {
+    return [
+    `/api/participant/notifications`
+    ] as const;
+    }
+
+
+export const getListParticipantNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof listParticipantNotifications>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listParticipantNotifications>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListParticipantNotificationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listParticipantNotifications>>> = ({ signal }) => listParticipantNotifications({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listParticipantNotifications>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListParticipantNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof listParticipantNotifications>>>
+export type ListParticipantNotificationsQueryError = ErrorType<void>
+
+
+/** @summary List notices for the verified participant email */
+export function useListParticipantNotifications<TData = Awaited<ReturnType<typeof listParticipantNotifications>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listParticipantNotifications>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listParticipantNotifications>>,
+          TError,
+          Awaited<ReturnType<typeof listParticipantNotifications>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary List notices for the verified participant email */
+export function useListParticipantNotifications<TData = Awaited<ReturnType<typeof listParticipantNotifications>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listParticipantNotifications>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listParticipantNotifications>>,
+          TError,
+          Awaited<ReturnType<typeof listParticipantNotifications>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary List notices for the verified participant email */
+export function useListParticipantNotifications<TData = Awaited<ReturnType<typeof listParticipantNotifications>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listParticipantNotifications>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary List notices for the verified participant email */
+export function useListParticipantNotifications<TData = Awaited<ReturnType<typeof listParticipantNotifications>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listParticipantNotifications>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListParticipantNotificationsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkParticipantNotificationReadUrl = (id: number,) => {
+
+
+
+
+  return `/api/participant/notifications/${id}/read`
+}
+
+/**
+ * @summary Mark one participant notice as read
+ */
+export const markParticipantNotificationRead = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotification> => {
+
+  return customFetch<ParticipantNotification>(getMarkParticipantNotificationReadUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkParticipantNotificationReadMutationKey = () => ['markParticipantNotificationRead'] as const;
+
+export const getMarkParticipantNotificationReadMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markParticipantNotificationRead>>, TError,MarkParticipantNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markParticipantNotificationRead>>, TError,MarkParticipantNotificationReadMutationVariables, TContext> => {
+
+const mutationKey = getMarkParticipantNotificationReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markParticipantNotificationRead>>, MarkParticipantNotificationReadMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  markParticipantNotificationRead(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkParticipantNotificationReadMutationResult = NonNullable<Awaited<ReturnType<typeof markParticipantNotificationRead>>>
+
+    export type MarkParticipantNotificationReadMutationError = ErrorType<void>
+    export type MarkParticipantNotificationReadMutationVariables = {id: number}
+
+    /** @summary Mark one participant notice as read */
+export const useMarkParticipantNotificationRead = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markParticipantNotificationRead>>, TError,MarkParticipantNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof markParticipantNotificationRead>>,
+        TError,
+        MarkParticipantNotificationReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkParticipantNotificationReadMutationOptions(options), queryClient);
+    }
+
+export const getUpdateParticipantNotificationPreferencesUrl = () => {
+
+
+
+
+  return `/api/participant/notifications/preferences`
+}
+
+/**
+ * @summary Update email notice preference
+ */
+export const updateParticipantNotificationPreferences = async (participantNotificationPreferenceUpdate: ParticipantNotificationPreferenceUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotificationPreferences> => {
+
+  return customFetch<ParticipantNotificationPreferences>(getUpdateParticipantNotificationPreferencesUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(participantNotificationPreferenceUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateParticipantNotificationPreferencesMutationKey = () => ['updateParticipantNotificationPreferences'] as const;
+
+export const getUpdateParticipantNotificationPreferencesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateParticipantNotificationPreferences>>, TError,UpdateParticipantNotificationPreferencesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateParticipantNotificationPreferences>>, TError,UpdateParticipantNotificationPreferencesMutationVariables, TContext> => {
+
+const mutationKey = getUpdateParticipantNotificationPreferencesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateParticipantNotificationPreferences>>, UpdateParticipantNotificationPreferencesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateParticipantNotificationPreferences(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateParticipantNotificationPreferencesMutationResult = NonNullable<Awaited<ReturnType<typeof updateParticipantNotificationPreferences>>>
+    export type UpdateParticipantNotificationPreferencesMutationBody = BodyType<ParticipantNotificationPreferenceUpdate>
+    export type UpdateParticipantNotificationPreferencesMutationError = ErrorType<void>
+    export type UpdateParticipantNotificationPreferencesMutationVariables = {data: BodyType<ParticipantNotificationPreferenceUpdate>}
+
+    /** @summary Update email notice preference */
+export const useUpdateParticipantNotificationPreferences = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateParticipantNotificationPreferences>>, TError,UpdateParticipantNotificationPreferencesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateParticipantNotificationPreferences>>,
+        TError,
+        UpdateParticipantNotificationPreferencesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateParticipantNotificationPreferencesMutationOptions(options), queryClient);
+    }
+
+export const getSaveParticipantPushSubscriptionUrl = () => {
+
+
+
+
+  return `/api/participant/notifications/push-subscriptions`
+}
+
+/**
+ * @summary Save an opt-in browser push subscription
+ */
+export const saveParticipantPushSubscription = async (participantPushSubscriptionInput: ParticipantPushSubscriptionInput, options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotificationPreferences> => {
+
+  return customFetch<ParticipantNotificationPreferences>(getSaveParticipantPushSubscriptionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(participantPushSubscriptionInput)
+  }
+);}
+
+
+
+
+
+export const getSaveParticipantPushSubscriptionMutationKey = () => ['saveParticipantPushSubscription'] as const;
+
+export const getSaveParticipantPushSubscriptionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveParticipantPushSubscription>>, TError,SaveParticipantPushSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveParticipantPushSubscription>>, TError,SaveParticipantPushSubscriptionMutationVariables, TContext> => {
+
+const mutationKey = getSaveParticipantPushSubscriptionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveParticipantPushSubscription>>, SaveParticipantPushSubscriptionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveParticipantPushSubscription(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveParticipantPushSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof saveParticipantPushSubscription>>>
+    export type SaveParticipantPushSubscriptionMutationBody = BodyType<ParticipantPushSubscriptionInput>
+    export type SaveParticipantPushSubscriptionMutationError = ErrorType<void>
+    export type SaveParticipantPushSubscriptionMutationVariables = {data: BodyType<ParticipantPushSubscriptionInput>}
+
+    /** @summary Save an opt-in browser push subscription */
+export const useSaveParticipantPushSubscription = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveParticipantPushSubscription>>, TError,SaveParticipantPushSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveParticipantPushSubscription>>,
+        TError,
+        SaveParticipantPushSubscriptionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveParticipantPushSubscriptionMutationOptions(options), queryClient);
+    }
+
+export const getRemoveParticipantPushSubscriptionUrl = () => {
+
+
+
+
+  return `/api/participant/notifications/push-subscriptions/remove`
+}
+
+/**
+ * @summary Remove a browser push subscription
+ */
+export const removeParticipantPushSubscription = async (participantPushSubscriptionRemoval: ParticipantPushSubscriptionRemoval, options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotificationPreferences> => {
+
+  return customFetch<ParticipantNotificationPreferences>(getRemoveParticipantPushSubscriptionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(participantPushSubscriptionRemoval)
+  }
+);}
+
+
+
+
+
+export const getRemoveParticipantPushSubscriptionMutationKey = () => ['removeParticipantPushSubscription'] as const;
+
+export const getRemoveParticipantPushSubscriptionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeParticipantPushSubscription>>, TError,RemoveParticipantPushSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeParticipantPushSubscription>>, TError,RemoveParticipantPushSubscriptionMutationVariables, TContext> => {
+
+const mutationKey = getRemoveParticipantPushSubscriptionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeParticipantPushSubscription>>, RemoveParticipantPushSubscriptionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  removeParticipantPushSubscription(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveParticipantPushSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof removeParticipantPushSubscription>>>
+    export type RemoveParticipantPushSubscriptionMutationBody = BodyType<ParticipantPushSubscriptionRemoval>
+    export type RemoveParticipantPushSubscriptionMutationError = ErrorType<void>
+    export type RemoveParticipantPushSubscriptionMutationVariables = {data: BodyType<ParticipantPushSubscriptionRemoval>}
+
+    /** @summary Remove a browser push subscription */
+export const useRemoveParticipantPushSubscription = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeParticipantPushSubscription>>, TError,RemoveParticipantPushSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeParticipantPushSubscription>>,
+        TError,
+        RemoveParticipantPushSubscriptionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveParticipantPushSubscriptionMutationOptions(options), queryClient);
+    }
+
+export const getRemoveParticipantPushDeviceUrl = (id: number,) => {
+
+
+
+
+  return `/api/participant/notifications/push-subscriptions/${id}`
+}
+
+/**
+ * @summary Remove one push-enabled browser from the participant account
+ */
+export const removeParticipantPushDevice = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotificationInbox> => {
+
+  return customFetch<ParticipantNotificationInbox>(getRemoveParticipantPushDeviceUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveParticipantPushDeviceMutationKey = () => ['removeParticipantPushDevice'] as const;
+
+export const getRemoveParticipantPushDeviceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeParticipantPushDevice>>, TError,RemoveParticipantPushDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeParticipantPushDevice>>, TError,RemoveParticipantPushDeviceMutationVariables, TContext> => {
+
+const mutationKey = getRemoveParticipantPushDeviceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeParticipantPushDevice>>, RemoveParticipantPushDeviceMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  removeParticipantPushDevice(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveParticipantPushDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof removeParticipantPushDevice>>>
+
+    export type RemoveParticipantPushDeviceMutationError = ErrorType<void>
+    export type RemoveParticipantPushDeviceMutationVariables = {id: number}
+
+    /** @summary Remove one push-enabled browser from the participant account */
+export const useRemoveParticipantPushDevice = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeParticipantPushDevice>>, TError,RemoveParticipantPushDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeParticipantPushDevice>>,
+        TError,
+        RemoveParticipantPushDeviceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveParticipantPushDeviceMutationOptions(options), queryClient);
+    }
+
+export const getUnsubscribeParticipantEmailNotificationsUrl = () => {
+
+
+
+
+  return `/api/participant/notifications/unsubscribe`
+}
+
+/**
+ * @summary Unsubscribe from update emails using an opaque email link
+ */
+export const unsubscribeParticipantEmailNotifications = async (participantNotificationUnsubscribe: ParticipantNotificationUnsubscribe, options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotificationMessage> => {
+
+  return customFetch<ParticipantNotificationMessage>(getUnsubscribeParticipantEmailNotificationsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(participantNotificationUnsubscribe)
+  }
+);}
+
+
+
+
+
+export const getUnsubscribeParticipantEmailNotificationsMutationKey = () => ['unsubscribeParticipantEmailNotifications'] as const;
+
+export const getUnsubscribeParticipantEmailNotificationsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unsubscribeParticipantEmailNotifications>>, TError,UnsubscribeParticipantEmailNotificationsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unsubscribeParticipantEmailNotifications>>, TError,UnsubscribeParticipantEmailNotificationsMutationVariables, TContext> => {
+
+const mutationKey = getUnsubscribeParticipantEmailNotificationsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unsubscribeParticipantEmailNotifications>>, UnsubscribeParticipantEmailNotificationsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  unsubscribeParticipantEmailNotifications(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnsubscribeParticipantEmailNotificationsMutationResult = NonNullable<Awaited<ReturnType<typeof unsubscribeParticipantEmailNotifications>>>
+    export type UnsubscribeParticipantEmailNotificationsMutationBody = BodyType<ParticipantNotificationUnsubscribe>
+    export type UnsubscribeParticipantEmailNotificationsMutationError = ErrorType<void>
+    export type UnsubscribeParticipantEmailNotificationsMutationVariables = {data: BodyType<ParticipantNotificationUnsubscribe>}
+
+    /** @summary Unsubscribe from update emails using an opaque email link */
+export const useUnsubscribeParticipantEmailNotifications = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unsubscribeParticipantEmailNotifications>>, TError,UnsubscribeParticipantEmailNotificationsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unsubscribeParticipantEmailNotifications>>,
+        TError,
+        UnsubscribeParticipantEmailNotificationsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnsubscribeParticipantEmailNotificationsMutationOptions(options), queryClient);
+    }
+
+export const getEndParticipantNotificationSessionUrl = () => {
+
+
+
+
+  return `/api/participant/notifications/logout`
+}
+
+/**
+ * @summary End the current participant inbox session
+ */
+export const endParticipantNotificationSession = async ( options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotificationMessage> => {
+
+  return customFetch<ParticipantNotificationMessage>(getEndParticipantNotificationSessionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getEndParticipantNotificationSessionMutationKey = () => ['endParticipantNotificationSession'] as const;
+
+export const getEndParticipantNotificationSessionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof endParticipantNotificationSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof endParticipantNotificationSession>>, TError,void, TContext> => {
+
+const mutationKey = getEndParticipantNotificationSessionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof endParticipantNotificationSession>>, void> = () => {
+
+
+          return  endParticipantNotificationSession(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EndParticipantNotificationSessionMutationResult = NonNullable<Awaited<ReturnType<typeof endParticipantNotificationSession>>>
+
+    export type EndParticipantNotificationSessionMutationError = ErrorType<unknown>
+
+
+    /** @summary End the current participant inbox session */
+export const useEndParticipantNotificationSession = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof endParticipantNotificationSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof endParticipantNotificationSession>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getEndParticipantNotificationSessionMutationOptions(options), queryClient);
+    }
+
+export const getListProgramParticipantNotificationsUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/programs/${id}/participant-notifications`
+}
+
+/**
+ * @summary List update notices and delivery outcomes for an opportunity
+ */
+export const listProgramParticipantNotifications = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ProgramParticipantNotifications> => {
+
+  return customFetch<ProgramParticipantNotifications>(getListProgramParticipantNotificationsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListProgramParticipantNotificationsQueryKey = (id: number,) => {
+    return [
+    `/api/admin/programs/${id}/participant-notifications`
+    ] as const;
+    }
+
+
+export const getListProgramParticipantNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError = ErrorType<void>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListProgramParticipantNotificationsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listProgramParticipantNotifications>>> = ({ signal }) => listProgramParticipantNotifications(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListProgramParticipantNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof listProgramParticipantNotifications>>>
+export type ListProgramParticipantNotificationsQueryError = ErrorType<void>
+
+
+/** @summary List update notices and delivery outcomes for an opportunity */
+export function useListProgramParticipantNotifications<TData = Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError = ErrorType<void>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listProgramParticipantNotifications>>,
+          TError,
+          Awaited<ReturnType<typeof listProgramParticipantNotifications>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary List update notices and delivery outcomes for an opportunity */
+export function useListProgramParticipantNotifications<TData = Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listProgramParticipantNotifications>>,
+          TError,
+          Awaited<ReturnType<typeof listProgramParticipantNotifications>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary List update notices and delivery outcomes for an opportunity */
+export function useListProgramParticipantNotifications<TData = Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary List update notices and delivery outcomes for an opportunity */
+export function useListProgramParticipantNotifications<TData = Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProgramParticipantNotifications>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListProgramParticipantNotificationsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPublishProgramParticipantUpdateUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/programs/${id}/participant-notifications`
+}
+
+/**
+ * Does not run on ordinary opportunity edits; push messages do not contain the research title or personal data.
+ * @summary Explicitly publish an update to registered participants
+ */
+export const publishProgramParticipantUpdate = async (id: number,
+    participantResearchUpdateInput: ParticipantResearchUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<ProgramParticipantNotificationEvent> => {
+
+  return customFetch<ProgramParticipantNotificationEvent>(getPublishProgramParticipantUpdateUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(participantResearchUpdateInput)
+  }
+);}
+
+
+
+
+
+export const getPublishProgramParticipantUpdateMutationKey = () => ['publishProgramParticipantUpdate'] as const;
+
+export const getPublishProgramParticipantUpdateMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishProgramParticipantUpdate>>, TError,PublishProgramParticipantUpdateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishProgramParticipantUpdate>>, TError,PublishProgramParticipantUpdateMutationVariables, TContext> => {
+
+const mutationKey = getPublishProgramParticipantUpdateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishProgramParticipantUpdate>>, PublishProgramParticipantUpdateMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  publishProgramParticipantUpdate(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishProgramParticipantUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof publishProgramParticipantUpdate>>>
+    export type PublishProgramParticipantUpdateMutationBody = BodyType<ParticipantResearchUpdateInput>
+    export type PublishProgramParticipantUpdateMutationError = ErrorType<void>
+    export type PublishProgramParticipantUpdateMutationVariables = {id: number;data: BodyType<ParticipantResearchUpdateInput>}
+
+    /**
+ * Does not run on ordinary opportunity edits; push messages do not contain the research title or personal data.
+ * @summary Explicitly publish an update to registered participants
+ */
+export const usePublishProgramParticipantUpdate = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishProgramParticipantUpdate>>, TError,PublishProgramParticipantUpdateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof publishProgramParticipantUpdate>>,
+        TError,
+        PublishProgramParticipantUpdateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPublishProgramParticipantUpdateMutationOptions(options), queryClient);
+    }
+
+export const getRetryProgramParticipantNotificationUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/participant-notifications/${id}/retry`
+}
+
+/**
+ * @summary Retry only confirmed failed email or push deliveries
+ */
+export const retryProgramParticipantNotification = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ParticipantNotificationRetryResponse> => {
+
+  return customFetch<ParticipantNotificationRetryResponse>(getRetryProgramParticipantNotificationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRetryProgramParticipantNotificationMutationKey = () => ['retryProgramParticipantNotification'] as const;
+
+export const getRetryProgramParticipantNotificationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryProgramParticipantNotification>>, TError,RetryProgramParticipantNotificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryProgramParticipantNotification>>, TError,RetryProgramParticipantNotificationMutationVariables, TContext> => {
+
+const mutationKey = getRetryProgramParticipantNotificationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryProgramParticipantNotification>>, RetryProgramParticipantNotificationMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  retryProgramParticipantNotification(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryProgramParticipantNotificationMutationResult = NonNullable<Awaited<ReturnType<typeof retryProgramParticipantNotification>>>
+
+    export type RetryProgramParticipantNotificationMutationError = ErrorType<void>
+    export type RetryProgramParticipantNotificationMutationVariables = {id: number}
+
+    /** @summary Retry only confirmed failed email or push deliveries */
+export const useRetryProgramParticipantNotification = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryProgramParticipantNotification>>, TError,RetryProgramParticipantNotificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof retryProgramParticipantNotification>>,
+        TError,
+        RetryProgramParticipantNotificationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRetryProgramParticipantNotificationMutationOptions(options), queryClient);
     }

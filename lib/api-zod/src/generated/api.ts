@@ -15,6 +15,8 @@ import * as zod from 'zod';
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
+
+
 /**
  * Starts the ORCID OAuth flow and redirects the participant to ORCID.
  * @summary Start ORCID account authorization
@@ -210,6 +212,8 @@ export const PublishProgramToSocialAccountsResponse = zod.object({
 })),
   "message": zod.string()
 })
+
+
 /**
  * @summary List automatic seat updates and account delivery results
  */
@@ -255,6 +259,8 @@ export const RetrySocialSeatUpdateParams = zod.object({
 export const RetrySocialSeatUpdateResponse = zod.object({
   "message": zod.string()
 })
+
+
 /**
  * @summary Retry a publication that definitely failed
  */
@@ -284,3 +290,356 @@ export const RetrySocialPostResponse = zod.object({
   "accountName": zod.string(),
   "message": zod.string()
 })
+
+
+/**
+ * @summary Get public Web Push configuration
+ */
+export const GetParticipantNotificationPushConfigResponse = zod.object({
+  "enabled": zod.boolean(),
+  "publicKey": zod.string().nullable()
+})
+
+
+/**
+ * @summary Request an email link to access the participant inbox
+ */
+export const requestParticipantNotificationAccessBodyEmailMax = 254;
+
+
+
+export const RequestParticipantNotificationAccessBody = zod.object({
+  "email": zod.string().email().max(requestParticipantNotificationAccessBodyEmailMax)
+})
+
+export const RequestParticipantNotificationAccessResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Verify a one-time email link and start a participant session
+ */
+export const verifyParticipantNotificationAccessBodyTokenMin = 32;
+export const verifyParticipantNotificationAccessBodyTokenMax = 128;
+
+
+
+export const VerifyParticipantNotificationAccessBody = zod.object({
+  "token": zod.string().min(verifyParticipantNotificationAccessBodyTokenMin).max(verifyParticipantNotificationAccessBodyTokenMax)
+})
+
+export const VerifyParticipantNotificationAccessResponse = zod.object({
+  "email": zod.string().email()
+})
+
+
+/**
+ * @summary List notices for the verified participant email
+ */
+export const listParticipantNotificationsResponseUnreadCountMin = 0;
+
+
+
+export const ListParticipantNotificationsResponse = zod.object({
+  "notifications": zod.array(zod.object({
+  "id": zod.number(),
+  "opportunityId": zod.number(),
+  "stage": zod.string(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable()
+})),
+  "unreadCount": zod.number().int().min(listParticipantNotificationsResponseUnreadCountMin),
+  "preferences": zod.object({
+  "emailEnabled": zod.boolean(),
+  "emailVerified": zod.boolean(),
+  "pushEnabled": zod.boolean(),
+  "pushAvailable": zod.boolean()
+}),
+  "pushDevices": zod.array(zod.object({
+  "id": zod.number(),
+  "deviceLabel": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Mark one participant notice as read
+ */
+
+
+
+export const MarkParticipantNotificationReadParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const MarkParticipantNotificationReadResponse = zod.object({
+  "id": zod.number(),
+  "opportunityId": zod.number(),
+  "stage": zod.string(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Update email notice preference
+ */
+export const UpdateParticipantNotificationPreferencesBody = zod.object({
+  "emailEnabled": zod.boolean()
+})
+
+export const UpdateParticipantNotificationPreferencesResponse = zod.object({
+  "emailEnabled": zod.boolean(),
+  "emailVerified": zod.boolean(),
+  "pushEnabled": zod.boolean(),
+  "pushAvailable": zod.boolean()
+})
+
+
+/**
+ * @summary Save an opt-in browser push subscription
+ */
+export const saveParticipantPushSubscriptionBodyEndpointMax = 2048;
+
+export const saveParticipantPushSubscriptionBodyKeysP256dhMin = 20;
+export const saveParticipantPushSubscriptionBodyKeysP256dhMax = 200;
+
+export const saveParticipantPushSubscriptionBodyKeysAuthMin = 8;
+export const saveParticipantPushSubscriptionBodyKeysAuthMax = 100;
+
+
+
+export const SaveParticipantPushSubscriptionBody = zod.object({
+  "endpoint": zod.string().url().max(saveParticipantPushSubscriptionBodyEndpointMax),
+  "keys": zod.object({
+  "p256dh": zod.string().min(saveParticipantPushSubscriptionBodyKeysP256dhMin).max(saveParticipantPushSubscriptionBodyKeysP256dhMax),
+  "auth": zod.string().min(saveParticipantPushSubscriptionBodyKeysAuthMin).max(saveParticipantPushSubscriptionBodyKeysAuthMax)
+})
+})
+
+export const SaveParticipantPushSubscriptionResponse = zod.object({
+  "emailEnabled": zod.boolean(),
+  "emailVerified": zod.boolean(),
+  "pushEnabled": zod.boolean(),
+  "pushAvailable": zod.boolean()
+})
+
+
+/**
+ * @summary Remove a browser push subscription
+ */
+export const removeParticipantPushSubscriptionBodyEndpointMax = 2048;
+
+
+
+export const RemoveParticipantPushSubscriptionBody = zod.object({
+  "endpoint": zod.string().url().max(removeParticipantPushSubscriptionBodyEndpointMax)
+})
+
+export const RemoveParticipantPushSubscriptionResponse = zod.object({
+  "emailEnabled": zod.boolean(),
+  "emailVerified": zod.boolean(),
+  "pushEnabled": zod.boolean(),
+  "pushAvailable": zod.boolean()
+})
+
+
+/**
+ * @summary Remove one push-enabled browser from the participant account
+ */
+
+
+
+export const RemoveParticipantPushDeviceParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const removeParticipantPushDeviceResponseUnreadCountMin = 0;
+
+
+
+export const RemoveParticipantPushDeviceResponse = zod.object({
+  "notifications": zod.array(zod.object({
+  "id": zod.number(),
+  "opportunityId": zod.number(),
+  "stage": zod.string(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable()
+})),
+  "unreadCount": zod.number().int().min(removeParticipantPushDeviceResponseUnreadCountMin),
+  "preferences": zod.object({
+  "emailEnabled": zod.boolean(),
+  "emailVerified": zod.boolean(),
+  "pushEnabled": zod.boolean(),
+  "pushAvailable": zod.boolean()
+}),
+  "pushDevices": zod.array(zod.object({
+  "id": zod.number(),
+  "deviceLabel": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Unsubscribe from update emails using an opaque email link
+ */
+export const unsubscribeParticipantEmailNotificationsBodyTokenMin = 32;
+export const unsubscribeParticipantEmailNotificationsBodyTokenMax = 128;
+
+
+
+export const UnsubscribeParticipantEmailNotificationsBody = zod.object({
+  "token": zod.string().min(unsubscribeParticipantEmailNotificationsBodyTokenMin).max(unsubscribeParticipantEmailNotificationsBodyTokenMax)
+})
+
+export const UnsubscribeParticipantEmailNotificationsResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary End the current participant inbox session
+ */
+export const EndParticipantNotificationSessionResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary List update notices and delivery outcomes for an opportunity
+ */
+
+
+
+export const ListProgramParticipantNotificationsParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const listProgramParticipantNotificationsResponseEventsItemTotalRecipientsMin = 0;
+
+export const listProgramParticipantNotificationsResponseEventsItemEmailQueuedMin = 0;
+
+export const listProgramParticipantNotificationsResponseEventsItemPushQueuedMin = 0;
+
+export const listProgramParticipantNotificationsResponseEventsItemSentMin = 0;
+
+export const listProgramParticipantNotificationsResponseEventsItemFailedMin = 0;
+
+export const listProgramParticipantNotificationsResponseEventsItemUnknownMin = 0;
+
+export const listProgramParticipantNotificationsResponseEventsItemSkippedMin = 0;
+
+
+
+export const ListProgramParticipantNotificationsResponse = zod.object({
+  "events": zod.array(zod.object({
+  "id": zod.number(),
+  "opportunityId": zod.number(),
+  "idempotencyKey": zod.string(),
+  "stage": zod.string(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['pending', 'processing', 'completed', 'failed', 'unknown', 'skipped']),
+  "totalRecipients": zod.number().int().min(listProgramParticipantNotificationsResponseEventsItemTotalRecipientsMin),
+  "emailQueued": zod.number().int().min(listProgramParticipantNotificationsResponseEventsItemEmailQueuedMin),
+  "pushQueued": zod.number().int().min(listProgramParticipantNotificationsResponseEventsItemPushQueuedMin),
+  "sent": zod.number().int().min(listProgramParticipantNotificationsResponseEventsItemSentMin),
+  "failed": zod.number().int().min(listProgramParticipantNotificationsResponseEventsItemFailedMin),
+  "unknown": zod.number().int().min(listProgramParticipantNotificationsResponseEventsItemUnknownMin),
+  "skipped": zod.number().int().min(listProgramParticipantNotificationsResponseEventsItemSkippedMin),
+  "emailAvailable": zod.boolean(),
+  "pushAvailable": zod.boolean(),
+  "lastError": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * Does not run on ordinary opportunity edits; push messages do not contain the research title or personal data.
+ * @summary Explicitly publish an update to registered participants
+ */
+
+
+
+export const PublishProgramParticipantUpdateParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const publishProgramParticipantUpdateBodyMessageMax = 1500;
+
+
+
+export const PublishProgramParticipantUpdateBody = zod.object({
+  "idempotencyKey": zod.string().uuid(),
+  "stage": zod.enum(['general_update', 'seats_full', 'ethics_approved', 'submitted', 'under_review', 'accepted', 'published', 'completed']),
+  "message": zod.string().min(1).max(publishProgramParticipantUpdateBodyMessageMax)
+})
+
+export const publishProgramParticipantUpdateResponseTotalRecipientsMin = 0;
+
+export const publishProgramParticipantUpdateResponseEmailQueuedMin = 0;
+
+export const publishProgramParticipantUpdateResponsePushQueuedMin = 0;
+
+export const publishProgramParticipantUpdateResponseSentMin = 0;
+
+export const publishProgramParticipantUpdateResponseFailedMin = 0;
+
+export const publishProgramParticipantUpdateResponseUnknownMin = 0;
+
+export const publishProgramParticipantUpdateResponseSkippedMin = 0;
+
+
+
+export const PublishProgramParticipantUpdateResponse = zod.object({
+  "id": zod.number(),
+  "opportunityId": zod.number(),
+  "idempotencyKey": zod.string(),
+  "stage": zod.string(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['pending', 'processing', 'completed', 'failed', 'unknown', 'skipped']),
+  "totalRecipients": zod.number().int().min(publishProgramParticipantUpdateResponseTotalRecipientsMin),
+  "emailQueued": zod.number().int().min(publishProgramParticipantUpdateResponseEmailQueuedMin),
+  "pushQueued": zod.number().int().min(publishProgramParticipantUpdateResponsePushQueuedMin),
+  "sent": zod.number().int().min(publishProgramParticipantUpdateResponseSentMin),
+  "failed": zod.number().int().min(publishProgramParticipantUpdateResponseFailedMin),
+  "unknown": zod.number().int().min(publishProgramParticipantUpdateResponseUnknownMin),
+  "skipped": zod.number().int().min(publishProgramParticipantUpdateResponseSkippedMin),
+  "emailAvailable": zod.boolean(),
+  "pushAvailable": zod.boolean(),
+  "lastError": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Retry only confirmed failed email or push deliveries
+ */
+
+
+
+export const RetryProgramParticipantNotificationParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+
+
+
+export const RetryProgramParticipantNotificationResponse = zod.object({
+  "message": zod.string(),
+  "queued": zod.number().int().min(1)
+})
+

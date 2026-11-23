@@ -14,6 +14,8 @@ tags:
     description: ORCID account authorization for registration
   - name: socialPublishing
     description: Owner-only publishing of research opportunities to connected social accounts
+  - name: participantNotifications
+    description: Email, in-app, and opt-in Web Push updates for registered research participants
 paths:
   /healthz:
     get:
@@ -333,6 +335,307 @@ paths:
           description: Publication record not found
         "409":
           description: Retry is unsafe or connection is unavailable
+  /participant/notifications/push-config:
+    get:
+      operationId: getParticipantNotificationPushConfig
+      tags: [participantNotifications]
+      summary: Get public Web Push configuration
+      responses:
+        "200":
+          description: Web Push availability and public VAPID key only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantPushConfig"
+  /participant/notifications/access-link:
+    post:
+      operationId: requestParticipantNotificationAccess
+      tags: [participantNotifications]
+      summary: Request an email link to access the participant inbox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParticipantNotificationAccessRequest"
+      responses:
+        "202":
+          description: Generic response that does not reveal whether the email is registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotificationMessage"
+        "400":
+          description: Email is invalid
+        "429":
+          description: Access-link requests are rate limited
+        "503":
+          description: Email service or Render database is unavailable
+  /participant/notifications/verify:
+    post:
+      operationId: verifyParticipantNotificationAccess
+      tags: [participantNotifications]
+      summary: Verify a one-time email link and start a participant session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParticipantNotificationAccessVerification"
+      responses:
+        "200":
+          description: Verified; sets a secure HttpOnly participant session cookie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotificationSession"
+        "400":
+          description: Link is invalid, expired, or already used
+        "503":
+          description: Render database or session secret is unavailable
+  /participant/notifications:
+    get:
+      operationId: listParticipantNotifications
+      tags: [participantNotifications]
+      summary: List notices for the verified participant email
+      responses:
+        "200":
+          description: Private participant inbox and notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotificationInbox"
+        "401":
+          description: A one-time email link must be verified first
+  /participant/notifications/{id}/read:
+    patch:
+      operationId: markParticipantNotificationRead
+      tags: [participantNotifications]
+      summary: Mark one participant notice as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      responses:
+        "200":
+          description: Updated notice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotification"
+        "401":
+          description: Participant session is missing or expired
+        "404":
+          description: Notice not found for this participant
+  /participant/notifications/preferences:
+    patch:
+      operationId: updateParticipantNotificationPreferences
+      tags: [participantNotifications]
+      summary: Update email notice preference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParticipantNotificationPreferenceUpdate"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotificationPreferences"
+        "401":
+          description: Participant session is missing or expired
+  /participant/notifications/push-subscriptions:
+    post:
+      operationId: saveParticipantPushSubscription
+      tags: [participantNotifications]
+      summary: Save an opt-in browser push subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParticipantPushSubscriptionInput"
+      responses:
+        "201":
+          description: Push subscription saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotificationPreferences"
+        "400":
+          description: Invalid push subscription
+        "401":
+          description: Participant session is missing or expired
+        "409":
+          description: Push endpoint is already linked to another verified email
+        "503":
+          description: Web Push configuration or Render database is unavailable
+  /participant/notifications/push-subscriptions/remove:
+    post:
+      operationId: removeParticipantPushSubscription
+      tags: [participantNotifications]
+      summary: Remove a browser push subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParticipantPushSubscriptionRemoval"
+      responses:
+        "200":
+          description: Push subscription removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotificationPreferences"
+        "401":
+          description: Participant session is missing or expired
+  /participant/notifications/push-subscriptions/{id}:
+    delete:
+      operationId: removeParticipantPushDevice
+      tags: [participantNotifications]
+      summary: Remove one push-enabled browser from the participant account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      responses:
+        "200":
+          description: Device removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotificationInbox"
+        "401":
+          description: Participant session is missing or expired
+        "404":
+          description: Device not found for this participant
+  /participant/notifications/unsubscribe:
+    post:
+      operationId: unsubscribeParticipantEmailNotifications
+      tags: [participantNotifications]
+      summary: Unsubscribe from update emails using an opaque email link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParticipantNotificationUnsubscribe"
+      responses:
+        "200":
+          description: Email updates disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotificationMessage"
+        "400":
+          description: Unsubscribe link is invalid or expired
+  /participant/notifications/logout:
+    post:
+      operationId: endParticipantNotificationSession
+      tags: [participantNotifications]
+      summary: End the current participant inbox session
+      responses:
+        "200":
+          description: Participant cookie cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotificationMessage"
+  /admin/programs/{id}/participant-notifications:
+    get:
+      operationId: listProgramParticipantNotifications
+      tags: [participantNotifications]
+      summary: List update notices and delivery outcomes for an opportunity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      responses:
+        "200":
+          description: Recent update events and delivery summaries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgramParticipantNotifications"
+        "403":
+          description: Owner authentication required
+        "503":
+          description: Render database migration is not ready
+    post:
+      operationId: publishProgramParticipantUpdate
+      tags: [participantNotifications]
+      summary: Explicitly publish an update to registered participants
+      description: Does not run on ordinary opportunity edits; push messages do not contain the research title or personal data.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParticipantResearchUpdateInput"
+      responses:
+        "202":
+          description: Event recorded and channel deliveries queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgramParticipantNotificationEvent"
+        "400":
+          description: Invalid update content
+        "403":
+          description: Owner authentication required
+        "404":
+          description: Opportunity not found
+        "409":
+          description: Idempotency key already belongs to different content
+        "503":
+          description: Render database migration is not ready
+  /admin/participant-notifications/{id}/retry:
+    post:
+      operationId: retryProgramParticipantNotification
+      tags: [participantNotifications]
+      summary: Retry only confirmed failed email or push deliveries
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 1
+      responses:
+        "202":
+          description: Confirmed failures were queued for another attempt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantNotificationRetryResponse"
+        "403":
+          description: Owner authentication required
+        "404":
+          description: Update event not found
+        "409":
+          description: No confirmed failed deliveries can be retried
+        "503":
+          description: Retry could not be queued
 components:
   schemas:
     HealthStatus:
@@ -564,4 +867,228 @@ components:
         message:
           type: string
       required: [results, message]
+    ParticipantNotificationMessage:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+    ParticipantPushConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        publicKey:
+          type: [string, "null"]
+      required: [enabled, publicKey]
+    ParticipantNotificationAccessRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+      required: [email]
+    ParticipantNotificationAccessVerification:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 32
+          maxLength: 128
+      required: [token]
+    ParticipantNotificationSession:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required: [email]
+    ParticipantNotification:
+      type: object
+      properties:
+        id:
+          type: number
+        opportunityId:
+          type: number
+        stage:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        readAt:
+          type: [string, "null"]
+          format: date-time
+      required: [id, opportunityId, stage, title, message, createdAt, readAt]
+    ParticipantNotificationPreferences:
+      type: object
+      properties:
+        emailEnabled:
+          type: boolean
+        emailVerified:
+          type: boolean
+        pushEnabled:
+          type: boolean
+        pushAvailable:
+          type: boolean
+      required: [emailEnabled, emailVerified, pushEnabled, pushAvailable]
+    ParticipantNotificationInbox:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParticipantNotification"
+        unreadCount:
+          type: integer
+          minimum: 0
+        preferences:
+          $ref: "#/components/schemas/ParticipantNotificationPreferences"
+        pushDevices:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParticipantPushDevice"
+      required: [notifications, unreadCount, preferences, pushDevices]
+    ParticipantPushDevice:
+      type: object
+      properties:
+        id:
+          type: number
+        deviceLabel:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, deviceLabel, createdAt, updatedAt]
+    ParticipantNotificationPreferenceUpdate:
+      type: object
+      properties:
+        emailEnabled:
+          type: boolean
+      required: [emailEnabled]
+    ParticipantPushSubscriptionKeys:
+      type: object
+      properties:
+        p256dh:
+          type: string
+          minLength: 20
+          maxLength: 200
+        auth:
+          type: string
+          minLength: 8
+          maxLength: 100
+      required: [p256dh, auth]
+    ParticipantPushSubscriptionInput:
+      type: object
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          maxLength: 2048
+        keys:
+          $ref: "#/components/schemas/ParticipantPushSubscriptionKeys"
+      required: [endpoint, keys]
+    ParticipantPushSubscriptionRemoval:
+      type: object
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          maxLength: 2048
+      required: [endpoint]
+    ParticipantNotificationUnsubscribe:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 32
+          maxLength: 128
+      required: [token]
+    ParticipantResearchUpdateInput:
+      type: object
+      properties:
+        idempotencyKey:
+          type: string
+          format: uuid
+        stage:
+          type: string
+          enum: [general_update, seats_full, ethics_approved, submitted, under_review, accepted, published, completed]
+        message:
+          type: string
+          minLength: 1
+          maxLength: 1500
+      required: [idempotencyKey, stage, message]
+    ProgramParticipantNotificationEvent:
+      type: object
+      properties:
+        id:
+          type: number
+        opportunityId:
+          type: number
+        idempotencyKey:
+          type: string
+        stage:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, unknown, skipped]
+        totalRecipients:
+          type: integer
+          minimum: 0
+        emailQueued:
+          type: integer
+          minimum: 0
+        pushQueued:
+          type: integer
+          minimum: 0
+        sent:
+          type: integer
+          minimum: 0
+        failed:
+          type: integer
+          minimum: 0
+        unknown:
+          type: integer
+          minimum: 0
+        skipped:
+          type: integer
+          minimum: 0
+        emailAvailable:
+          type: boolean
+        pushAvailable:
+          type: boolean
+        lastError:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, opportunityId, idempotencyKey, stage, title, message, status, totalRecipients, emailQueued, pushQueued, sent, failed, unknown, skipped, emailAvailable, pushAvailable, lastError, createdAt]
+    ProgramParticipantNotifications:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProgramParticipantNotificationEvent"
+      required: [events]
+    ParticipantNotificationRetryResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        queued:
+          type: integer
+          minimum: 1
+      required: [message, queued]
 

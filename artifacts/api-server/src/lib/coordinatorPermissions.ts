@@ -5,5 +5,16 @@ export function isAllowedCoordinatorMutation(method: string, path: string): bool
   return (method === "POST" && [
     "/coordinator/registrations", "/coordinator/login", "/coordinator/logout",
   ].includes(normalized)) ||
+    (["POST", "PATCH"].includes(method.toUpperCase()) && [
+      "/participant/notifications/access-link",
+      "/participant/notifications/verify",
+      "/participant/notifications/preferences",
+      "/participant/notifications/push-subscriptions",
+      "/participant/notifications/push-subscriptions/remove",
+      "/participant/notifications/unsubscribe",
+      "/participant/notifications/logout",
+    ].includes(normalized)) ||
+    (method.toUpperCase() === "PATCH" && /^\/participant\/notifications\/[1-9]\d*\/read$/.test(normalized)) ||
+    (method.toUpperCase() === "DELETE" && /^\/participant\/notifications\/push-subscriptions\/[1-9]\d*$/.test(normalized)) ||
     (method === "DELETE" && /^\/registrations\/[1-9]\d*$/.test(normalized));
 }

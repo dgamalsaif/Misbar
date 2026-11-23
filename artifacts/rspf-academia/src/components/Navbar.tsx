@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Check, ChevronDown, Languages, Menu, MessageCircle, X } from "lucide-react";
+import { Bell, Check, ChevronDown, Languages, Menu, MessageCircle, X } from "lucide-react";
 import InstallAppButton from "@/components/InstallAppButton";
 import { useLanguage } from "@/lib/i18n";
 import { useCurrency, OpportunityCurrency } from "@/lib/currency";
@@ -52,6 +52,16 @@ export default function Navbar() {
             </div>
           )}
           {nav.showCurrency && <CurrencyToggle currency={currency} onSelect={setCurrency} triggerClassName="hidden sm:inline-flex" />}
+          <Link
+            href="/notifications"
+            data-testid="link-notifications"
+            aria-label={language === "ar" ? "إشعارات المشاركين" : "Participant notifications"}
+            title={language === "ar" ? "إشعارات المشاركين" : "Participant notifications"}
+            className="m-btn m-btn-ghost m-btn-sm !hidden sm:!inline-flex"
+          >
+            <Bell size={15} />
+            <span className="hidden xl:inline">{language === "ar" ? "الإشعارات" : "Updates"}</span>
+          </Link>
           {nav.showLanguage && (
             <button type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")} data-testid="button-language-toggle" className="m-btn m-btn-ghost m-btn-sm !hidden sm:!inline-flex">
               <Languages size={14} />{languageLabel}
@@ -76,6 +86,10 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            <Link href="/notifications" data-testid="link-mobile-notifications" className="m-nav-link !py-3 text-base" onClick={() => setMobileOpen(false)}>
+              <Bell size={16} className="me-2 inline-block" />
+              {language === "ar" ? "إشعارات المشاركين" : "Participant notifications"}
+            </Link>
           </div>
           <div className="mt-3 grid gap-2 border-t border-[color:var(--m-line)] pt-3">
             {nav.showContactButton && (

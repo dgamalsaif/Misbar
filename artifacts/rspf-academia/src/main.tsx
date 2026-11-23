@@ -4,6 +4,7 @@ import "./index.css";
 
 const canonicalHost = "srmaacademy.com";
 const isLegacyWwwHost = window.location.hostname === `www.${canonicalHost}`;
+const isCanonicalHost = window.location.hostname === canonicalHost;
 
 if (isLegacyWwwHost) {
   const canonicalUrl = new URL(window.location.href);
@@ -13,10 +14,21 @@ if (isLegacyWwwHost) {
   createRoot(document.getElementById("root")!).render(<App />);
 }
 
-if (!isLegacyWwwHost && "serviceWorker" in navigator) {
-  void navigator.serviceWorker.getRegistrations().then((registrations) => {
-    for (const registration of registrations) {
-      void registration.unregister();
+if (isCanonicalHost && window.isSecureContext && "serviceWorker" in navigator) {
+  const registerAppWorker = async () => {
+    try {
+      await navigator.serviceWorker.register("/sw.js", {
+        scope: "/",
+        updateViaCache: "none",
+      });
+    } catch (error) {
+      console.warn("Misbar app installation support could not be enabled.", error);
     }
-  });
+  };
+
+  if (document.readyState === "complete") {
+    void registerAppWorker();
+  } else {
+    window.addEventListener("load", () => void registerAppWorker(), { once: true });
+  }
 }
