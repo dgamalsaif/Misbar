@@ -9,6 +9,7 @@ import { useLanguage } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api";
 import { getRegistrationForwarding, loadLatestForwardingBrand } from "@/lib/registrationForwarding";
 import { normalizeOrcidId } from "@/lib/orcid";
+import { buildInvoiceShareMessage, formatInvoiceNumber } from "@/lib/invoiceSharing";
 
 interface RegistrationModalProps {
   isOpen: boolean;
@@ -68,6 +69,8 @@ export default function RegistrationModal({
   const [error, setError] = useState("");
   const [researchGroupUrl, setResearchGroupUrl] = useState("");
   const [forwardUrl, setForwardUrl] = useState("");
+  const [invoiceShareMessage, setInvoiceShareMessage] = useState("");
+  const [invoiceWhatsAppUrl, setInvoiceWhatsAppUrl] = useState("");
   const [forwardingUnavailable, setForwardingUnavailable] = useState(false);
   const [forwardType, setForwardType] = useState<ForwardingType>("whatsapp");
   const [contentSettings, setContentSettings] = useState<SiteContentSettings>(DEFAULT_SITE_CONTENT_SETTINGS);
@@ -128,6 +131,8 @@ export default function RegistrationModal({
     setRegistrationCreatedAt("");
     setError("");
     setResearchGroupUrl("");
+    setInvoiceShareMessage("");
+    setInvoiceWhatsAppUrl("");
     setLoading(false);
   };
   const handleClose = () => { reset(); onClose(); };
@@ -205,8 +210,10 @@ export default function RegistrationModal({
       if (!response.ok) throw new Error(submitError(result.error));
       setRemainingSeats(typeof result.remainingSeats === "number" ? result.remainingSeats : null);
       const parsedRegistrationId = Number(result.id);
-      setRegistrationId(Number.isSafeInteger(parsedRegistrationId) && parsedRegistrationId > 0 ? parsedRegistrationId : null);
-      setRegistrationCreatedAt(typeof result.createdAt === "string" ? result.createdAt : new Date().toISOString());
+      const validRegistrationId = Number.isSafeInteger(parsedRegistrationId) && parsedRegistrationId > 0 ? parsedRegistrationId : null;
+      const createdAt = typeof result.createdAt === "string" ? result.createdAt : new Date().toISOString();
+      setRegistrationId(validRegistrationId);
+      setRegistrationCreatedAt(createdAt);
 
       // Resolve specialty group link or research group link
       const specialtyMatch = contentSettings.specialtyOptions.find((opt) =>
@@ -230,11 +237,42 @@ export default function RegistrationModal({
       const fTarget = forwarding.target;
       const fAuto = forwarding.autoRedirect;
       const fMsg = forwarding.customMessage;
+      const isWhatsAppForwarding = fType === "whatsapp" || fType === "whatsapp_direct_url";
+      const shareParticipant = {
+        fullName: visible("fullName") ? fullName : "",
+        email: visible("email") ? form.email.trim() : "",
+        phone: visible("whatsapp") ? `${form.dialCode} ${form.whatsapp}`.trim() : "",
+        country: visible("country") ? form.country : "",
+        city: visible("city") ? form.city.trim() : "",
+        affiliation: visible("affiliation") ? form.affiliation.trim() : "",
+        specialization: visible("specialization") ? form.specialization.trim() : "",
+      };
+      const invoiceShareText = !coordinatorEntry && contentSettings.invoiceSettings.enabled && validRegistrationId !== null
+        ? buildInvoiceShareMessage({
+            invoiceNumber: formatInvoiceNumber(contentSettings.invoiceSettings.numberPrefix, createdAt, validRegistrationId),
+            participant: shareParticipant,
+            researchId,
+            researchTitle,
+            showResearchReference,
+            showFeeDetails,
+            showSeatDetails,
+            totalSeats: showSeatDetails ? totalSeats : undefined,
+            remainingSeats: showSeatDetails ? (typeof result.remainingSeats === "number" ? result.remainingSeats : undefined) : undefined,
+            targetJournal,
+            specialty,
+            priceOriginalSar,
+            priceDiscountedSar,
+            includedServices: showFeeDetails ? includedServices : [],
+            authorRole: authorRole === "first_author" ? localize("الكاتب الأول", "First Author") : localize("مؤلف مشارك", "Co-Author"),
+            language,
+          })
+        : "";
+      setInvoiceShareMessage(invoiceShareText);
 
       const generatedUrl = buildForwardingUrl({
         type: fType,
         target: fTarget,
-        customMessage: fMsg,
+        customMessage: isWhatsAppForwarding && invoiceShareText ? invoiceShareText : fMsg,
         studentName: fullName,
         specialization: form.specialization,
         researchTitle,
@@ -247,6 +285,7 @@ export default function RegistrationModal({
       });
 
       setForwardUrl(generatedUrl);
+      setInvoiceWhatsAppUrl(isWhatsAppForwarding ? generatedUrl : "");
       setForwardType(fType);
       setDone(true);
       onRegistered?.();
@@ -331,6 +370,9 @@ export default function RegistrationModal({
                 priceOriginalSar={priceOriginalSar}
                 priceDiscountedSar={priceDiscountedSar}
                 includedServices={showFeeDetails ? includedServices : []}
+                shareMessage={invoiceShareMessage}
+                whatsappUrl={invoiceWhatsAppUrl}
+                authorRole={authorRole === "first_author" ? localize("الكاتب الأول", "First Author") : localize("مؤلف مشارك", "Co-Author")}
               />
             )}
             {!coordinatorEntry && contentSettings.invoiceSettings.enabled && registrationId === null && (
@@ -340,7 +382,7 @@ export default function RegistrationModal({
             )}
             <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-slate-500">{coordinatorEntry ? localize("تمت إضافة بيانات الطالب إلى لوحة التسجيلات بنجاح.", "The student's details have been added to the registrations dashboard.") : localize(`تم حفظ بياناتك وسيتم التواصل معك من فريق ${contentSettings.brand.siteNameAr} قريباً.`, `Your details have been saved and the ${contentSettings.brand.siteNameEn} team will contact you soon.`)}</p>
 
-            {forwardUrl && forwardType !== "none" && (
+            {forwardUrl && forwardType !== "none" && !(invoiceShareMessage && contentSettings.invoiceSettings.enabled && !coordinatorEntry && (forwardType === "whatsapp" || forwardType === "whatsapp_direct_url")) && (
               <a
                 href={forwardUrl}
                 target={forwardType === "email" ? undefined : "_blank"}
@@ -644,7 +686,9 @@ export default function RegistrationModal({
                  localize("تسجيل الآن", "Register now")
                )}
             </button>
-            {!coordinatorEntry && visible("whatsapp") && <p className="text-center text-xs text-slate-400">{localize("بعد التسجيل سيفتح واتساب برسالة جاهزة للتواصل", "After registration, WhatsApp will open with a ready-to-send contact message.")}</p>}
+            {!coordinatorEntry && visible("whatsapp") && <p className="text-center text-xs text-slate-400">{contentSettings.invoiceSettings.enabled
+              ? localize("بعد التسجيل يمكنك مشاركة الفاتورة وبيانات التسجيل عبر واتساب.", "After registration, share the invoice and registration details through WhatsApp.")
+              : localize("بعد التسجيل سيفتح واتساب برسالة جاهزة للتواصل", "After registration, WhatsApp will open with a ready-to-send contact message.")}</p>}
           </form>
         )}
       </div>
