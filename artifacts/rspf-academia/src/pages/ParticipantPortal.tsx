@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChevronDown, ChevronUp, Lock, Flame, ChevronLeft, ChevronRight, MessageCircle, ExternalLink, Send, Phone, LayoutGrid, SlidersHorizontal, Copy, Mail, Check, Search, X, CalendarDays, MapPin } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, Flame, ChevronLeft, ChevronRight, MessageCircle, ExternalLink, Send, Phone, LayoutGrid, SlidersHorizontal, Copy, Mail, Check, X, CalendarDays, MapPin } from "lucide-react";
 import { Link } from "wouter";
 import { ResearchOpportunity } from "@/lib/researchData";
 import RegistrationModal from "@/components/RegistrationModal";
@@ -10,7 +10,7 @@ import OpportunityMedia from "@/components/OpportunityMedia";
 import { OpportunityFeeSummary } from "@/components/OpportunityPrice";
 import { OpportunityCurrency, useCurrency } from "@/lib/opportunityPricing";
 import { useLanguage } from "@/lib/i18n";
-import { buildSpecialtyOptions, canonicalSpecialty, specialtyMatches } from "@/components/SpecialtyFilter";
+import SpecialtyFilter, { buildSpecialtyOptions, canonicalSpecialty, specialtyMatches } from "@/components/SpecialtyFilter";
 import { ProtectedResearchWatermark, AntiCaptureResearchTitle } from "@/components/ResearchProtection";
 import { getEnglishOpportunityTitle, getOpportunityShareText } from "@/lib/opportunityDisplay";
 import { isFieldVisible } from "@/lib/opportunityVisibility";
@@ -58,7 +58,7 @@ export default function ParticipantPortal() {
   const { data: contentSettings } = useSiteContentSettings();
   const showOpportunityDetails = contentSettings.showOpportunityDetails !== false;
   const filterVisibility = contentSettings.opportunityFilterVisibility;
-  const [opportunitySearch, setOpportunitySearch] = useState("");
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
   const [feeFilter, setFeeFilter] = useState<OpportunityFeeFilter>("all");
   const [priceSort, setPriceSort] = useState<OpportunityPriceSort>("none");
   const [minimumSeats, setMinimumSeats] = useState<number | null>(null);
@@ -128,8 +128,8 @@ export default function ParticipantPortal() {
   };
   const hasVisibleSpecialties = showOpportunityDetails && opportunities.some((opportunity) =>
     isFieldVisible(opportunity, "specialty") && Boolean(opportunity.specialtyAr?.trim() || opportunity.specialtyEn?.trim() || opportunity.specialty?.trim()));
-  const filteredOpportunities = filterOpportunities(opportunities, {
-    query: filterVisibility.searchBySpecialty && showOpportunityDetails ? opportunitySearch : "",
+  const filteredByOtherFilters = filterOpportunities(opportunities, {
+    query: "",
     queryField: "specialty",
     fee: filterVisibility.price ? feeFilter : "all",
     minimumSeats: filterVisibility.seats && showOpportunityDetails ? minimumSeats : null,
@@ -138,8 +138,15 @@ export default function ParticipantPortal() {
     priceSort: filterVisibility.price ? priceSort : "none",
     includeDetails: showOpportunityDetails,
   });
+  const activeSpecialty = filterVisibility.searchBySpecialty && showOpportunityDetails &&
+    specialtyOptions.some((option) => option.id === selectedSpecialty)
+    ? selectedSpecialty
+    : null;
+  const filteredOpportunities = activeSpecialty
+    ? filteredByOtherFilters.filter((opportunity) => specialtyMatches(opportunity, activeSpecialty))
+    : filteredByOtherFilters;
   const hasActiveFilters = Boolean(
-    (filterVisibility.searchBySpecialty && showOpportunityDetails && opportunitySearch.trim()) ||
+    activeSpecialty ||
     (filterVisibility.price && feeFilter !== "all") ||
     (filterVisibility.price && priceSort !== "none") ||
     (filterVisibility.seats && minimumSeats !== null) ||
@@ -154,7 +161,7 @@ export default function ParticipantPortal() {
     .filter(Boolean))].sort((a, b) => a.localeCompare(b)) : [];
   const hasVisibleDeadlines = filterVisibility.deadline && showOpportunityDetails && opportunities.some((opportunity) => isFieldVisible(opportunity, "deadline") && Boolean(opportunity.applicationDeadline));
   const resetFilters = () => {
-    setOpportunitySearch("");
+    setSelectedSpecialty(null);
     setFeeFilter("all");
     setPriceSort("none");
     setMinimumSeats(null);
@@ -268,20 +275,15 @@ export default function ParticipantPortal() {
                 </div>
               </div>
               {Object.values(filterVisibility).some(Boolean) && <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" data-testid="section-opportunity-search" aria-label={localize("البحث والفرز في الفرص", "Opportunity search and filters")}>
+                {filterVisibility.searchBySpecialty && showOpportunityDetails && hasVisibleSpecialties && (
+                  <SpecialtyFilter
+                    options={specialtyOptions}
+                    selectedSpecialty={activeSpecialty}
+                    onSelect={setSelectedSpecialty}
+                    className="mb-4 border-slate-100 bg-slate-50/70 shadow-none"
+                  />
+                )}
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  {filterVisibility.searchBySpecialty && <label className="relative md:col-span-2">
-                    <span className="mb-1.5 block text-xs font-bold text-slate-600">{localize("بحث حسب التخصص", "Search by specialty")}</span>
-                    <Search size={16} className="pointer-events-none absolute start-3 top-[2.45rem] -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                    <input
-                      type="search"
-                      value={opportunitySearch}
-                      onChange={(event) => setOpportunitySearch(event.target.value)}
-                      data-testid="input-opportunity-search"
-                      disabled={!showOpportunityDetails || !hasVisibleSpecialties}
-                      placeholder={localize("اكتب اسم التخصص", "Enter a specialty")}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pe-3 ps-10 text-sm outline-none transition focus:border-[#117b59] focus:bg-white focus:ring-2 focus:ring-[#117b59]/15"
-                    />
-                  </label>}
                   {filterVisibility.country && (
                     <label>
                       <span className="mb-1.5 block text-xs font-bold text-slate-600">{localize("بلد الفرصة", "Opportunity country")}</span>
@@ -362,7 +364,7 @@ export default function ParticipantPortal() {
                     </button>
                   )}
                 </div>
-                {(hasActiveFilters || (filterVisibility.searchBySpecialty && showOpportunityDetails && opportunitySearch)) && <p className="mt-2 text-xs text-slate-500">{localize("تُطبق الفلاتر فقط على المعلومات التي أتاح مالك الفرصة ظهورها.", "Filters only use information made public by the opportunity owner.")}</p>}
+                {hasActiveFilters && <p className="mt-2 text-xs text-slate-500">{localize("تُطبق الفلاتر فقط على المعلومات التي أتاح مالك الفرصة ظهورها.", "Filters only use information made public by the opportunity owner.")}</p>}
                 {filterVisibility.searchBySpecialty && showOpportunityDetails && !hasVisibleSpecialties && <p className="mt-2 text-xs text-amber-700" role="status">{localize("الفرص موجودة، لكن التخصص مخفي حاليًا. فعّل إظهار التخصص من إعدادات الفرصة ليعمل البحث به.", "Opportunities are available, but their specialties are hidden. Enable specialty visibility in the opportunity settings to search by specialty.")}</p>}
                 {filterVisibility.country && showOpportunityDetails && countryOptions.length === 0 && <p className="mt-2 text-xs text-slate-500">{localize("سيظهر فلتر البلد بعد أن يحدد المالك بلداً للفرص.", "The country filter becomes available when the owner assigns countries to opportunities.")}</p>}
                 {filterVisibility.deadline && showOpportunityDetails && !hasVisibleDeadlines && <p className="mt-2 text-xs text-slate-500">{localize("سيظهر فلتر الموعد بعد أن يحدد المالك موعد إغلاق لفرصة واحدة على الأقل.", "The deadline filter becomes available when the owner adds a closing date to an opportunity.")}</p>}

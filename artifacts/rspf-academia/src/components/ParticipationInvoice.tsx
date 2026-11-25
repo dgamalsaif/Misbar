@@ -1,6 +1,7 @@
-import { useRef, type ReactNode } from "react";
-import { CalendarDays, FileDown, FileText, Info, Mail, Phone, ReceiptText, UserRound, Calculator } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { CalendarDays, FileDown, FileText, Info, Mail, Phone, ReceiptText, Share2, UserRound, Calculator } from "lucide-react";
 import type { BrandContactSettings, InvoiceSettings, WatermarkSettings } from "@/lib/siteContentSettings";
+import { createInvoicePdfFile, formatInvoiceNumber } from "@/lib/invoiceSharing";
 
 interface Props {
   registrationId: number;
@@ -32,6 +33,9 @@ interface Props {
   includedServices: string[];
   paymentStatus?: "paid" | "unpaid";
   paymentPaidAt?: string | null;
+  shareMessage?: string;
+  whatsappUrl?: string;
+  authorRole?: string;
 }
 
 function InvoiceSectionTab({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: string }) {
@@ -68,14 +72,20 @@ export default function ParticipationInvoice({
   includedServices,
   paymentStatus = "unpaid",
   paymentPaidAt,
+  shareMessage = "",
+  whatsappUrl = "",
+  authorRole = "",
 }: Props) {
   const printing = useRef(false);
   const invoiceElement = useRef<HTMLDivElement>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfPreparing, setPdfPreparing] = useState(true);
+  const [shareStatus, setShareStatus] = useState("");
   const isEnglish = language === "en";
   const date = new Date(createdAt);
   const validDate = Number.isNaN(date.getTime()) ? new Date() : date;
   const paid = paymentStatus === "paid";
-  const invoiceNumber = `${invoiceSettings.numberPrefix || "MIS"}-${validDate.getFullYear()}-${String(registrationId).padStart(6, "0")}`;
+  const invoiceNumber = formatInvoiceNumber(invoiceSettings.numberPrefix, createdAt, registrationId);
   const original = Number.isFinite(priceOriginalSar) && (priceOriginalSar ?? 0) >= 0 ? priceOriginalSar : undefined;
   const discounted = Number.isFinite(priceDiscountedSar) && (priceDiscountedSar ?? 0) >= 0 ? priceDiscountedSar : undefined;
   const amountDue = showFeeDetails ? (discounted ?? original) : undefined;
@@ -139,6 +149,81 @@ export default function ParticipationInvoice({
     window.setTimeout(() => window.print(), 50);
     restoreTimer = window.setTimeout(restore, 30000);
   };
+  const downloadShareFile = () => {
+    if (!pdfFile) return;
+    const downloadUrl = URL.createObjectURL(pdfFile);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = downloadUrl;
+    downloadLink.download = pdfFile.name;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000);
+  };
+  useEffect(() => {
+    let active = true;
+    setPdfPreparing(true);
+    const invoice = invoiceElement.current;
+    if (!invoice) {
+      setPdfPreparing(false);
+      return () => { active = false; };
+    }
+    void createInvoicePdfFile(invoice, `${invoiceNumber}.pdf`)
+      .then((file) => { if (active) setPdfFile(file); })
+      .catch(() => { if (active) setPdfFile(null); })
+      .finally(() => { if (active) setPdfPreparing(false); });
+    return () => { active = false; };
+  }, [invoiceNumber, paymentPaidAt, paymentStatus, registrationId]);
+
+  const shareInvoice = async () => {
+    setShareStatus("");
+    if (!pdfFile) {
+      if (whatsappUrl) window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      setShareStatus(isEnglish
+        ? "The share file could not be prepared. Save the invoice PDF below, then attach it to your WhatsApp message."
+        : "تعذّر تجهيز ملف المشاركة. احفظ الفاتورة PDF من الزر أدناه، ثم أرفقها برسالة واتساب.");
+      return;
+    }
+
+    let downloaded = false;
+    try {
+      const fileSharingAvailable = typeof navigator.share === "function"
+        && typeof navigator.canShare === "function"
+        && navigator.canShare({ files: [pdfFile] });
+      if (fileSharingAvailable) {
+        await navigator.share({
+          files: [pdfFile],
+          title: invoiceNumber,
+          text: shareMessage,
+        });
+        setShareStatus(isEnglish
+          ? "Choose WhatsApp and the intended conversation, then tap Send."
+          : "اختر واتساب والمحادثة المطلوبة، ثم اضغط إرسال.");
+        return;
+      }
+
+      downloadShareFile();
+      downloaded = true;
+
+      if (whatsappUrl) {
+        window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      } else if (typeof navigator.share === "function" && shareMessage) {
+        await navigator.share({ title: invoiceNumber, text: shareMessage });
+      } else if (navigator.clipboard?.writeText && shareMessage) {
+        await navigator.clipboard.writeText(shareMessage);
+      }
+      setShareStatus(isEnglish
+        ? "The invoice was downloaded and a WhatsApp message was opened. Attach the downloaded PDF, then send."
+        : "تم تنزيل الفاتورة وفتح رسالة واتساب. أرفق ملف PDF الذي تم تنزيله ثم أرسل الرسالة.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (!downloaded) downloadShareFile();
+      if (whatsappUrl) window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      setShareStatus(isEnglish
+        ? "Sharing did not complete. Save the invoice PDF and attach it manually in WhatsApp."
+        : "لم تكتمل المشاركة. يمكنك حفظ الفاتورة PDF وإرفاقها يدويًا في واتساب.");
+    }
+  };
   const lines: Array<{ label: string; value: string; dir?: "ltr" | "auto" }> = [
     { label: isEnglish ? "Participant" : "المشارك", value: participant.fullName },
     { label: isEnglish ? "Email" : "البريد الإلكتروني", value: participant.email, dir: "ltr" as const },
@@ -147,6 +232,7 @@ export default function ParticipationInvoice({
     { label: isEnglish ? "City" : "المدينة", value: participant.city },
     { label: isEnglish ? "Affiliation" : "جهة الانتساب", value: participant.affiliation },
     { label: isEnglish ? "Specialization" : "التخصص", value: participant.specialization },
+    { label: isEnglish ? "Author role" : "دور التأليف", value: authorRole },
   ].filter((line) => line.value.trim());
 
   const sectionLabels = {
@@ -397,6 +483,24 @@ export default function ParticipationInvoice({
         </footer>
 
         <div className="invoice-screen-actions p-4 text-center">
+          <button
+            type="button"
+            onClick={() => void shareInvoice()}
+            disabled={pdfPreparing}
+            data-testid="button-share-invoice-whatsapp"
+            className="mb-3 inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-black text-white hover:bg-[#1fae53] disabled:cursor-wait disabled:opacity-60"
+          >
+            <Share2 size={17} />
+            {pdfPreparing
+              ? (isEnglish ? "Preparing invoice PDF…" : "جارٍ تجهيز فاتورة PDF…")
+              : (isEnglish ? "Share invoice and registration details" : "مشاركة الفاتورة وبيانات التسجيل")}
+          </button>
+          <p className="mb-3 text-xs text-slate-500">
+            {isEnglish
+              ? "Choose WhatsApp from the sharing options. On devices without file sharing, download the PDF and attach it manually."
+              : "اختر واتساب من قائمة المشاركة. إذا لم يدعم الجهاز مشاركة الملفات، نزّل الفاتورة وأرفقها يدويًا."}
+          </p>
+          {shareStatus && <p role="status" className="mx-auto mb-3 max-w-xl rounded-xl bg-emerald-50 p-3 text-xs leading-5 text-emerald-900">{shareStatus}</p>}
           <button
             type="button"
             onClick={printInvoice}

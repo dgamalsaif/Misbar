@@ -37,6 +37,7 @@ import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 import { getEnglishOpportunityTitle, getOpportunityRegistrationPath, getOpportunitySharePath } from "@/lib/opportunityDisplay";
 import { normalizeOrcidId } from "@/lib/orcid";
 import { isFieldVisible } from "@/lib/opportunityVisibility";
+import { buildInvoiceShareMessage, formatInvoiceNumber } from "@/lib/invoiceSharing";
 
 const API_BASE = "/api";
 
@@ -82,6 +83,8 @@ export default function OpportunitySurvey() {
   } | null>(null);
   const [error, setError] = useState("");
   const [forwardUrl, setForwardUrl] = useState("");
+  const [invoiceShareMessage, setInvoiceShareMessage] = useState("");
+  const [invoiceWhatsAppUrl, setInvoiceWhatsAppUrl] = useState("");
   const [forwardingUnavailable, setForwardingUnavailable] = useState(false);
   const [forwardType, setForwardType] = useState<ForwardingType>("whatsapp");
   const [researchGroupUrl, setResearchGroupUrl] = useState("");
@@ -274,10 +277,41 @@ export default function OpportunitySurvey() {
       setForwardingUnavailable(currentBrand === null);
       const forwarding = getRegistrationForwarding(currentBrand);
       const forwardingType = forwarding.type;
+      const isWhatsAppForwarding = forwardingType === "whatsapp" || forwardingType === "whatsapp_direct_url";
+      const shareParticipant = {
+        fullName: visible("fullName") ? fullName : "",
+        email: visible("email") ? form.email.trim() : "",
+        phone: visible("whatsapp") ? `${form.dialCode} ${form.whatsapp}`.trim() : "",
+        country: visible("country") ? form.country : "",
+        city: visible("city") ? form.city.trim() : "",
+        affiliation: visible("affiliation") ? form.affiliation.trim() : "",
+        specialization: visible("specialization") ? form.specialization.trim() : "",
+      };
+      const invoiceShareText = contentSettings.invoiceSettings.enabled && Number.isSafeInteger(parsedRegistrationId) && parsedRegistrationId > 0
+        ? buildInvoiceShareMessage({
+            invoiceNumber: formatInvoiceNumber(contentSettings.invoiceSettings.numberPrefix, typeof resData.createdAt === "string" ? resData.createdAt : new Date().toISOString(), parsedRegistrationId),
+            participant: shareParticipant,
+            researchId: selectedOpp.id,
+            researchTitle: publicReceiptTitle,
+            showResearchReference: isFieldVisible(selectedOpp, "title"),
+            showFeeDetails: isFieldVisible(selectedOpp, "price"),
+            showSeatDetails: isFieldVisible(selectedOpp, "seats"),
+            totalSeats: isFieldVisible(selectedOpp, "seats") ? selectedOpp.totalSeats : undefined,
+            remainingSeats: typeof resData.remainingSeats === "number" ? resData.remainingSeats : undefined,
+            targetJournal: isFieldVisible(selectedOpp, "journal") ? selectedOpp.journalTarget : "",
+            specialty: isFieldVisible(selectedOpp, "specialty") ? localize(selectedOpp.specialtyAr, selectedOpp.specialtyEn, selectedOpp.specialty) : "",
+            priceOriginalSar: selectedOpp.priceOriginalSar,
+            priceDiscountedSar: selectedOpp.priceDiscountedSar,
+            includedServices: isFieldVisible(selectedOpp, "price") ? selectedOpp.includedServices || [] : [],
+            authorRole: authorRole === "first_author" ? localize("الكاتب الأول", "First Author") : localize("مؤلف مشارك", "Co-Author"),
+            language,
+          })
+        : "";
+      setInvoiceShareMessage(invoiceShareText);
       const fUrl = buildForwardingUrl({
         type: forwardingType,
         target: forwarding.target,
-        customMessage: forwarding.customMessage,
+        customMessage: isWhatsAppForwarding && invoiceShareText ? invoiceShareText : forwarding.customMessage,
         studentName: fullName,
         specialization: form.specialization.trim(),
         email: form.email.trim(),
@@ -291,6 +325,7 @@ export default function OpportunitySurvey() {
         language,
       });
       setForwardUrl(fUrl);
+      setInvoiceWhatsAppUrl(isWhatsAppForwarding ? fUrl : "");
       setForwardType(forwardingType);
       setDone(true);
       if (fUrl && forwarding.autoRedirect && forwardingType !== "none" && !contentSettings.invoiceSettings.enabled) {
@@ -423,6 +458,9 @@ export default function OpportunitySurvey() {
                   priceOriginalSar={registrationReceipt.invoiceOriginalSar ?? selectedOpp.priceOriginalSar}
                   priceDiscountedSar={registrationReceipt.invoiceDiscountedSar ?? selectedOpp.priceDiscountedSar}
                   includedServices={isFieldVisible(selectedOpp, "price") ? selectedOpp.includedServices || [] : []}
+                  shareMessage={invoiceShareMessage}
+                  whatsappUrl={invoiceWhatsAppUrl}
+                  authorRole={authorRole === "first_author" ? localize("الكاتب الأول", "First Author") : localize("مؤلف مشارك", "Co-Author")}
                 />
               )}
               {contentSettings.invoiceSettings.enabled && !registrationReceipt && (
@@ -452,7 +490,7 @@ export default function OpportunitySurvey() {
                 )}
 
                 {forwardingUnavailable && <p role="status" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{localize("تم حفظ تسجيلك، لكن تعذّر تحميل بيانات التواصل الحالية. حدّث الصفحة للاطلاع عليها؛ لا تعِد التسجيل.", "Your registration is saved, but current contact details could not be loaded. Refresh to view them; do not register again.")}</p>}
-                {forwardUrl && (
+                {forwardUrl && !(invoiceShareMessage && contentSettings.invoiceSettings.enabled && (forwardType === "whatsapp" || forwardType === "whatsapp_direct_url")) && (
                   <a
                     href={forwardUrl}
                     target="_blank"
