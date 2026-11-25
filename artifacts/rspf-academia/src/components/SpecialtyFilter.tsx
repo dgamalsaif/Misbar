@@ -167,7 +167,7 @@ export default function SpecialtyFilter({
             {localize("كل التخصصات", "All specialties")}
           </button>
           {visibleOptions.map((option) => {
-            const value = option.nameEn || option.nameAr;
+            const value = option.id;
             const selected = selectedSpecialty === value;
             return (
               <button
