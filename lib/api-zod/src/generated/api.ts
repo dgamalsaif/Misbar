@@ -41,6 +41,68 @@ export const UpdateRegistrationPaymentStatusResponse = zod.object({
 
 
 /**
+ * Matches normalized Arabic and English title/specialty values. Returns only the minimum data needed for owner review.
+ * @summary List likely duplicate opportunities for owner review
+ */
+export const listDuplicateResearchOpportunitiesResponseGroupsItemActiveCountMin = 0;
+
+export const listDuplicateResearchOpportunitiesResponseGroupsItemOpportunitiesItemRegistrationCountMin = 0;
+
+
+
+export const ListDuplicateResearchOpportunitiesResponse = zod.object({
+  "archiveAvailable": zod.boolean(),
+  "groups": zod.array(zod.object({
+  "key": zod.string(),
+  "activeCount": zod.number().int().min(listDuplicateResearchOpportunitiesResponseGroupsItemActiveCountMin),
+  "opportunities": zod.array(zod.object({
+  "id": zod.number().int(),
+  "titleAr": zod.string(),
+  "titleEn": zod.string(),
+  "specialtyAr": zod.string(),
+  "specialtyEn": zod.string(),
+  "category": zod.string(),
+  "status": zod.string(),
+  "seatsLeft": zod.number().int(),
+  "totalSeats": zod.number().int(),
+  "isArchived": zod.boolean(),
+  "archivedAt": zod.coerce.date().nullable(),
+  "canonicalResearchId": zod.number().int().nullable(),
+  "registrationCount": zod.number().int().min(listDuplicateResearchOpportunitiesResponseGroupsItemOpportunitiesItemRegistrationCountMin)
+}))
+}))
+})
+
+
+/**
+ * Requires an explicit canonical opportunity before archiving. Existing registrations and reserved seats are retained. A restored duplicate stays a draft if another matching copy is still active.
+ * @summary Archive or restore a duplicate opportunity without deleting records
+ */
+
+
+
+export const UpdateResearchOpportunityArchiveParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateResearchOpportunityArchiveBody = zod.object({
+  "archived": zod.boolean(),
+  "canonicalId": zod.number().int().min(1).optional(),
+  "restoreAsDraft": zod.boolean().optional()
+})
+
+export const UpdateResearchOpportunityArchiveResponse = zod.object({
+  "id": zod.number().int(),
+  "archived": zod.boolean(),
+  "status": zod.string(),
+  "restoredAsDraft": zod.boolean()
+})
+
+
+/**
  * Starts the ORCID OAuth flow and redirects the participant to ORCID.
  * @summary Start ORCID account authorization
  */

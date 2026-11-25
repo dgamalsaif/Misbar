@@ -19,21 +19,24 @@ export const ownerAccountsTable = {name:"owners"};
 export const coordinatorPortalSettingsTable = {name:"portal"};
 export const paymentRecordsTable = {name:"payments"};
 export const socialSeatUpdateEventsTable = {name:"seatEvents"};
+export const researchProgramArchiveRecordsTable = {name:"archives",researchId:"researchId",isArchived:"isArchived"};
 const schema = { safeParse: data => ({success:true,data}), partial:()=>schema };
 export const insertRegistrationSchema = schema;
 export const insertServiceRequestSchema = schema;
-let state = {}, failNext = false, paymentSchemaReady = true;
-export function reset(rejected=false, schemaReady=true) {
+let state = {}, failNext = false, paymentSchemaReady = true, archiveSchemaReady = true;
+export function reset(rejected=false, schemaReady=true, archiveReady=true) {
  paymentSchemaReady = schemaReady;
+  archiveSchemaReady = archiveReady;
  state = {
   programs:[{id:1,titleAr:"Study",titleEn:"Study",category:"training",status:"open",firstAuthorSeats:1,firstAuthorSeatsLeft:1,coAuthorSeats:14,coAuthorSeatsLeft:2,seatsLeft:3}],
  registrations: rejected ? [{id:1,researchId:1,coordinatorId:1,authorRole:"co_author",status:"rejected",customFields:{}}] : [],
  coordinators:[{id:1,fullName:"Fixture coordinator",email:"one@example.invalid",status:"active"}],
-   bootstrap:[{key:"program-capacity-and-author-roles-v1"}],services:[],owners:[],portal:[],payments:[],seatEvents:[],invoiceRecords:[],paymentEvents:[] };
+    bootstrap:[{key:"program-capacity-and-author-roles-v1"}],services:[],owners:[],portal:[],payments:[],seatEvents:[],invoiceRecords:[],paymentEvents:[],archives:[] };
  failNext=false;
 }
 export const snapshot=()=>structuredClone(state);
 export const failUpdate=()=>{failNext=true};
+export const archiveProgram=(researchId)=>state.archives.push({researchId,isArchived:true});
 function matches(row, condition) {
  if (!condition) return true;
   if (condition.array) return condition.value.includes(row[condition.key]);
@@ -71,7 +74,7 @@ class Query {
 export const db={
  select:fields=>new Query("select",fields),insert:table=>new Query("insert").from(table),
  update:table=>new Query("update").from(table),delete:table=>new Query("delete").from(table),
- execute:async query=>String(query?.text||"").includes("to_regclass")?{rows:[{invoices_ready:paymentSchemaReady,events_ready:paymentSchemaReady}]}:[],transaction:async fn=>{const before=structuredClone(state);try{return await fn(db)}catch(e){state=before;throw e}}
+  execute:async query=>{const text=String(query?.text||"");if(text.includes("research_program_archive_records"))return{rows:[{available:archiveSchemaReady}]};return text.includes("to_regclass")?{rows:[{invoices_ready:paymentSchemaReady,events_ready:paymentSchemaReady}]}:[]},transaction:async fn=>{const before=structuredClone(state);try{return await fn(db)}catch(e){state=before;throw e}}
 };
 `;
 
@@ -91,7 +94,7 @@ import express from "express";
 import submissions from "${resolve("artifacts/api-server/src/routes/submissions.ts")}";
 import admin from "${resolve("artifacts/api-server/src/routes/admin.ts")}";
 import {createSession} from "${resolve("artifacts/api-server/src/middlewares/coordinatorAuth.ts")}";
-export {reset,snapshot,failUpdate} from "@workspace/db";
+export {reset,snapshot,failUpdate,archiveProgram} from "@workspace/db";
 export const app=express();app.use(express.json());app.use((req,res,next)=>{req.log={error:()=>{}};req.cookies=req.headers["x-role"]==="coordinator"?{srma_coordinator_session:createSession("coordinator",1)}:{};next()});app.use("/api",submissions,admin);
 `;
   let server: any;
@@ -115,6 +118,14 @@ export const app=express();app.use(express.json());app.use((req,res,next)=>{req.
     assert.equal(response.status, 400);
     assert.equal(fixture.snapshot().registrations.length, 0);
 
+    fixture.reset();
+    fixture.archiveProgram(1);
+    response = await request("/registrations", "POST", registration, "public");
+    assert.equal(response.status, 400);
+    assert.equal(fixture.snapshot().registrations.length, 0);
+    assert.equal(fixture.snapshot().programs[0].seatsLeft, 3);
+
+    fixture.reset();
     response = await request("/registrations", "POST", registration, "public");
     assert.equal(response.status, 201);
     const student = await response.json() as { id: number; remainingSeats: number };

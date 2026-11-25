@@ -1,6 +1,7 @@
 import { coordinatorPortalSettingsTable, db, researchProgramsTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { getSiteContentSettings, sanitizeSiteContentSettings, SITE_CONTENT_KEY } from "./siteContentSettings";
+import { findDuplicateOpportunity, opportunityLabel, PROGRAM_CATALOG_LOCK_ID, type OpportunityIdentity } from "./opportunityDuplicates";
 
 export interface ResearchOpportunityImportRow {
   sourceRow?: number;
@@ -28,7 +29,8 @@ export interface ResearchOpportunityImportRow {
   priceDiscountedSar?: number | string;
 }
 
-export const PROGRAM_CATALOG_LOCK_ID = 902173;
+type ImportDatabase = Pick<typeof db, "transaction">;
+
 const TOTAL_SEATS = 15;
 const PROGRAM_STATUSES = new Set([
   "open", "closed", "draft", "upcoming", "seats_full", "ethics_approved",
@@ -36,23 +38,26 @@ const PROGRAM_STATUSES = new Set([
 ]);
 const PROGRAM_CATEGORIES = new Set(["active", "completed", "training", "cme"]);
 
-function importKey(title: string, specialtyEn: string) {
-  return `${title.trim().toLocaleLowerCase()}::${specialtyEn.trim().toLocaleLowerCase()}`;
-}
-
-export async function importResearchOpportunities(rows: ResearchOpportunityImportRow[]) {
-  return db.transaction(async (tx) => {
+export async function importResearchOpportunities(rows: ResearchOpportunityImportRow[], database: ImportDatabase = db) {
+  return database.transaction(async (tx) => {
     // This is intentionally the same transaction lock used by catalog bootstrap.
     // It serializes the read-and-insert operation, including a first catalog read.
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROGRAM_CATALOG_LOCK_ID})`);
     const existing = await tx.select({
+      id: researchProgramsTable.id,
+      titleAr: researchProgramsTable.titleAr,
       titleEn: researchProgramsTable.titleEn,
+      specialtyAr: researchProgramsTable.specialtyAr,
       specialtyEn: researchProgramsTable.specialtyEn,
     }).from(researchProgramsTable);
-    const existingKeys = new Set(existing.map((row) => importKey(row.titleEn, row.specialtyEn)));
-    const seenKeys = new Set<string>();
-    const rejected: Array<{ row: number; reason: string }> = [];
-    const values = rows.flatMap((row, index) => {
+    const seenCandidates: Array<{ sourceRow: number; titleAr: string; titleEn: string; specialtyAr: string; specialtyEn: string }> = [];
+    const rejected: Array<{
+      row: number;
+      reason: string;
+      matchedOpportunity?: { id?: number; sourceRow?: number; title: string; specialty: string };
+    }> = [];
+    const values: Array<typeof researchProgramsTable.$inferInsert> = [];
+    rows.forEach((row, index) => {
       const rowNumber = row.sourceRow || index + 2;
       const titleAr = text(row.titleAr);
       const titleEn = text(row.titleEn);
@@ -61,39 +66,56 @@ export async function importResearchOpportunities(rows: ResearchOpportunityImpor
       const title = titleEn || titleAr;
       const country = text(row.country).slice(0, 120);
       const applicationDeadline = text(row.applicationDeadline);
-      const key = importKey(title, specialtyEn || specialtyAr);
       const seatsLeft = wholeNumber(row.seatsLeft, TOTAL_SEATS);
       if (!title || !specialtyAr || !specialtyEn) {
         rejected.push({ row: rowNumber, reason: "يلزم إدخال عنوان الفرصة والتخصص بالعربية والإنجليزية." });
-        return [];
+        return;
       }
       if (seatsLeft === null) {
         rejected.push({ row: rowNumber, reason: "المقاعد المتبقية يجب أن تكون رقماً صحيحاً بين 0 و15." });
-        return [];
+        return;
       }
       if (applicationDeadline && !isValidDateOnly(applicationDeadline)) {
         rejected.push({ row: rowNumber, reason: "موعد إغلاق التسجيل يجب أن يكون تاريخاً صحيحاً بصيغة YYYY-MM-DD." });
-        return [];
+        return;
       }
-      if (existingKeys.has(key) || seenKeys.has(key)) {
-        rejected.push({ row: rowNumber, reason: "هذه الفرصة موجودة بالفعل أو مكررة داخل الملف." });
-        return [];
+      const candidate = {
+        titleAr: titleAr || title,
+        titleEn: titleEn || title,
+        specialtyAr,
+        specialtyEn,
+      };
+      const duplicate = findDuplicateOpportunity<OpportunityIdentity>(candidate, [...existing, ...seenCandidates]);
+      if (duplicate) {
+        const isFromFile = "sourceRow" in duplicate;
+        const matchedOpportunity = {
+          ...(duplicate.id ? { id: duplicate.id } : {}),
+          ...(isFromFile && duplicate.sourceRow ? { sourceRow: duplicate.sourceRow } : {}),
+          title: duplicate.titleAr || duplicate.titleEn || "",
+          specialty: duplicate.specialtyAr || duplicate.specialtyEn || "",
+        };
+        const location = duplicate.id
+          ? `الفرصة رقم ${duplicate.id}`
+          : `الصف ${duplicate.sourceRow}`;
+        rejected.push({
+          row: rowNumber,
+          reason: `تطابق العنوان والتخصص مع ${location}: ${opportunityLabel(duplicate)}.`,
+          matchedOpportunity,
+        });
+        return;
       }
-      seenKeys.add(key);
+      seenCandidates.push({ ...candidate, sourceRow: rowNumber });
       const category = PROGRAM_CATEGORIES.has(text(row.category)) ? text(row.category) : "active";
       const status = seatsLeft === 0
         ? "seats_full"
         : PROGRAM_STATUSES.has(text(row.status)) ? text(row.status) : "open";
       const firstAuthorSeatsLeft = seatsLeft > 0 ? 1 : 0;
       const coAuthorSeatsLeft = Math.max(0, seatsLeft - firstAuthorSeatsLeft);
-    const priceOriginalSar = nonNegativeAmount(row.priceOriginalSar, 1500);
-    const priceDiscountedSar = nonNegativeAmount(row.priceDiscountedSar, 1000);
-    return [{
+      const priceOriginalSar = nonNegativeAmount(row.priceOriginalSar, 1500);
+      const priceDiscountedSar = nonNegativeAmount(row.priceDiscountedSar, 1000);
+      values.push({
         category,
-        titleAr: titleAr || title,
-        titleEn: titleEn || title,
-        specialtyAr,
-        specialtyEn,
+        ...candidate,
         country,
         applicationDeadline: applicationDeadline || null,
         descriptionAr: text(row.descriptionAr),
@@ -116,7 +138,7 @@ export async function importResearchOpportunities(rows: ResearchOpportunityImpor
         supervisor: text(row.supervisor),
         priceOriginalSar: Math.max(priceOriginalSar, priceDiscountedSar),
         priceDiscountedSar,
-      }];
+      });
     });
     const inserted = values.length ? await tx.insert(researchProgramsTable).values(values).returning() : [];
     const insertedSpecialties = inserted.map((row) => ({ nameAr: row.specialtyAr, nameEn: row.specialtyEn }));
@@ -174,4 +196,4 @@ function isValidDateOnly(value: string) {
   return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
 }
 
-export { importKey };
+export { PROGRAM_CATALOG_LOCK_ID };

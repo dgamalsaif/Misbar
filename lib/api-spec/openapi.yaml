@@ -18,6 +18,8 @@ tags:
     description: Email, in-app, and opt-in Web Push updates for registered research participants
   - name: registrationPayments
     description: Owner-managed payment status for registration invoices
+  - name: opportunityDuplicates
+    description: Owner-only duplicate detection and reversible opportunity archiving
 paths:
   /healthz:
     get:
@@ -68,6 +70,59 @@ paths:
           description: Payment status could not be updated
         "503":
           description: The additive Render migration for payment tracking has not been applied
+  /programs/duplicates:
+    get:
+      operationId: listDuplicateResearchOpportunities
+      tags: [opportunityDuplicates]
+      summary: List likely duplicate opportunities for owner review
+      description: Matches normalized Arabic and English title/specialty values. Returns only the minimum data needed for owner review.
+      responses:
+        "200":
+          description: Duplicate groups and archive availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgramDuplicateGroupsResponse"
+        "403":
+          description: Owner authentication required
+        "500":
+          description: Duplicate review data could not be loaded
+  /programs/{id}/archive:
+    patch:
+      operationId: updateResearchOpportunityArchive
+      tags: [opportunityDuplicates]
+      summary: Archive or restore a duplicate opportunity without deleting records
+      description: Requires an explicit canonical opportunity before archiving. Existing registrations and reserved seats are retained. A restored duplicate stays a draft if another matching copy is still active.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgramArchiveUpdate"
+      responses:
+        "200":
+          description: Updated archive state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgramArchiveUpdateResponse"
+        "400":
+          description: Invalid archive request
+        "403":
+          description: Owner authentication required
+        "404":
+          description: Opportunity not found
+        "409":
+          description: The selected canonical item is not a duplicate, or restoring would expose a duplicate
+        "503":
+          description: The additive Render archive migration has not been applied
   /orcid/start:
     get:
       operationId: startOrcidAuthorization
@@ -1150,4 +1205,84 @@ components:
           type: integer
           minimum: 1
       required: [message, queued]
+    ProgramDuplicateOpportunity:
+      type: object
+      properties:
+        id:
+          type: integer
+        titleAr:
+          type: string
+        titleEn:
+          type: string
+        specialtyAr:
+          type: string
+        specialtyEn:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+        seatsLeft:
+          type: integer
+        totalSeats:
+          type: integer
+        isArchived:
+          type: boolean
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        canonicalResearchId:
+          type: integer
+          nullable: true
+        registrationCount:
+          type: integer
+          minimum: 0
+      required: [id, titleAr, titleEn, specialtyAr, specialtyEn, category, status, seatsLeft, totalSeats, isArchived, archivedAt, canonicalResearchId, registrationCount]
+    ProgramDuplicateGroup:
+      type: object
+      properties:
+        key:
+          type: string
+        activeCount:
+          type: integer
+          minimum: 0
+        opportunities:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProgramDuplicateOpportunity"
+      required: [key, activeCount, opportunities]
+    ProgramDuplicateGroupsResponse:
+      type: object
+      properties:
+        archiveAvailable:
+          type: boolean
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProgramDuplicateGroup"
+      required: [archiveAvailable, groups]
+    ProgramArchiveUpdate:
+      type: object
+      properties:
+        archived:
+          type: boolean
+        canonicalId:
+          type: integer
+          minimum: 1
+        restoreAsDraft:
+          type: boolean
+      required: [archived]
+    ProgramArchiveUpdateResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        archived:
+          type: boolean
+        status:
+          type: string
+        restoredAsDraft:
+          type: boolean
+      required: [id, archived, status, restoredAsDraft]
 

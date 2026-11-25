@@ -11,6 +11,7 @@
     "test:participant-notifications": "node --import tsx --test src/lib/participantNotificationSecurity.test.ts src/lib/participantNotificationMailer.test.ts src/lib/participantNotificationPermissions.test.ts src/lib/participantNotificationRules.test.ts",
     "test:social-publishing": "node --import tsx --test src/lib/socialPublishing.test.ts src/routes/socialPublishing.test.ts src/routes/socialSeatUpdates.test.ts",
     "test:registration-lifecycle": "cd ../.. && node --import tsx --test artifacts/api-server/src/lib/registrationLifecycle.test.ts",
+    "test:program-duplicates": "node --import tsx --test src/lib/opportunityDuplicates.test.ts src/routes/programDuplicateReview.test.ts",
     "sync:research-catalog": "node ./scripts/runCatalogSync.mjs",
     "test:import-concurrency": "node ./scripts/testConcurrentProgramImport.mjs",
     "test:seat-override-concurrency": "node ./scripts/testSeatOverrideConcurrency.mjs",

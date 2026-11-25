@@ -20,6 +20,7 @@ import { ensureProgramCapacityModel, PROGRAM_CAPACITY_LOCK_NAMESPACE, type Datab
 import { insertCompatibleRegistration, normalizeRegistrationAnswers } from "../lib/registrationCompatibility";
 import { SEAT_MARKER, SeatAllocationError, seatChange, cleanRegistrationFields } from "../lib/registrationSeats";
 import { getOpportunityVisibility } from "../lib/opportunityVisibility";
+import { getProgramArchiveState } from "../lib/programArchive";
 
 const router = Router();
 const AUTHOR_ROLES = new Set(["first_author", "co_author"]);
@@ -148,7 +149,8 @@ async function createRegistration(req: Request, res: Response, coordinatorId: nu
       }
       await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROGRAM_CAPACITY_LOCK_NAMESPACE + parsed.data.researchId})`);
       const [program] = await tx.select().from(researchProgramsTable).where(eq(researchProgramsTable.id, parsed.data.researchId)).limit(1);
-      if (!program || program.status !== "open") {
+      const archiveState = await getProgramArchiveState(tx);
+      if (!program || archiveState.byResearchId.has(parsed.data.researchId) || program.status !== "open") {
         throw new RegistrationCapacityError("هذه الفرصة غير متاحة للتسجيل حالياً.");
       }
 

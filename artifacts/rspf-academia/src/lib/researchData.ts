@@ -37,6 +37,7 @@ export interface ResearchOpportunity {
   imageUrl?: string;
   researchGroupUrl?: string;
   hiddenFields?: string[];
+  isArchived?: boolean;
 }
 
 const DEFAULT_RESEARCH: ResearchOpportunity[] = [

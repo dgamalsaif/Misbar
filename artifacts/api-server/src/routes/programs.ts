@@ -2,7 +2,7 @@ import { raw, Router, type Request } from "express";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import sharp from "sharp";
-import { db, insertResearchProgramSchema, programCatalogBootstrapTable, registrationsTable, researchProgramsTable } from "@workspace/db";
+import { db, insertResearchProgramSchema, programCatalogBootstrapTable, registrationsTable, researchProgramArchiveRecordsTable, researchProgramsTable } from "@workspace/db";
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import { getStaffSession, requireOwner } from "../middlewares/coordinatorAuth";
 import { holdsSeat } from "../lib/registrationSeats";
@@ -16,6 +16,9 @@ import { applyResearchCatalogSeatSnapshot, researchCatalogDisplayOrder } from ".
 import { getOpportunityIncludedServices, getOpportunityVisibility, saveOpportunityIncludedServices, saveOpportunityVisibility, validateHiddenFields } from "../lib/opportunityVisibility";
 import { DEFAULT_HIDDEN_OPPORTUNITY_FIELDS, validateIncludedServices } from "../lib/opportunityVisibilityFields";
 import { BatchProgramValidationError, validateBatchProgramScope, validateBatchProgramUpdates } from "../lib/batchProgramUpdate";
+import { areDuplicateOpportunities, findDuplicateOpportunity, groupDuplicateOpportunities, opportunityLabel, type OpportunityIdentity } from "../lib/opportunityDuplicates";
+import { getProgramArchiveState } from "../lib/programArchive";
+import { filterVisiblePrograms, isPublicProgram } from "../lib/programCatalogVisibility";
 
 const router = Router();
 
@@ -99,7 +102,7 @@ async function listPrograms() {
   });
 }
 
-function toClient(row: typeof researchProgramsTable.$inferSelect, includeOwnerFields = false, hiddenFields: string[] = [], includedServices: string[] = []) {
+function toClient(row: typeof researchProgramsTable.$inferSelect, includeOwnerFields = false, hiddenFields: string[] = [], includedServices: string[] = [], isArchived = false) {
   const imageVersion = row.updatedAt?.getTime?.() ?? row.createdAt.getTime();
   const titleHidden = !includeOwnerFields && hiddenFields.includes("title");
   const specialtyHidden = !includeOwnerFields && hiddenFields.includes("specialty");
@@ -148,7 +151,7 @@ function toClient(row: typeof researchProgramsTable.$inferSelect, includeOwnerFi
     imageUrl: imageHidden ? undefined : row.imagePath
       ? `/api/programs/${row.id}/image?v=${imageVersion}`
       : `/api/programs/${row.id}/poster.svg?v=${imageVersion}`,
-    ...(includeOwnerFields ? { researchGroupUrl: row.researchGroupUrl } : {}),
+    ...(includeOwnerFields ? { researchGroupUrl: row.researchGroupUrl, isArchived } : {}),
   };
 }
 
@@ -172,7 +175,8 @@ function escapeXml(value: string) {
 }
 
 router.get("/sitemap.xml", async (_req, res) => {
-  const rows = (await listPrograms()).filter(isPublicProgram);
+  const archiveState = await getProgramArchiveState();
+  const rows = filterVisiblePrograms(await listPrograms(), new Set(archiveState.byResearchId.keys()), false, false);
   const siteUrl = "https://srmaacademy.com";
   const entries = rows.flatMap((program) => {
     const lastModified = program.updatedAt?.toISOString?.() || program.createdAt.toISOString();
@@ -190,13 +194,157 @@ router.get("/programs", async (req, res) => {
     const rows = await listPrograms();
     const isOwner = Boolean(await getManagedOwner(req).catch(() => null));
     const isStaff = Boolean(await getStaffSession(req)) || isOwner;
-    const visibleRows = isStaff ? rows : rows.filter(isPublicProgram);
+    const archiveState = await getProgramArchiveState();
+    const visibleRows = filterVisiblePrograms(rows, new Set(archiveState.byResearchId.keys()), isStaff, isOwner);
     const visibility = await getOpportunityVisibility(visibleRows.map((row: typeof researchProgramsTable.$inferSelect) => row.id));
     const includedServices = await getOpportunityIncludedServices(visibleRows.map((row: typeof researchProgramsTable.$inferSelect) => row.id));
-    res.json(visibleRows.map(row => toClient(row, isOwner, visibility.get(row.id) ?? [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS], includedServices.get(row.id) ?? [])));
+    res.json(visibleRows.map(row => toClient(
+      row,
+      isOwner,
+      visibility.get(row.id) ?? [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS],
+      includedServices.get(row.id) ?? [],
+      archiveState.byResearchId.has(row.id),
+    )));
   } catch (err) {
     req.log.error({ err }, "Failed listing programs");
     res.status(500).json({ error: "تعذر تحميل الفرص البحثية حالياً." });
+  }
+});
+
+router.get("/programs/duplicates", requireOwner, async (req, res) => {
+  try {
+    const [rows, archiveState] = await Promise.all([
+      db.select().from(researchProgramsTable),
+      getProgramArchiveState(),
+    ]);
+    const groups = groupDuplicateOpportunities(rows);
+    const groupedIds = groups.flatMap((group) => group.map((program) => program.id));
+    const registrationCounts = new Map<number, number>();
+    if (groupedIds.length) {
+      const registrations = await db.select({ researchId: registrationsTable.researchId })
+        .from(registrationsTable)
+        .where(inArray(registrationsTable.researchId, groupedIds));
+      for (const registration of registrations) {
+        registrationCounts.set(registration.researchId, (registrationCounts.get(registration.researchId) ?? 0) + 1);
+      }
+    }
+    res.json({
+      archiveAvailable: archiveState.available,
+      groups: groups.map((group) => ({
+        key: group.map((program) => program.id).join("-"),
+        activeCount: group.filter((program) => !archiveState.byResearchId.has(program.id)).length,
+        opportunities: group.map((program) => {
+          const archive = archiveState.byResearchId.get(program.id);
+          return {
+            id: program.id,
+            titleAr: program.titleAr,
+            titleEn: program.titleEn,
+            specialtyAr: program.specialtyAr,
+            specialtyEn: program.specialtyEn,
+            category: program.category,
+            status: program.status,
+            seatsLeft: program.seatsLeft,
+            totalSeats: program.totalSeats,
+            isArchived: Boolean(archive),
+            archivedAt: archive?.archivedAt?.toISOString() ?? null,
+            canonicalResearchId: archive?.canonicalResearchId ?? null,
+            registrationCount: registrationCounts.get(program.id) ?? 0,
+          };
+        }),
+      })),
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Could not load duplicate opportunity review");
+    res.status(500).json({ error: "تعذر تحميل قائمة مراجعة الفرص المتشابهة." });
+  }
+});
+
+router.patch("/programs/:id/archive", requireOwner, async (req, res) => {
+  const id = Number(req.params["id"]);
+  const archived = req.body?.archived;
+  const canonicalId = Number(req.body?.canonicalId);
+  const restoreAsDraft = req.body?.restoreAsDraft === true;
+  if (!Number.isInteger(id) || id < 1 || typeof archived !== "boolean"
+    || (archived && (!Number.isInteger(canonicalId) || canonicalId < 1 || canonicalId === id))) {
+    res.status(400).json({ error: "بيانات أرشفة الفرصة غير صحيحة." });
+    return;
+  }
+
+  const owner = res.locals.owner as { email?: string; userId?: string; id?: string } | undefined;
+  const actor = owner?.email || owner?.userId || owner?.id || "owner";
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROGRAM_CATALOG_LOCK_ID})`);
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROGRAM_CAPACITY_LOCK_NAMESPACE + id})`);
+      const archiveState = await getProgramArchiveState(tx);
+      if (!archiveState.available) throw new ProgramArchiveError("يلزم تطبيق ترحيل قاعدة البيانات قبل تفعيل الأرشفة.", 503);
+
+      const [target] = await tx.select().from(researchProgramsTable)
+        .where(eq(researchProgramsTable.id, id)).limit(1).for("update");
+      if (!target) throw new ProgramArchiveError("الفرصة غير موجودة.", 404);
+      const archive = archiveState.byResearchId.get(id);
+
+      if (archived) {
+        const [canonical] = await tx.select().from(researchProgramsTable)
+          .where(eq(researchProgramsTable.id, canonicalId)).limit(1);
+        if (!canonical || archiveState.byResearchId.has(canonicalId)) {
+          throw new ProgramArchiveError("اختر نسخة أساسية موجودة وغير مؤرشفة.", 409);
+        }
+        if (!areDuplicateOpportunities(target, canonical)) {
+          throw new ProgramArchiveError("لا يمكن أرشفة الفرصة لأن العنوان والتخصص لا يطابقان النسخة الأساسية.", 409);
+        }
+        if (archive) {
+          await tx.update(researchProgramArchiveRecordsTable).set({
+            canonicalResearchId: canonicalId,
+            previousStatus: target.status,
+            isArchived: true,
+            archivedAt: new Date(),
+            archivedBy: actor,
+            restoredAt: null,
+            restoredBy: null,
+          }).where(eq(researchProgramArchiveRecordsTable.researchId, id));
+        } else {
+          await tx.insert(researchProgramArchiveRecordsTable).values({
+            researchId: id,
+            canonicalResearchId: canonicalId,
+            previousStatus: target.status,
+            isArchived: true,
+            archivedBy: actor,
+          });
+        }
+        return { id, archived: true, status: target.status, restoredAsDraft: false };
+      }
+
+      if (!archive) throw new ProgramArchiveError("الفرصة غير مؤرشفة.", 409);
+      const allPrograms = await tx.select().from(researchProgramsTable);
+      const activePrograms = allPrograms.filter((program) => !archiveState.byResearchId.has(program.id));
+      const activeDuplicate = findDuplicateOpportunity(target, activePrograms, id);
+      if (activeDuplicate && !restoreAsDraft) {
+        throw new ProgramArchiveError(
+          `توجد نسخة نشطة مطابقة (${opportunityLabel(activeDuplicate)}). يمكنك استعادتها كمسودة لتجنب إظهار نسختين.`,
+          409,
+        );
+      }
+      const nextStatus = restoreAsDraft ? "draft" : target.status;
+      if (restoreAsDraft) {
+        await tx.update(researchProgramsTable).set({ status: nextStatus, updatedAt: new Date() })
+          .where(eq(researchProgramsTable.id, id));
+      }
+      await tx.update(researchProgramArchiveRecordsTable).set({
+        isArchived: false,
+        restoredAt: new Date(),
+        restoredBy: actor,
+      }).where(eq(researchProgramArchiveRecordsTable.researchId, id));
+      return { id, archived: false, status: nextStatus, restoredAsDraft: restoreAsDraft };
+    });
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ProgramArchiveError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    req.log.error({ err: error, programId: id }, "Could not safely archive research opportunity");
+    res.status(500).json({ error: "تعذر حفظ حالة الأرشفة الآن." });
   }
 });
 
@@ -269,7 +417,12 @@ router.get("/programs/:id/image", async (req, res) => {
     return;
   }
   const isOwner = Boolean(await getManagedOwner(req).catch(() => null));
-  const isPublic = isPublicProgram(program);
+  const archived = (await getProgramArchiveState()).byResearchId.has(id);
+  if (archived && !isOwner) {
+    res.status(404).end();
+    return;
+  }
+  const isPublic = isPublicProgram(program, archived);
   if (!isPublic) {
     const isStaff = isOwner || Boolean(await getStaffSession(req));
     if (!isStaff) {
@@ -375,7 +528,12 @@ router.get("/programs/:id/poster.svg", async (req, res) => {
     return;
   }
   const isOwner = Boolean(await getManagedOwner(req).catch(() => null));
-  const isPublic = isPublicProgram(program);
+  const archived = (await getProgramArchiveState()).byResearchId.has(id);
+  if (archived && !isOwner) {
+    res.status(404).end();
+    return;
+  }
+  const isPublic = isPublicProgram(program, archived);
   if (!isPublic) {
     const isStaff = isOwner || Boolean(await getStaffSession(req));
     if (!isStaff) {
@@ -411,7 +569,12 @@ router.get("/programs/:id/share", async (req, res) => {
     return;
   }
   const isOwner = Boolean(await getManagedOwner(req).catch(() => null));
-  const isPublic = isPublicProgram(program);
+  const archived = (await getProgramArchiveState()).byResearchId.has(id);
+  if (archived && !isOwner) {
+    res.status(404).type("html").send("<!doctype html><html lang=\"ar\" dir=\"rtl\"><head><meta charset=\"utf-8\"><title>الفرصة غير متوفرة</title></head><body><p>عذراً، هذه الفرصة البحثية غير موجودة أو مؤرشفة.</p></body></html>");
+    return;
+  }
+  const isPublic = isPublicProgram(program, archived);
   if (!isPublic) {
     const isStaff = isOwner || Boolean(await getStaffSession(req));
     if (!isStaff) {
@@ -555,13 +718,40 @@ router.post("/programs", requireOwner, async (req, res) => {
     res.status(400).json({ error: "يرجى تعبئة الحقول الإلزامية للفرصة", fields: missingFields });
     return;
   }
-  const row = await db.transaction(async (tx: Pick<typeof db, "insert">) => {
-    const [created] = await tx.insert(researchProgramsTable).values({ ...parsed.data, status: programStatus, priceOriginalSar, priceDiscountedSar }).returning();
-    await saveOpportunityVisibility(tx, created.id, hiddenFields);
-    await saveOpportunityIncludedServices(tx, created.id, includedServices);
-    return created;
-  });
-  res.status(201).json(toClient(row, true, hiddenFields, includedServices));
+  try {
+    const row = await db.transaction(async (tx: DatabaseTransaction) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROGRAM_CATALOG_LOCK_ID})`);
+      const existing = await tx.select({
+        id: researchProgramsTable.id,
+        titleAr: researchProgramsTable.titleAr,
+        titleEn: researchProgramsTable.titleEn,
+        specialtyAr: researchProgramsTable.specialtyAr,
+        specialtyEn: researchProgramsTable.specialtyEn,
+      }).from(researchProgramsTable);
+      const duplicate = findDuplicateOpportunity(parsed.data, existing);
+      if (duplicate) throw new DuplicateProgramError(duplicate);
+      const [created] = await tx.insert(researchProgramsTable).values({
+        ...parsed.data,
+        status: programStatus,
+        priceOriginalSar,
+        priceDiscountedSar,
+      }).returning();
+      await saveOpportunityVisibility(tx, created.id, hiddenFields);
+      await saveOpportunityIncludedServices(tx, created.id, includedServices);
+      return created;
+    });
+    res.status(201).json(toClient(row, true, hiddenFields, includedServices));
+  } catch (error) {
+    if (error instanceof DuplicateProgramError) {
+      res.status(409).json({
+        error: `لم تُضف الفرصة لأنها تطابق فرصة موجودة: ${opportunityLabel(error.match)}.`,
+        matchedOpportunity: error.match,
+      });
+      return;
+    }
+    req.log.error({ err: error }, "Could not safely create research opportunity");
+    res.status(500).json({ error: "تعذر إضافة الفرصة الآن. يرجى المحاولة مرة أخرى." });
+  }
 });
 
 router.post("/programs/import", requireOwner, async (req, res) => {
@@ -621,10 +811,24 @@ router.patch("/programs/:id", requireOwner, async (req, res) => {
   }
   try {
     const row = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROGRAM_CATALOG_LOCK_ID})`);
       await ensureProgramCapacityModel(tx);
       await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROGRAM_CAPACITY_LOCK_NAMESPACE + id})`);
       const [current] = await tx.select().from(researchProgramsTable).where(eq(researchProgramsTable.id, id)).limit(1);
       if (!current) throw new ProgramUpdateError("الفرصة غير موجودة", 404);
+      const identityChanged = ["title", "titleAr", "titleEn", "specialty", "specialtyAr", "specialtyEn"]
+        .some((key) => Object.prototype.hasOwnProperty.call(parsed.data, key));
+      if (identityChanged) {
+        const allPrograms = await tx.select({
+          id: researchProgramsTable.id,
+          titleAr: researchProgramsTable.titleAr,
+          titleEn: researchProgramsTable.titleEn,
+          specialtyAr: researchProgramsTable.specialtyAr,
+          specialtyEn: researchProgramsTable.specialtyEn,
+        }).from(researchProgramsTable);
+        const duplicate = findDuplicateOpportunity({ ...current, ...parsed.data }, allPrograms, id);
+        if (duplicate) throw new DuplicateProgramError(duplicate);
+      }
       const priceOriginalSar = parsed.data.priceOriginalSar ?? current.priceOriginalSar;
       const priceDiscountedSar = parsed.data.priceDiscountedSar ?? current.priceDiscountedSar;
       if (priceOriginalSar < priceDiscountedSar || priceDiscountedSar < 0) {
@@ -647,8 +851,16 @@ router.patch("/programs/:id", requireOwner, async (req, res) => {
     });
     const visibility = hiddenFields ?? (await getOpportunityVisibility([id])).get(id) ?? [];
     const services = includedServices ?? (await getOpportunityIncludedServices([id])).get(id) ?? [];
-    res.json(toClient(row, true, visibility, services));
+    const archiveState = await getProgramArchiveState();
+    res.json(toClient(row, true, visibility, services, archiveState.byResearchId.has(id)));
   } catch (error) {
+    if (error instanceof DuplicateProgramError) {
+      res.status(409).json({
+        error: `لم يُحفظ التعديل لأنه ينشئ فرصة مكررة: ${opportunityLabel(error.match)}.`,
+        matchedOpportunity: error.match,
+      });
+      return;
+    }
     if (error instanceof ProgramUpdateError) {
       res.status(error.status).json({ error: error.message, ...(error.fields?.length ? { fields: error.fields } : {}) });
       return;
@@ -687,14 +899,33 @@ router.post("/programs/batch-update", requireOwner, async (req, res) => {
     if (!parsed.success) throw new ProgramUpdateError("بيانات الفرص غير صحيحة.");
 
     const affected = await db.transaction(async (tx: DatabaseTransaction) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROGRAM_CATALOG_LOCK_ID})`);
       await ensureProgramCapacityModel(tx);
+      const allPrograms = await tx.select().from(researchProgramsTable);
       const targets: Array<typeof researchProgramsTable.$inferSelect> = scope.all
-        ? scope.category
-          ? await tx.select().from(researchProgramsTable).where(eq(researchProgramsTable.category, scope.category))
-          : await tx.select().from(researchProgramsTable)
-        : await tx.select().from(researchProgramsTable).where(inArray(researchProgramsTable.id, scope.ids));
+        ? allPrograms.filter((program) => !scope.category || program.category === scope.category)
+        : allPrograms.filter((program) => scope.ids.includes(program.id));
       if (!targets.length) throw new ProgramUpdateError("لا توجد فرص مطابقة للتعديل.", 404);
       if (!scope.all && targets.length !== scope.ids.length) throw new ProgramUpdateError("بعض الفرص المحددة لم تعد موجودة. أعد تحميل القائمة.", 409);
+      const identityChanged = ["title", "titleAr", "titleEn", "specialty", "specialtyAr", "specialtyEn"]
+        .some((key) => Object.prototype.hasOwnProperty.call(parsed.data, key));
+      if (identityChanged) {
+        const changedIds = new Set(targets.map((target) => target.id));
+        const pairKey = (left: number, right: number) => left < right ? `${left}:${right}` : `${right}:${left}`;
+        const previousPairs = new Set(groupDuplicateOpportunities(allPrograms).flatMap((group) => (
+          group.flatMap((left, index) => group.slice(index + 1).map((right) => pairKey(left.id, right.id)))
+        )));
+        const projected = allPrograms.map((program) => changedIds.has(program.id) ? { ...program, ...parsed.data } : program);
+        const newDuplicateGroup = groupDuplicateOpportunities(projected).find((group) =>
+          group.some((candidate) => changedIds.has(candidate.id)
+            && group.some((match) => match.id !== candidate.id && !previousPairs.has(pairKey(candidate.id, match.id)))),
+        );
+        if (newDuplicateGroup) {
+          const candidate = newDuplicateGroup.find((program) => changedIds.has(program.id))!;
+          const match = newDuplicateGroup.find((program) => program.id !== candidate.id)!;
+          throw new DuplicateProgramError(match);
+        }
+      }
       for (const target of targets.sort((a, b) => a.id - b.id)) {
         // Same lock order as registration/single editing; no partial bulk writes.
         await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROGRAM_CAPACITY_LOCK_NAMESPACE + target.id})`);
@@ -721,8 +952,26 @@ router.post("/programs/batch-update", requireOwner, async (req, res) => {
     const freshRows = await db.select().from(researchProgramsTable).orderBy(desc(researchProgramsTable.createdAt));
     const visibility = await getOpportunityVisibility(freshRows.map((row: typeof researchProgramsTable.$inferSelect) => row.id));
     const includedServices = await getOpportunityIncludedServices(freshRows.map((row: typeof researchProgramsTable.$inferSelect) => row.id));
-    res.json({ success: true, affected, programs: freshRows.map((r) => toClient(r, true, visibility.get(r.id) ?? [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS], includedServices.get(r.id) ?? [])) });
+    const archiveState = await getProgramArchiveState();
+    res.json({
+      success: true,
+      affected,
+      programs: freshRows.map((r) => toClient(
+        r,
+        true,
+        visibility.get(r.id) ?? [...DEFAULT_HIDDEN_OPPORTUNITY_FIELDS],
+        includedServices.get(r.id) ?? [],
+        archiveState.byResearchId.has(r.id),
+      )),
+    });
   } catch (error) {
+    if (error instanceof DuplicateProgramError) {
+      res.status(409).json({
+        error: `لم يُطبق التعديل الجماعي لأنه ينشئ فرصة مكررة: ${opportunityLabel(error.match)}.`,
+        matchedOpportunity: error.match,
+      });
+      return;
+    }
     if (error instanceof ProgramUpdateError) {
       res.status(error.status).json({ error: error.message, ...(error.fields?.length ? { fields: error.fields } : {}) });
       return;
@@ -763,10 +1012,6 @@ router.post("/programs/batch-delete", requireOwner, async (req, res) => {
 
 export default router;
 
-function isPublicProgram(program: typeof researchProgramsTable.$inferSelect) {
-  return ["active", "completed"].includes(program.category) && program.status !== "draft";
-}
-
 function isProgramStatus(status: string) {
   return PROGRAM_STATUSES.has(status);
 }
@@ -782,6 +1027,10 @@ async function normalizeProgramPayload(source: Record<string, unknown>, mode: "c
   delete result.coAuthorSeatsLeft;
   delete result.totalSeats;
   delete result.seatsLeft;
+  delete result.isArchived;
+  delete result.archivedAt;
+  delete result.archivedBy;
+  delete result.canonicalResearchId;
   if (typeof source.country === "string") result.country = source.country.trim().slice(0, 120);
   if (Object.prototype.hasOwnProperty.call(source, "applicationDeadline") &&
       (source.applicationDeadline === "" || source.applicationDeadline === undefined)) {
@@ -840,6 +1089,18 @@ function normalizeResearchGroupUrl(value: unknown): string | null | undefined {
 class ProgramUpdateError extends Error {
   constructor(message: string, readonly status = 400, readonly fields?: OpportunityFieldId[]) {
     super(message);
+  }
+}
+
+class ProgramArchiveError extends Error {
+  constructor(message: string, readonly status = 400) {
+    super(message);
+  }
+}
+
+class DuplicateProgramError extends Error {
+  constructor(readonly match: OpportunityIdentity) {
+    super("Duplicate research opportunity");
   }
 }
 

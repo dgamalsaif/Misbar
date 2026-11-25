@@ -24,6 +24,7 @@ import SpecialtyFilter, { buildSpecialtyOptions, specialtyMatches } from "@/comp
 import OwnerSecurityPanel from "@/components/OwnerSecurityPanel";
 import OwnerDataManagementPanel from "@/components/OwnerDataManagementPanel";
 import OpportunityImportModal from "@/components/OpportunityImportModal";
+import DuplicateOpportunitiesPanel from "@/components/DuplicateOpportunitiesPanel";
 import { apiFetch } from "@/lib/api";
 import { DEFAULT_HIDDEN_OPPORTUNITY_FIELDS, OPPORTUNITY_DISPLAY_FIELDS, normalizeHiddenFields } from "@/lib/opportunityVisibility";
 import { useLanguage } from "@/lib/i18n";
@@ -809,7 +810,7 @@ export default function AdminDashboard() {
   const [categoryFilter, setCategoryFilter] = useState<NonNullable<ResearchOpportunity["category"]>>("active");
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
   const [loadingPrograms, setLoadingPrograms] = useState(true);
-  const [view, setView] = useState<"programs" | "payments" | "settings-home" | "settings" | "portal-settings" | "content-settings" | "data-management">("programs");
+  const [view, setView] = useState<"programs" | "duplicates" | "payments" | "settings-home" | "settings" | "portal-settings" | "content-settings" | "data-management">("programs");
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [paymentFormOpen, setPaymentFormOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -1256,7 +1257,14 @@ export default function AdminDashboard() {
     setFormOpen(true);
   };
 
-  const filtered = research.filter((r) => {
+  const refreshProgramsAfterArchive = async () => {
+    const response = await apiFetch("/api/programs");
+    const data = await response.json().catch(() => null) as ResearchOpportunity[] | null;
+    if (response.ok && Array.isArray(data)) setResearch(data);
+  };
+
+  const visibleResearch = research.filter((r) => !r.isArchived);
+  const filtered = visibleResearch.filter((r) => {
     const matchSearch = !search || [r.title, r.titleAr, r.titleEn, r.specialty, r.specialtyAr, r.specialtyEn]
       .filter(Boolean).some((value) => value!.toLowerCase().includes(search.toLowerCase()));
     const matchStatus = statusFilter === "all" || r.status === statusFilter;
@@ -1266,7 +1274,7 @@ export default function AdminDashboard() {
   });
   const specialtyOptions = buildSpecialtyOptions(
     contentSettings.specialtyOptions,
-    research.filter((item) => (item.category || "active") === categoryFilter),
+    visibleResearch.filter((item) => (item.category || "active") === categoryFilter),
   );
 
   const groupedResearch = useMemo(() => {
@@ -1290,13 +1298,13 @@ export default function AdminDashboard() {
   const isSpecialtyScroll = contentSettings.opportunityDisplayMode === "scroll";
 
   const stats = {
-    total: research.length,
-    open: research.filter((r) => r.status === "open" && (r.category || "active") === "active").length,
-    totalParticipants: research.reduce((sum, r) => sum + (r.totalSeats - r.seatsLeft), 0),
-    completed: research.filter((r) => (r.category || "active") === "completed").length,
-    training: research.filter((r) => (r.category || "active") === "training").length,
-    active: research.filter((r) => (r.category || "active") === "active").length,
-    cme: research.filter((r) => (r.category || "active") === "cme").length,
+    total: visibleResearch.length,
+    open: visibleResearch.filter((r) => r.status === "open" && (r.category || "active") === "active").length,
+    totalParticipants: visibleResearch.reduce((sum, r) => sum + (r.totalSeats - r.seatsLeft), 0),
+    completed: visibleResearch.filter((r) => (r.category || "active") === "completed").length,
+    training: visibleResearch.filter((r) => (r.category || "active") === "training").length,
+    active: visibleResearch.filter((r) => (r.category || "active") === "active").length,
+    cme: visibleResearch.filter((r) => (r.category || "active") === "cme").length,
   };
 
   if (authorized !== true) return null;
@@ -1518,6 +1526,10 @@ export default function AdminDashboard() {
                 </div>
                 {canManage && (
                   <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+                    <button onClick={() => setView("duplicates")} className="flex items-center justify-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-5 py-2.5 text-sm font-bold text-amber-800 shadow-sm transition-colors hover:bg-amber-100">
+                      <Copy size={17} />
+                      مراجعة التكرارات
+                    </button>
                     <button onClick={() => setImportOpen(true)} className="flex items-center justify-center gap-2 rounded-full border border-[#117b59]/25 bg-white px-5 py-2.5 text-sm font-bold text-[#117b59] shadow-sm transition-colors hover:bg-[#e6f5ef]">
                       <FileSpreadsheet size={18} />
                       استيراد Excel
@@ -1673,6 +1685,15 @@ export default function AdminDashboard() {
                   </div>
                 ))
               )}
+            </div>
+          )}
+
+          {view === "duplicates" && canManage && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <DuplicateOpportunitiesPanel
+                onClose={() => setView("programs")}
+                onCatalogChanged={() => { void refreshProgramsAfterArchive(); }}
+              />
             </div>
           )}
 
