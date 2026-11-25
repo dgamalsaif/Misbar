@@ -27,6 +27,30 @@ export const registrationsTable = pgTable("registrations", {
   index("registrations_coordinator_id_idx").on(table.coordinatorId),
 ]);
 
+export const registrationInvoiceRecordsTable = pgTable("registration_invoice_records", {
+  registrationId: integer("registration_id").primaryKey().references(() => registrationsTable.id, { onDelete: "cascade" }),
+  originalSar: integer("original_sar"),
+  discountedSar: integer("discounted_sar"),
+  totalSeats: integer("total_seats"),
+  remainingSeats: integer("remaining_seats"),
+  specialty: text("specialty").notNull().default(""),
+  journalTarget: text("journal_target").notNull().default(""),
+  paymentStatus: text("payment_status").notNull().default("unpaid"),
+  paymentPaidAt: timestamp("payment_paid_at"),
+  paymentMarkedBy: text("payment_marked_by"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const registrationPaymentEventsTable = pgTable("registration_payment_events", {
+  id: serial("id").primaryKey(),
+  registrationId: integer("registration_id").notNull().references(() => registrationsTable.id, { onDelete: "cascade" }),
+  status: text("status").notNull(),
+  recordedBy: text("recorded_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("registration_payment_events_registration_created_idx").on(table.registrationId, table.createdAt),
+]);
+
 export const insertRegistrationSchema = createInsertSchema(registrationsTable).omit({
   id: true,
   createdAt: true,

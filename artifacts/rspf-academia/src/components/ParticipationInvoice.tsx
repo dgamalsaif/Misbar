@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from "react";
-import { CalendarDays, FileDown, FileText, Info, Mail, Phone, ReceiptText, UserRound } from "lucide-react";
+import { CalendarDays, FileDown, FileText, Info, Mail, Phone, ReceiptText, UserRound, Calculator } from "lucide-react";
 import type { BrandContactSettings, InvoiceSettings, WatermarkSettings } from "@/lib/siteContentSettings";
 
 interface Props {
@@ -30,6 +30,8 @@ interface Props {
   priceOriginalSar?: number;
   priceDiscountedSar?: number;
   includedServices: string[];
+  paymentStatus?: "paid" | "unpaid";
+  paymentPaidAt?: string | null;
 }
 
 function InvoiceSectionTab({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: string }) {
@@ -64,12 +66,15 @@ export default function ParticipationInvoice({
   priceOriginalSar,
   priceDiscountedSar,
   includedServices,
+  paymentStatus = "unpaid",
+  paymentPaidAt,
 }: Props) {
   const printing = useRef(false);
   const invoiceElement = useRef<HTMLDivElement>(null);
   const isEnglish = language === "en";
   const date = new Date(createdAt);
   const validDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  const paid = paymentStatus === "paid";
   const invoiceNumber = `${invoiceSettings.numberPrefix || "MIS"}-${validDate.getFullYear()}-${String(registrationId).padStart(6, "0")}`;
   const original = Number.isFinite(priceOriginalSar) && (priceOriginalSar ?? 0) >= 0 ? priceOriginalSar : undefined;
   const discounted = Number.isFinite(priceDiscountedSar) && (priceDiscountedSar ?? 0) >= 0 ? priceDiscountedSar : undefined;
@@ -92,6 +97,16 @@ export default function ParticipationInvoice({
     isEnglish ? "en-GB" : "ar-SA-u-ca-gregory-nu-latn",
     { year: "numeric", month: "long", day: "numeric", calendar: "gregory" },
   ).format(value);
+  const configuredTitle = isEnglish ? invoiceSettings.titleEn : invoiceSettings.titleAr;
+  const invoiceTitle = paid
+    ? configuredTitle.replace(/\s*[—–-]?\s*(?:غير مدفوعة|غير مسددة|unpaid)\s*/gi, "").trim() || (isEnglish ? "Research Participation Invoice" : "فاتورة مشاركة بحثية")
+    : configuredTitle;
+  const configuredFooter = isEnglish ? invoiceSettings.footerEn : invoiceSettings.footerAr;
+  const invoiceFooter = paid
+    ? configuredFooter
+      .replace(/No payment has been processed by this website\.?/i, "Payment status was confirmed by the administration.")
+      .replace(/لم يُسدد المبلغ عبر الموقع\.?/i, "اعتمدت الإدارة حالة السداد.")
+    : configuredFooter;
   const formatSar = (value: number) => new Intl.NumberFormat(isEnglish ? "en-SA" : "ar-SA", {
     style: "currency",
     currency: "SAR",
@@ -166,9 +181,9 @@ export default function ParticipationInvoice({
         </div>
       )}
       <div className="relative z-10">
-        <header className="invoice-header relative overflow-hidden bg-[#0b3154] px-5 py-5 text-white sm:px-8 sm:py-6">
-          <div className="absolute -left-16 -top-28 h-64 w-64 rounded-full border-[22px] border-white/10" />
-          <div className="absolute -right-24 -top-32 h-72 w-72 rounded-full border-[32px] border-[#35bbb3]/35" />
+        <header className="invoice-header relative overflow-hidden border-b border-[#dce6ed] bg-white px-5 py-5 text-[#0b3154] sm:px-8 sm:py-6">
+          <div className="absolute -left-16 -top-28 h-64 w-64 rounded-full border-[22px] border-[#0b3154]/[0.04]" />
+          <div className="absolute -right-24 -top-32 h-72 w-72 rounded-full border-[32px] border-[#35bbb3]/25" />
           <div className="relative flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3 sm:gap-5">
               {logoUrl && (
@@ -176,32 +191,32 @@ export default function ParticipationInvoice({
                   src={logoUrl}
                   alt={isEnglish ? "Organization logo" : "شعار المؤسسة"}
                   onError={(event) => { event.currentTarget.style.display = "none"; }}
-                  className="invoice-logo h-14 w-14 shrink-0 rounded-2xl border border-white/20 bg-white p-1 object-contain sm:h-20 sm:w-20"
+                  className="invoice-logo h-14 w-14 shrink-0 rounded-2xl border border-[#dce6ed] bg-white p-1 object-contain sm:h-20 sm:w-20"
                 />
               )}
               <div className="min-w-0">
                 <p className="text-base font-black leading-6 sm:text-xl">{issuerName}</p>
-                <p className="mt-1 text-xs font-semibold text-white/85 sm:text-sm">
+                <p className="mt-1 text-xs font-semibold text-[#4a6478] sm:text-sm">
                   {isEnglish ? brand.siteNameAr || "أكاديمية مسبار للبحث والتطوير" : brand.siteNameEn || "MISBAR Academy for Research & Development"}
                 </p>
                 {(isEnglish ? invoiceSettings.addressEn : invoiceSettings.addressAr) && (
-                  <p className="mt-1 hidden whitespace-pre-line text-[10px] text-white/70 sm:block">
+                  <p className="mt-1 hidden whitespace-pre-line text-[10px] text-[#647d90] sm:block">
                     {isEnglish ? invoiceSettings.addressEn : invoiceSettings.addressAr}
                   </p>
                 )}
               </div>
             </div>
-            <div className="shrink-0 border-r border-white/25 pr-4 text-center sm:pr-6">
-              <p className="rounded-full border border-rose-200/50 bg-rose-500/15 px-3 py-1 text-[10px] font-black text-rose-100 sm:text-xs">
-                {isEnglish ? "UNPAID" : "غير مدفوعة"}
+            <div className="shrink-0 border-r border-[#dce6ed] pr-4 text-center sm:pr-6">
+              <p className={`rounded-full border px-3 py-1 text-[10px] font-black sm:text-xs ${paid ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
+                {paid ? (isEnglish ? "PAID" : "مدفوعة") : (isEnglish ? "UNPAID" : "غير مدفوعة")}
               </p>
-              <p className="mt-2 text-[10px] text-white/80 sm:text-xs">{isEnglish ? "UNPAID INVOICE" : "فاتورة غير مدفوعة"}</p>
+              <p className="mt-2 text-[10px] text-[#647d90] sm:text-xs">{paid ? (isEnglish ? "PAYMENT CONFIRMED" : "تم اعتماد السداد") : (isEnglish ? "AMOUNT DUE" : "مبلغ مستحق")}</p>
             </div>
           </div>
-          <div className="relative mx-auto mt-5 max-w-lg rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-center shadow-lg">
-            <p className="text-base font-black sm:text-xl">{isEnglish ? invoiceSettings.titleEn : invoiceSettings.titleAr}</p>
+          <div className="relative mx-auto mt-5 max-w-lg rounded-2xl bg-[#0b3154] px-4 py-2.5 text-center text-white shadow-lg">
+            <p className="text-base font-black sm:text-xl">{invoiceTitle}</p>
             <p className="text-xs font-semibold text-white/85 sm:text-sm">
-              {isEnglish ? "Research Participation Invoice" : "Research Participation Invoice"}
+              {isEnglish ? "Research Participation Invoice" : "فاتورة مشاركة بحثية"}
             </p>
           </div>
         </header>
@@ -298,15 +313,20 @@ export default function ParticipationInvoice({
                   </div>
                 )}
               </div>
-              {amountDue !== undefined && (
-                <div className="invoice-opportunity-amount rounded-2xl bg-[#eef4f8] px-4 py-3 text-center text-[#173b5a]">
-                  <p className="text-[10px] font-bold">{isEnglish ? "Participation fee" : "رسوم المشاركة"}</p>
-                  <bdi dir="ltr" className="mt-1 block text-base font-black">{formatSar(amountDue)}</bdi>
-                </div>
-              )}
             </div>
-            {amountDue !== undefined && original !== undefined && (
-              <div className="invoice-fee-breakdown mt-3 grid gap-2 border-t border-[#d7e2e9] pt-3 text-xs text-[#536c80]">
+          </div>
+        </section>
+
+        <section className="invoice-section invoice-summary relative mx-4 mt-5 sm:mx-7">
+          <InvoiceSectionTab
+            icon={<Calculator size={18} />}
+            title={sectionLabels.summary}
+            subtitle={sectionLabels.summarySubtitle}
+          />
+          <div className="invoice-summary-box grid gap-3 rounded-b-2xl border border-[#b7c9d6] bg-[#fbfdfe] p-4 sm:grid-cols-[1fr_0.9fr] sm:items-center sm:p-5">
+            <div className="invoice-fee-breakdown grid gap-2 text-xs text-[#536c80]">
+              {amountDue !== undefined && original !== undefined ? (
+                <>
                 <p className="flex justify-between gap-3">
                   <span>{isEnglish ? "Fees before discount" : "الرسوم قبل الخصم"}</span>
                   <bdi dir="ltr" className={hasDiscount ? "line-through" : "font-bold"}>{formatSar(original)}</bdi>
@@ -317,16 +337,23 @@ export default function ParticipationInvoice({
                     <bdi dir="ltr">−{formatSar(discountValue)}</bdi>
                   </p>
                 )}
-              </div>
-            )}
-            {amountDue !== undefined ? (
-              <div className="invoice-amount-due mt-3 flex justify-between gap-3 rounded-xl bg-[#0b3154] px-4 py-2.5 text-sm font-black text-white">
-                <span>{isEnglish ? "Amount due — unpaid" : "المبلغ المطلوب — غير مدفوع"}</span>
-                <bdi dir="ltr">{formatSar(amountDue)}</bdi>
-              </div>
-            ) : (
-              <p className="mt-3 border-t border-[#d7e2e9] pt-3 text-xs text-slate-600">
-                {isEnglish ? "Fee details are not shown for this opportunity." : "لم تُعرض الرسوم في إعدادات هذه الفرصة."}
+                </>
+              ) : (
+                <p className="text-xs text-slate-600">
+                  {isEnglish ? "Fee details are not shown for this opportunity." : "لم تُعرض الرسوم في إعدادات هذه الفرصة."}
+                </p>
+              )}
+            </div>
+            <div className={`invoice-amount-due flex min-h-16 items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-black text-white ${paid ? "bg-emerald-800" : "bg-[#0b3154]"}`}>
+              <span>{amountDue !== undefined
+                ? (paid ? (isEnglish ? "Amount paid" : "المبلغ المدفوع") : (isEnglish ? "Amount due — unpaid" : "المبلغ المطلوب — غير مدفوع"))
+                : (paid ? (isEnglish ? "Payment confirmed" : "تم اعتماد السداد") : (isEnglish ? "Payment pending" : "بانتظار السداد"))}</span>
+              {amountDue !== undefined && <bdi dir="ltr">{formatSar(amountDue)}</bdi>}
+            </div>
+            {paid && paymentPaidAt && (
+              <p className="invoice-payment-date text-[10px] font-bold text-emerald-800 sm:col-span-2">
+                {isEnglish ? "Payment confirmed on: " : "تاريخ اعتماد السداد: "}
+                {formatDate(new Date(paymentPaidAt))}
               </p>
             )}
           </div>
@@ -353,7 +380,7 @@ export default function ParticipationInvoice({
             </div>
           )}
           <div className="flex-1 text-center text-[10px] leading-5 text-[#425c70] sm:text-xs">
-            <p className="whitespace-pre-line font-bold">{isEnglish ? invoiceSettings.footerEn : invoiceSettings.footerAr}</p>
+            <p className="whitespace-pre-line font-bold">{invoiceFooter}</p>
             <p className="mt-1">{isEnglish ? "Issued upon registration in the research opportunity." : "صدر هذا المستند عند تسجيلك في الفرصة البحثية."}</p>
           </div>
         </section>

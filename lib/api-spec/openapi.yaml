@@ -16,6 +16,8 @@ tags:
     description: Owner-only publishing of research opportunities to connected social accounts
   - name: participantNotifications
     description: Email, in-app, and opt-in Web Push updates for registered research participants
+  - name: registrationPayments
+    description: Owner-managed payment status for registration invoices
 paths:
   /healthz:
     get:
@@ -30,6 +32,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /registrations/{id}/payment:
+    patch:
+      operationId: updateRegistrationPaymentStatus
+      tags: [registrationPayments]
+      summary: Mark a registration invoice paid or unpaid
+      description: Owner-only manual status update. Does not approve the registration or change seat allocation.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationPaymentUpdate"
+      responses:
+        "200":
+          description: Current payment status and approval record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationPaymentStatus"
+        "400":
+          description: Invalid registration id or payment status
+        "403":
+          description: Owner authentication required
+        "404":
+          description: Registration not found
+        "500":
+          description: Payment status could not be updated
+        "503":
+          description: The additive Render migration for payment tracking has not been applied
   /orcid/start:
     get:
       operationId: startOrcidAuthorization
@@ -645,6 +683,27 @@ components:
           type: string
       required:
         - status
+    RegistrationPaymentUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [paid, unpaid]
+      required: [status]
+    RegistrationPaymentStatus:
+      type: object
+      properties:
+        id:
+          type: integer
+        paymentStatus:
+          type: string
+          enum: [paid, unpaid]
+        paymentPaidAt:
+          type: ["string", "null"]
+          format: date-time
+        paymentMarkedBy:
+          type: ["string", "null"]
+      required: [id, paymentStatus, paymentPaidAt, paymentMarkedBy]
     SocialOAuthStartResponse:
       type: object
       properties:

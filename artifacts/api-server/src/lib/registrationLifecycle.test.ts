@@ -9,6 +9,8 @@ import { createRequire } from "node:module";
 // Execute the real routes with an isolated transactional double, never live data.
 const fixtureDb = `
 export const registrationsTable = { name:"registrations", id:"id", coordinatorId:"coordinatorId", researchId:"researchId", status:"status", authorRole:"authorRole", customFields:"customFields", createdAt:"createdAt" };
+export const registrationInvoiceRecordsTable = { name:"invoiceRecords", registrationId:"registrationId", paymentStatus:"paymentStatus", paymentPaidAt:"paymentPaidAt", paymentMarkedBy:"paymentMarkedBy" };
+export const registrationPaymentEventsTable = { name:"paymentEvents", id:"id", registrationId:"registrationId", status:"status", recordedBy:"recordedBy", createdAt:"createdAt" };
 export const coordinatorsTable = { name:"coordinators", id:"id", fullName:"fullName", email:"email", status:"status", createdAt:"createdAt" };
 export const researchProgramsTable = { name:"programs", id:"id", titleAr:"titleAr", titleEn:"titleEn", category:"category", status:"status", seatsLeft:"seatsLeft" };
 export const programCatalogBootstrapTable = { name:"bootstrap", key:"key" };
@@ -20,19 +22,21 @@ export const socialSeatUpdateEventsTable = {name:"seatEvents"};
 const schema = { safeParse: data => ({success:true,data}), partial:()=>schema };
 export const insertRegistrationSchema = schema;
 export const insertServiceRequestSchema = schema;
-let state = {}, failNext = false;
-export function reset(rejected=false) {
+let state = {}, failNext = false, paymentSchemaReady = true;
+export function reset(rejected=false, schemaReady=true) {
+ paymentSchemaReady = schemaReady;
  state = {
   programs:[{id:1,titleAr:"Study",titleEn:"Study",category:"training",status:"open",firstAuthorSeats:1,firstAuthorSeatsLeft:1,coAuthorSeats:14,coAuthorSeatsLeft:2,seatsLeft:3}],
  registrations: rejected ? [{id:1,researchId:1,coordinatorId:1,authorRole:"co_author",status:"rejected",customFields:{}}] : [],
  coordinators:[{id:1,fullName:"Fixture coordinator",email:"one@example.invalid",status:"active"}],
-  bootstrap:[{key:"program-capacity-and-author-roles-v1"}],services:[],owners:[],portal:[],payments:[],seatEvents:[] };
+   bootstrap:[{key:"program-capacity-and-author-roles-v1"}],services:[],owners:[],portal:[],payments:[],seatEvents:[],invoiceRecords:[],paymentEvents:[] };
  failNext=false;
 }
 export const snapshot=()=>structuredClone(state);
 export const failUpdate=()=>{failNext=true};
 function matches(row, condition) {
  if (!condition) return true;
+  if (condition.array) return condition.value.includes(row[condition.key]);
  if (condition.key) return row[condition.key]===condition.value;
  if (condition.args?.length && String(condition.text).includes("lower(")) return row.email?.toLowerCase()===condition.args.at(-1);
  return true;
@@ -67,7 +71,7 @@ class Query {
 export const db={
  select:fields=>new Query("select",fields),insert:table=>new Query("insert").from(table),
  update:table=>new Query("update").from(table),delete:table=>new Query("delete").from(table),
- execute:async()=>[],transaction:async fn=>{const before=structuredClone(state);try{return await fn(db)}catch(e){state=before;throw e}}
+ execute:async query=>String(query?.text||"").includes("to_regclass")?{rows:[{invoices_ready:paymentSchemaReady,events_ready:paymentSchemaReady}]}:[],transaction:async fn=>{const before=structuredClone(state);try{return await fn(db)}catch(e){state=before;throw e}}
 };
 `;
 
@@ -75,9 +79,9 @@ test("real registration/coordinator handlers: lifecycle, rollback, former-studen
   const dir = await mkdtemp(resolve(tmpdir(), "srma-lifecycle-"));
   const mocks: Record<string, string> = {
     "@workspace/db": fixtureDb,
-    "drizzle-orm": `export const eq=(key,value)=>({key,value});export const desc=()=>null;export const sql=(s,...args)=>({text:s.join("?"),args});`,
+     "drizzle-orm": `export const eq=(key,value)=>({key,value});export const inArray=(key,value)=>({key,value,array:true});export const desc=()=>null;export const sql=(s,...args)=>({text:s.join("?"),args});`,
     "../middlewares/ownerAuth": `export const getManagedOwner=async req=>req.headers["x-role"]==="owner"?{}:null;export const requireManagedOwner=(req,res,next)=>req.headers["x-role"]==="owner"?next():res.status(403).json({error:"owner only"});`,
-    "./ownerAuth": `export const getManagedOwner=async req=>req.headers["x-role"]==="owner"?{}:null;export const requireManagedOwner=(req,res,next)=>req.headers["x-role"]==="owner"?next():res.status(403).json({error:"owner only"});`,
+     "./ownerAuth": `export const getManagedOwner=async req=>req.headers["x-role"]==="owner"?{}:null;export const requireManagedOwner=(req,res,next)=>{if(req.headers["x-role"]!=="owner")return res.status(403).json({error:"owner only"});res.locals.owner={email:"owner@example.invalid"};next()};`,
     "../lib/mailer": `export const sendServiceRequestEmail=async()=>{};`,
     "../lib/siteContentSettings": `export const getSiteContentSettings=async()=>({registrationFields:[],feeAndTaskAgreementSettings:{enabled:false},specialtyOptions:[]});`,
     "../lib/registrationCompatibility": `export const normalizeRegistrationAnswers=x=>x;export const insertCompatibleRegistration=async(tx,table,data)=>(await tx.insert(table).values(data).returning())[0];`,
@@ -119,6 +123,28 @@ export const app=express();app.use(express.json());app.use((req,res,next)=>{req.
     assert.equal(fixture.snapshot().seatEvents[0].seatsLeft, 2);
     assert.equal(fixture.snapshot().seatEvents[0].registrationId, student.id);
     assert.equal(fixture.snapshot().registrations[0].orcid, "0000-0002-1825-0097");
+    assert.equal(fixture.snapshot().invoiceRecords[0].registrationId, student.id);
+    assert.equal(fixture.snapshot().invoiceRecords[0].paymentStatus, "unpaid");
+    assert.equal((await request(`/registrations/${student.id}/payment`, "PATCH", { status: "paid" }, "coordinator")).status, 403);
+    response = await request(`/registrations/${student.id}/payment`, "PATCH", { status: "paid" });
+    assert.equal(response.status, 200);
+    const paid = await response.json() as { paymentStatus: string; paymentMarkedBy: string };
+    assert.equal(paid.paymentStatus, "paid");
+    assert.equal(paid.paymentMarkedBy, "owner@example.invalid");
+    assert.equal(fixture.snapshot().registrations[0].status, "pending");
+    assert.equal(fixture.snapshot().programs[0].seatsLeft, 2);
+    assert.equal(fixture.snapshot().paymentEvents.length, 1);
+    assert.equal((await request(`/registrations/${student.id}/payment`, "PATCH", { status: "paid" })).status, 200);
+    assert.equal(fixture.snapshot().paymentEvents.length, 1);
+    response = await request("/registrations");
+    assert.equal(response.status, 200);
+    const listed = await response.json() as Array<{ id: number; paymentStatus: string; paymentHistory: unknown[]; paymentWorkflowAvailable: boolean }>;
+    assert.equal(listed[0].paymentWorkflowAvailable, true);
+    assert.equal(listed[0].paymentStatus, "paid");
+    assert.equal(listed[0].paymentHistory.length, 1);
+    response = await request(`/registrations/${student.id}/payment`, "PATCH", { status: "unpaid" });
+    assert.equal(response.status, 200);
+    assert.equal(fixture.snapshot().paymentEvents.length, 2);
     assert.equal((await request(`/registrations/${student.id}`, "PATCH", { orcid: "not-an-orcid" })).status, 400);
     assert.equal(fixture.snapshot().registrations[0].customFields.__seatReservation, undefined);
     assert.equal((await request(`/registrations/${student.id}/status`, "PATCH", { status: "rejected" })).status, 200);
@@ -147,6 +173,14 @@ export const app=express();app.use(express.json());app.use((req,res,next)=>{req.
     assert.equal((await request("/registrations", "GET", undefined, "coordinator")).status, 401);
     assert.equal((await request("/admin/coordinators", "POST", { fullName: "New Fixture", email: "fixture@example.invalid", phone: "+966500000000", affiliation: "Test" })).status, 201);
     assert.equal((await request("/admin/coordinators", "POST", { fullName: "New Fixture", email: "FIXTURE@example.invalid", phone: "+966500000000", affiliation: "Test" })).status, 409);
+    fixture.reset(false, false);
+    response = await request("/registrations", "POST", registration, "public");
+    assert.equal(response.status, 201);
+    assert.equal(fixture.snapshot().registrations.length, 1);
+    assert.equal(fixture.snapshot().invoiceRecords.length, 0);
+    assert.equal(fixture.snapshot().programs[0].seatsLeft, 2);
+    assert.equal((await request("/registrations/1/payment", "PATCH", { status: "paid" })).status, 503);
+    assert.equal(fixture.snapshot().programs[0].seatsLeft, 2);
   } finally {
     if (server) await new Promise<void>(done => server.close(done));
     await rm(dir, { recursive: true, force: true });

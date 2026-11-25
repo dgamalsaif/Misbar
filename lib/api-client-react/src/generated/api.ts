@@ -48,6 +48,8 @@ import type {
   PublishSocialPostResult,
   PublishSocialPostsBody,
   PublishSocialPostsResponse,
+  RegistrationPaymentStatus,
+  RegistrationPaymentUpdate,
   SocialConnectionsResponse,
   SocialOAuthStartResponse,
   SocialPostsResponse,
@@ -136,7 +138,6 @@ export const getHealthCheckQueryKey = () => {
     ] as const;
     }
 
-
 export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -216,6 +217,83 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+export const getUpdateRegistrationPaymentStatusUrl = (id: number,) => {
+
+
+
+
+  return `/api/registrations/${id}/payment`
+}
+
+/**
+ * Owner-only manual status update. Does not approve the registration or change seat allocation.
+ * @summary Mark a registration invoice paid or unpaid
+ */
+export const updateRegistrationPaymentStatus = async (id: number,
+    registrationPaymentUpdate: RegistrationPaymentUpdate, options?: Parameters<typeof customFetch>[1]): Promise<RegistrationPaymentStatus> => {
+
+  return customFetch<RegistrationPaymentStatus>(getUpdateRegistrationPaymentStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(registrationPaymentUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateRegistrationPaymentStatusMutationKey = () => ['updateRegistrationPaymentStatus'] as const;
+
+export const getUpdateRegistrationPaymentStatusMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>, TError,UpdateRegistrationPaymentStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>, TError,UpdateRegistrationPaymentStatusMutationVariables, TContext> => {
+
+const mutationKey = getUpdateRegistrationPaymentStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>, UpdateRegistrationPaymentStatusMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateRegistrationPaymentStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateRegistrationPaymentStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>>
+    export type UpdateRegistrationPaymentStatusMutationBody = BodyType<RegistrationPaymentUpdate>
+    export type UpdateRegistrationPaymentStatusMutationError = ErrorType<void>
+    export type UpdateRegistrationPaymentStatusMutationVariables = {id: number;data: BodyType<RegistrationPaymentUpdate>}
+
+    /**
+ * Owner-only manual status update. Does not approve the registration or change seat allocation.
+ * @summary Mark a registration invoice paid or unpaid
+ */
+export const useUpdateRegistrationPaymentStatus = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>, TError,UpdateRegistrationPaymentStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>,
+        TError,
+        UpdateRegistrationPaymentStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateRegistrationPaymentStatusMutationOptions(options), queryClient);
+    }
 
 export const getStartOrcidAuthorizationUrl = () => {
 
@@ -2458,5 +2536,5 @@ export const useRetryProgramParticipantNotification = <TError = ErrorType<void>,
         RetryProgramParticipantNotificationMutationVariables,
         TContext
       > => {
-      return useMutation(getRetryProgramParticipantNotificationMutationOptions(options), queryClient);
-    }
+       return useMutation(getRetryProgramParticipantNotificationMutationOptions(options), queryClient);
+     }

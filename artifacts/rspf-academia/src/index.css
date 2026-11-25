@@ -1711,6 +1711,14 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
     page-break-inside: avoid !important;
   }
 
+  body.invoice-printing > .invoice-print-copy .invoice-summary-box {
+    grid-template-columns: minmax(0, 1fr) minmax(45mm, 0.9fr) !important;
+    gap: 2mm !important;
+    padding: 2.5mm 3mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
   body.invoice-printing > .invoice-print-copy .invoice-opportunity-amount {
     padding: 2mm 3mm !important;
   }
@@ -1723,9 +1731,13 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
   }
 
   body.invoice-printing > .invoice-print-copy .invoice-amount-due {
-    margin-top: 2mm !important;
     padding: 2mm 3mm !important;
     font-size: 8pt !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-payment-date {
+    font-size: 6.5pt !important;
+    line-height: 1.2 !important;
   }
 
   body.invoice-printing > .invoice-print-copy .invoice-applicability-note {

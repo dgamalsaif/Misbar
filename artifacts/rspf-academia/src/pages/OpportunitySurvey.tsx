@@ -74,6 +74,11 @@ export default function OpportunitySurvey() {
     id: number;
     createdAt: string;
     remainingSeats: number | null;
+    invoiceOriginalSar: number | null;
+    invoiceDiscountedSar: number | null;
+    invoiceTotalSeats: number | null;
+    invoiceSpecialty: string;
+    invoiceJournalTarget: string;
   } | null>(null);
   const [error, setError] = useState("");
   const [forwardUrl, setForwardUrl] = useState("");
@@ -255,6 +260,11 @@ export default function OpportunitySurvey() {
               id: parsedRegistrationId,
               createdAt: typeof resData.createdAt === "string" ? resData.createdAt : new Date().toISOString(),
               remainingSeats: typeof resData.remainingSeats === "number" ? resData.remainingSeats : null,
+              invoiceOriginalSar: typeof resData.invoiceOriginalSar === "number" ? resData.invoiceOriginalSar : null,
+              invoiceDiscountedSar: typeof resData.invoiceDiscountedSar === "number" ? resData.invoiceDiscountedSar : null,
+              invoiceTotalSeats: typeof resData.invoiceTotalSeats === "number" ? resData.invoiceTotalSeats : null,
+              invoiceSpecialty: typeof resData.invoiceSpecialty === "string" ? resData.invoiceSpecialty : "",
+              invoiceJournalTarget: typeof resData.invoiceJournalTarget === "string" ? resData.invoiceJournalTarget : "",
             }
           : null,
       );
@@ -406,12 +416,12 @@ export default function OpportunitySurvey() {
                   showResearchReference={isFieldVisible(selectedOpp, "title")}
                   showFeeDetails={isFieldVisible(selectedOpp, "price")}
                   showSeatDetails={isFieldVisible(selectedOpp, "seats")}
-                  totalSeats={isFieldVisible(selectedOpp, "seats") ? selectedOpp.totalSeats : undefined}
+                  totalSeats={isFieldVisible(selectedOpp, "seats") ? registrationReceipt.invoiceTotalSeats ?? selectedOpp.totalSeats : undefined}
                   remainingSeats={isFieldVisible(selectedOpp, "seats") ? registrationReceipt.remainingSeats ?? undefined : undefined}
-                  targetJournal={isFieldVisible(selectedOpp, "journal") ? selectedOpp.journalTarget : ""}
-                  specialty={isFieldVisible(selectedOpp, "specialty") ? localize(selectedOpp.specialtyAr, selectedOpp.specialtyEn, selectedOpp.specialty) : ""}
-                  priceOriginalSar={selectedOpp.priceOriginalSar}
-                  priceDiscountedSar={selectedOpp.priceDiscountedSar}
+                  targetJournal={isFieldVisible(selectedOpp, "journal") ? registrationReceipt.invoiceJournalTarget || selectedOpp.journalTarget : ""}
+                  specialty={isFieldVisible(selectedOpp, "specialty") ? registrationReceipt.invoiceSpecialty || localize(selectedOpp.specialtyAr, selectedOpp.specialtyEn, selectedOpp.specialty) : ""}
+                  priceOriginalSar={registrationReceipt.invoiceOriginalSar ?? selectedOpp.priceOriginalSar}
+                  priceDiscountedSar={registrationReceipt.invoiceDiscountedSar ?? selectedOpp.priceDiscountedSar}
                   includedServices={isFieldVisible(selectedOpp, "price") ? selectedOpp.includedServices || [] : []}
                 />
               )}

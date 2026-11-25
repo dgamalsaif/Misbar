@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { ChevronRight, LogOut, RefreshCw, Users, FileText, Check, X, Clock, Mail, Phone, Download, Pencil, Trash2, Save, Loader2 } from "lucide-react";
 import Footer from "@/components/Footer";
+import AdminRegistrationInvoiceDialog from "@/components/AdminRegistrationInvoiceDialog";
 import { useSiteContentSettings } from "@/hooks/use-site-content-settings";
 import { apiFetch } from "@/lib/api";
 
@@ -28,6 +29,18 @@ interface Registration {
   coordinatorName: string | null;
   registrationSource: "coordinator" | "public";
   remainingSeats?: number | null;
+  paymentWorkflowAvailable?: boolean;
+  paymentStatus?: "paid" | "unpaid";
+  paymentPaidAt?: string | null;
+  paymentMarkedBy?: string | null;
+  invoiceOriginalSar?: number | null;
+  invoiceDiscountedSar?: number | null;
+  invoiceTotalSeats?: number | null;
+  invoiceRemainingSeats?: number | null;
+  invoiceSpecialty?: string | null;
+  invoiceJournalTarget?: string | null;
+  hiddenFields?: string[];
+  paymentHistory?: Array<{ id: number; status: "paid" | "unpaid"; recordedBy: string; createdAt: string }>;
   status: string;
   createdAt: string;
 }
@@ -381,6 +394,8 @@ export default function AdminSubmissions() {
   const [deletingRegistration, setDeletingRegistration] = useState<Registration | null>(null);
   const [editingService, setEditingService] = useState<ServiceRequest | null>(null);
   const [deletingService, setDeletingService] = useState<ServiceRequest | null>(null);
+  const [invoiceRegistration, setInvoiceRegistration] = useState<Registration | null>(null);
+  const [paymentUpdatingId, setPaymentUpdatingId] = useState<number | null>(null);
   const [mutationError, setMutationError] = useState("");
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -547,6 +562,35 @@ export default function AdminSubmissions() {
     setEditingRegistration(null);
   };
 
+  const updatePaymentStatus = async (registration: Registration, status: "paid" | "unpaid") => {
+    if (role !== "owner" || paymentUpdatingId !== null) return;
+    if (!registration.paymentWorkflowAvailable) {
+      setMutationError("تحتاج إلى تطبيق ترحيل الفاتورة في قاعدة Render قبل تسجيل السداد؛ لم يتغير أي تسجيل.");
+      return;
+    }
+    const confirmed = status === "paid"
+      ? window.confirm(`هل تأكدت من استلام كامل رسوم التسجيل من ${registration.fullName}؟ لن يتغير قبول الطالب أو مقعده.`)
+      : window.confirm(`هل تريد إعادة فاتورة ${registration.fullName} إلى «غير مدفوعة»؟ سيُحفظ هذا التغيير في سجل السداد.`);
+    if (!confirmed) return;
+    setPaymentUpdatingId(registration.id);
+    setMutationError("");
+    try {
+      const response = await apiFetch(`${API_BASE}/registrations/${registration.id}/payment`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const result = await response.json().catch(() => ({})) as Partial<Registration> & { error?: string };
+      if (!response.ok) throw new Error(result.error || "تعذر تحديث حالة السداد.");
+      setRegistrations((items) => items.map((item) => item.id === registration.id ? { ...item, ...result } : item));
+      await fetchData(true);
+    } catch (error) {
+      setMutationError(error instanceof Error ? error.message : "تعذر تحديث حالة السداد.");
+    } finally {
+      setPaymentUpdatingId(null);
+    }
+  };
+
   const deleteRegistration = async () => {
     if (!deletingRegistration) return;
     if (role !== "owner" && deletingRegistration.coordinatorId === null) return;
@@ -694,6 +738,12 @@ export default function AdminSubmissions() {
         {/* REGISTRATIONS TABLE */}
         {tab === "registrations" && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {mutationError && (
+              <p role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900">
+                <span>{mutationError}</span>
+                <button type="button" onClick={() => setMutationError("")} aria-label="إغلاق الرسالة" className="shrink-0 rounded-lg p-1 text-amber-800 hover:bg-amber-100"><X size={16} /></button>
+              </p>
+            )}
              {!canManageCoordinatorRequests && (
                <div className="rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-right text-sm leading-6 text-blue-800">
                  <span className="font-black">خصوصية التسجيلات:</span> تعرض هذه القائمة التسجيلات المرتبطة بحسابك فقط. أما السجلات التاريخية التي سبقت تفعيل هذا الفصل ولا يمكن إسنادها بأمان، فيراجعها مالك المنصة كتسجيل عام.
@@ -740,7 +790,7 @@ export default function AdminSubmissions() {
                   <table className="w-full text-right">
                     <thead className="bg-slate-50 border-b border-slate-100">
                       <tr>
-                        {["الاسم والتخصص", "التواصل", "الجهة / المدينة", "الفرصة البحثية", ...(canManageCoordinatorRequests ? ["المسجّل بواسطة"] : []), "الحالة", "التاريخ", "إجراءات"].map((h) => (
+                        {["الاسم والتخصص", "التواصل", "الجهة / المدينة", "الفرصة البحثية", ...(canManageCoordinatorRequests ? ["المسجّل بواسطة"] : []), ...(role === "owner" ? ["السداد والفاتورة"] : []), "الحالة", "التاريخ", "إجراءات"].map((h) => (
                           <th key={h} className="px-6 py-4 text-xs font-bold text-slate-500 whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -779,6 +829,51 @@ export default function AdminSubmissions() {
                               <span className={`inline-flex rounded-lg px-3 py-1.5 text-xs font-bold ${reg.coordinatorName ? "bg-[#e6f5ef] text-[#117b59]" : "bg-slate-100 text-slate-500"}`}>
                                 {reg.coordinatorName || "تسجيل عام"}
                               </span>
+                            </td>
+                          )}
+                          {role === "owner" && (
+                            <td className="min-w-[245px] px-6 py-5">
+                              <span className={`inline-flex rounded-lg border px-3 py-1.5 text-xs font-black ${reg.paymentStatus === "paid" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
+                                {reg.paymentStatus === "paid" ? "مدفوعة" : "غير مدفوعة"}
+                              </span>
+                              {reg.paymentStatus === "paid" && (
+                                <p className="mt-2 max-w-[230px] text-[10px] leading-5 text-slate-500">
+                                  اعتمدها {reg.paymentMarkedBy || "المالك"}{reg.paymentPaidAt ? ` — ${formatDate(reg.paymentPaidAt)}` : ""}
+                                </p>
+                              )}
+                              {reg.paymentHistory?.length ? (
+                                <details className="mt-1 text-[10px] text-slate-500">
+                                  <summary className="cursor-pointer font-bold">سجل تغييرات السداد ({reg.paymentHistory.length})</summary>
+                                  <div className="mt-1 space-y-1">
+                                    {reg.paymentHistory.map((event) => (
+                                      <p key={event.id}>
+                                        {event.status === "paid" ? "اعتماد السداد" : "إعادة إلى غير مدفوعة"} — {event.recordedBy} — {formatDate(event.createdAt)}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </details>
+                              ) : null}
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  disabled={paymentUpdatingId === reg.id || !reg.paymentWorkflowAvailable}
+                                  onClick={() => void updatePaymentStatus(reg, reg.paymentStatus === "paid" ? "unpaid" : "paid")}
+                                  className={`rounded-lg px-3 py-1.5 text-[11px] font-black text-white disabled:opacity-50 ${reg.paymentStatus === "paid" ? "bg-slate-600 hover:bg-slate-700" : "bg-emerald-700 hover:bg-emerald-800"}`}
+                                  title={reg.paymentWorkflowAvailable ? "" : "طبّق ترحيل الفاتورة على قاعدة Render أولاً"}
+                                >
+                                  {!reg.paymentWorkflowAvailable ? "بانتظار ترحيل Render" : paymentUpdatingId === reg.id ? "جارٍ الحفظ..." : reg.paymentStatus === "paid" ? "إلغاء اعتماد السداد" : "تسجيل تم الدفع"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setInvoiceRegistration(reg)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-[#0b3154]/20 bg-white px-3 py-1.5 text-[11px] font-black text-[#0b3154] hover:bg-slate-50"
+                                >
+                                  <FileText size={13} /> الفاتورة PDF
+                                </button>
+                              </div>
+                              {!reg.paymentWorkflowAvailable && (
+                                <p className="mt-2 max-w-[230px] text-[10px] leading-5 text-amber-700">يمكن معاينة الفاتورة الآن، لكن حفظ حالة السداد يتطلب ترحيل قاعدة Render أولاً.</p>
+                              )}
                             </td>
                           )}
                           <td className="px-6 py-5">
@@ -907,6 +1002,13 @@ export default function AdminSubmissions() {
       </div>
       <Footer />
       {role === "owner" && editingRegistration && <StudentEditModal registration={editingRegistration} onClose={() => setEditingRegistration(null)} onSaved={saveEditedRegistration} />}
+      {role === "owner" && invoiceRegistration && siteSettings && (
+        <AdminRegistrationInvoiceDialog
+          registration={invoiceRegistration}
+          settings={siteSettings}
+          onClose={() => setInvoiceRegistration(null)}
+        />
+      )}
       {role === "owner" && editingService && <ServiceRequestEditModal service={editingService} onClose={() => setEditingService(null)} onSaved={saveEditedService} />}
       {role === "owner" && deletingService && <ServiceRequestDeleteModal service={deletingService} onClose={() => setDeletingService(null)} onConfirm={deleteService} />}
       {role === "owner" && bulkDeleteOpen && (

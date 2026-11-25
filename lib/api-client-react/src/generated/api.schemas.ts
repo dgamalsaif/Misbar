@@ -9,6 +9,35 @@ export interface HealthStatus {
   status: string;
 }
 
+export type RegistrationPaymentUpdateStatus = typeof RegistrationPaymentUpdateStatus[keyof typeof RegistrationPaymentUpdateStatus];
+
+
+export const RegistrationPaymentUpdateStatus = {
+  paid: 'paid',
+  unpaid: 'unpaid',
+} as const;
+
+export interface RegistrationPaymentUpdate {
+  status: RegistrationPaymentUpdateStatus;
+}
+
+export type RegistrationPaymentStatusPaymentStatus = typeof RegistrationPaymentStatusPaymentStatus[keyof typeof RegistrationPaymentStatusPaymentStatus];
+
+
+export const RegistrationPaymentStatusPaymentStatus = {
+  paid: 'paid',
+  unpaid: 'unpaid',
+} as const;
+
+export interface RegistrationPaymentStatus {
+  id: number;
+  paymentStatus: RegistrationPaymentStatusPaymentStatus;
+  /** @nullable */
+  paymentPaidAt: string | null;
+  /** @nullable */
+  paymentMarkedBy: string | null;
+}
+
 export interface SocialOAuthStartResponse {
   authorizeUrl: string;
 }

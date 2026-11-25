@@ -18,6 +18,29 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Owner-only manual status update. Does not approve the registration or change seat allocation.
+ * @summary Mark a registration invoice paid or unpaid
+ */
+
+
+
+export const UpdateRegistrationPaymentStatusParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const UpdateRegistrationPaymentStatusBody = zod.object({
+  "status": zod.enum(['paid', 'unpaid'])
+})
+
+export const UpdateRegistrationPaymentStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "paymentStatus": zod.enum(['paid', 'unpaid']),
+  "paymentPaidAt": zod.coerce.date().nullable(),
+  "paymentMarkedBy": zod.string().nullable()
+})
+
+
+/**
  * Starts the ORCID OAuth flow and redirects the participant to ORCID.
  * @summary Start ORCID account authorization
  */
@@ -642,4 +665,3 @@ export const RetryProgramParticipantNotificationResponse = zod.object({
   "message": zod.string(),
   "queued": zod.number().int().min(1)
 })
-

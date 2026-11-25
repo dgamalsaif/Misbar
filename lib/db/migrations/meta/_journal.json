@@ -120,6 +120,13 @@
       "when": 1795455891285,
       "tag": "0016_participant_push_device_labels",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795629195881,
+      "tag": "0017_registration_invoice_records",
+      "breakpoints": true
     }
   ]
 }
