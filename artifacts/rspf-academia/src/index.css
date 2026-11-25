@@ -1589,7 +1589,7 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
 
 @page {
   size: A4 portrait;
-  margin: 7mm;
+  margin: 5mm;
 }
 
 @media print {
@@ -1616,8 +1616,9 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
     inset: 0 auto auto 0 !important;
     display: block !important;
     box-sizing: border-box !important;
-    width: 196mm !important;
-    max-width: 196mm !important;
+    /* Compensate for print zoom so the visible width fills the 200mm page area. */
+    width: 215.05mm !important;
+    max-width: 215.05mm !important;
     height: auto !important;
     min-height: 0 !important;
     margin: 0 !important;
@@ -1629,6 +1630,7 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
     box-shadow: none !important;
     overflow: visible !important;
     transform: none !important;
+    zoom: 0.93 !important;
     font-size: 8pt !important;
     line-height: 1.22 !important;
     -webkit-print-color-adjust: exact !important;
@@ -1711,6 +1713,14 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
     page-break-inside: avoid !important;
   }
 
+  body.invoice-printing > .invoice-print-copy .invoice-summary-box {
+    grid-template-columns: minmax(0, 1fr) minmax(45mm, 0.9fr) !important;
+    gap: 2mm !important;
+    padding: 2.5mm 3mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
   body.invoice-printing > .invoice-print-copy .invoice-opportunity-amount {
     padding: 2mm 3mm !important;
   }
@@ -1723,9 +1733,13 @@ html[data-card-style="tinted"] [class~="bg-white"][class*="rounded-"] { backgrou
   }
 
   body.invoice-printing > .invoice-print-copy .invoice-amount-due {
-    margin-top: 2mm !important;
     padding: 2mm 3mm !important;
     font-size: 8pt !important;
+  }
+
+  body.invoice-printing > .invoice-print-copy .invoice-payment-date {
+    font-size: 6.5pt !important;
+    line-height: 1.2 !important;
   }
 
   body.invoice-printing > .invoice-print-copy .invoice-applicability-note {

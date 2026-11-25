@@ -18,3 +18,5 @@
 - [Saudi billing jurisdiction](saudi-billing-jurisdiction.md) — the organization for Misbar billing and invoices is based in Saudi Arabia; verify local tax and invoice requirements.
 - [OpenAPI code generation runtime](openapi-codegen-runtime.md) — Orval codegen needs Node 22 for `Map.groupBy`; keep the app runtime unchanged and override PATH only for codegen.
 - [Automatic social seat updates](social-seat-update-policy.md) — publish seat counts after each successful registration for every active social account, without participant data.
+- [Invoice payment isolation](invoice-payment-isolation.md) — keep invoice snapshots and manual payment history separate from registration approval and seat allocation.
+- [Duplicate opportunity safety](opportunity-duplicate-safety.md) — block normalized title-and-specialty duplicates; owner review may archive reversibly, never delete registrations or alter seats.

@@ -102,7 +102,7 @@ export default function InvoiceSettingsPanel({ settings, fallbackLogoUrl, onChan
         <div>
           <p className="font-semibold text-emerald-950">إصدار المستند بعد التسجيل</p>
           <p className="mt-1 text-sm leading-6 text-emerald-900">
-            سيظهر للمشارك زر طباعة أو حفظ PDF بعد نجاح التسجيل. تُعرض الحالة دائمًا «غير مدفوعة»؛ لا يجمع الموقع أي مبلغ.
+            يظهر للمشارك مستند بحالة «غير مدفوعة» بعد التسجيل. يستطيع المالك تسجيل السداد يدويًا من صفحة التسجيلات، ثم طباعة الفاتورة بحالة «مدفوعة». الموقع لا يستقبل أي مبلغ.
           </p>
         </div>
         <label className="flex shrink-0 items-center gap-2 text-sm font-medium text-emerald-950">

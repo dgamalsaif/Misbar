@@ -3,13 +3,15 @@ import {
   db,
   coordinatorsTable,
   registrationsTable,
+  registrationInvoiceRecordsTable,
+  registrationPaymentEventsTable,
   researchProgramsTable,
   serviceRequestsTable,
   socialSeatUpdateEventsTable,
   insertRegistrationSchema,
   insertServiceRequestSchema,
 } from "@workspace/db";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { sendServiceRequestEmail } from "../lib/mailer";
 import { type StaffSession, requireCoordinator, requireOwner } from "../middlewares/coordinatorAuth";
 import { getSiteContentSettings } from "../lib/siteContentSettings";
@@ -17,9 +19,26 @@ import { normalizeOrcidId } from "../lib/orcidOAuth";
 import { ensureProgramCapacityModel, PROGRAM_CAPACITY_LOCK_NAMESPACE, type DatabaseTransaction } from "../lib/programCapacity";
 import { insertCompatibleRegistration, normalizeRegistrationAnswers } from "../lib/registrationCompatibility";
 import { SEAT_MARKER, SeatAllocationError, seatChange, cleanRegistrationFields } from "../lib/registrationSeats";
+import { getOpportunityVisibility } from "../lib/opportunityVisibility";
+import { getProgramArchiveState } from "../lib/programArchive";
 
 const router = Router();
 const AUTHOR_ROLES = new Set(["first_author", "co_author"]);
+
+async function hasRegistrationInvoiceSchema(executor: Pick<DatabaseTransaction, "execute"> = db) {
+  try {
+    const result = await executor.execute(sql`
+      SELECT
+        to_regclass('public.registration_invoice_records') IS NOT NULL AS invoices_ready,
+        to_regclass('public.registration_payment_events') IS NOT NULL AS events_ready
+    `);
+    const rows = (result as unknown as { rows?: Array<{ invoices_ready?: boolean; events_ready?: boolean }> }).rows;
+    return Boolean(rows?.[0]?.invoices_ready && rows[0]?.events_ready);
+  } catch {
+    // The payment add-on must never block normal registration while the migration is pending.
+    return false;
+  }
+}
 
 class RegistrationCapacityError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -130,7 +149,8 @@ async function createRegistration(req: Request, res: Response, coordinatorId: nu
       }
       await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROGRAM_CAPACITY_LOCK_NAMESPACE + parsed.data.researchId})`);
       const [program] = await tx.select().from(researchProgramsTable).where(eq(researchProgramsTable.id, parsed.data.researchId)).limit(1);
-      if (!program || program.status !== "open") {
+      const archiveState = await getProgramArchiveState(tx);
+      if (!program || archiveState.byResearchId.has(parsed.data.researchId) || program.status !== "open") {
         throw new RegistrationCapacityError("هذه الفرصة غير متاحة للتسجيل حالياً.");
       }
 
@@ -154,6 +174,18 @@ async function createRegistration(req: Request, res: Response, coordinatorId: nu
       const registrationId = Number(registration.id);
       if (!Number.isSafeInteger(registrationId) || registrationId < 1) {
         throw new Error("Registration INSERT did not return a valid id");
+      }
+      if (await hasRegistrationInvoiceSchema(tx)) {
+        await tx.insert(registrationInvoiceRecordsTable).values({
+          registrationId,
+          originalSar: program.priceOriginalSar,
+          discountedSar: program.priceDiscountedSar,
+          totalSeats: program.totalSeats,
+          remainingSeats: seatsLeft,
+          specialty: program.specialtyAr || program.specialtyEn,
+          journalTarget: program.journalTarget,
+          paymentStatus: "unpaid",
+        });
       }
       await tx.update(researchProgramsTable).set({
         firstAuthorSeatsLeft,
@@ -186,7 +218,20 @@ async function createRegistration(req: Request, res: Response, coordinatorId: nu
           resolvedGroupUrl = matchedSpec.groupUrl;
         }
       }
-      return { registration: { ...registration, remainingSeats: seatsLeft }, researchGroupUrl: resolvedGroupUrl };
+      return {
+        registration: {
+          ...registration,
+          remainingSeats: seatsLeft,
+          paymentStatus: "unpaid",
+          invoiceOriginalSar: program.priceOriginalSar,
+          invoiceDiscountedSar: program.priceDiscountedSar,
+          invoiceTotalSeats: program.totalSeats,
+          invoiceRemainingSeats: seatsLeft,
+          invoiceSpecialty: program.specialtyAr || program.specialtyEn,
+          invoiceJournalTarget: program.journalTarget,
+        },
+        researchGroupUrl: resolvedGroupUrl,
+      };
     });
     res.status(201).json(audience === "participant"
       ? { ...result.registration, researchGroupUrl: result.researchGroupUrl || null }
@@ -216,6 +261,7 @@ router.post("/coordinator/registrations", requireCoordinator, async (req, res) =
 /* ── GET /api/registrations ── */
 router.get("/registrations", requireCoordinator, async (req, res) => {
   const staff = res.locals.staff as StaffSession;
+  const ownerOnly = staff.role === "owner";
 
   const rows = staff.role === "coordinator"
     ? await db.select().from(registrationsTable)
@@ -234,26 +280,70 @@ router.get("/registrations", requireCoordinator, async (req, res) => {
     status: researchProgramsTable.status,
     category: researchProgramsTable.category,
     seatsLeft: researchProgramsTable.seatsLeft,
+    totalSeats: researchProgramsTable.totalSeats,
+    specialtyAr: researchProgramsTable.specialtyAr,
+    specialtyEn: researchProgramsTable.specialtyEn,
+    journalTarget: researchProgramsTable.journalTarget,
+    priceOriginalSar: researchProgramsTable.priceOriginalSar,
+    priceDiscountedSar: researchProgramsTable.priceDiscountedSar,
   }).from(researchProgramsTable);
-  type ProgramSummary = Pick<typeof researchProgramsTable.$inferSelect, "id" | "titleAr" | "titleEn" | "status" | "category" | "seatsLeft">;
+  type ProgramSummary = Pick<typeof researchProgramsTable.$inferSelect,
+    "id" | "titleAr" | "titleEn" | "status" | "category" | "seatsLeft" | "totalSeats"
+    | "specialtyAr" | "specialtyEn" | "journalTarget" | "priceOriginalSar" | "priceDiscountedSar">;
   const programById = new Map<number, ProgramSummary>(programs.map((program: ProgramSummary) => [program.id, program]));
+  const programIds = [...new Set(rows.map((registration: typeof registrationsTable.$inferSelect) => registration.researchId))];
+  const hiddenByProgram = ownerOnly ? await getOpportunityVisibility(programIds) : new Map<number, string[]>();
+  const paymentWorkflowAvailable = ownerOnly && await hasRegistrationInvoiceSchema();
+  const registrationIds = rows.map((row: typeof registrationsTable.$inferSelect) => row.id);
+  const invoiceRecords = paymentWorkflowAvailable && registrationIds.length
+    ? await db.select().from(registrationInvoiceRecordsTable)
+      .where(inArray(registrationInvoiceRecordsTable.registrationId, registrationIds))
+    : [];
+  const invoiceByRegistration = new Map(invoiceRecords.map((record) => [record.registrationId, record]));
+  const paymentEvents = paymentWorkflowAvailable && rows.length
+    ? await db.select().from(registrationPaymentEventsTable)
+      .where(inArray(registrationPaymentEventsTable.registrationId, registrationIds))
+      .orderBy(desc(registrationPaymentEventsTable.createdAt))
+    : [];
+  const paymentEventsByRegistration = new Map<number, typeof paymentEvents>();
+  for (const event of paymentEvents) {
+    const list = paymentEventsByRegistration.get(event.registrationId) || [];
+    list.push(event);
+    paymentEventsByRegistration.set(event.registrationId, list);
+  }
 
   res.json(rows.map((registration: typeof registrationsTable.$inferSelect) => {
     const custom = (registration.customFields && typeof registration.customFields === "object" ? registration.customFields : {}) as Record<string, string>;
+    const program = programById.get(registration.researchId);
+    const invoice = invoiceByRegistration.get(registration.id);
     return {
       ...registration,
       academicDegree: registration.academicDegree || custom.academicDegree || "",
       hasResearchExperience: registration.hasResearchExperience || custom.hasResearchExperience || "",
       researchExperienceDetails: registration.researchExperienceDetails || custom.researchExperienceDetails || "",
       agreedToFeeAndTasks: registration.agreedToFeeAndTasks || custom.agreedToFeeAndTasks || "",
-      researchTitle: programById.get(registration.researchId)?.titleAr || programById.get(registration.researchId)?.titleEn || registration.researchTitle,
-      researchStatus: programById.get(registration.researchId)?.status || "",
-      researchCategory: programById.get(registration.researchId)?.category || "active",
-      remainingSeats: programById.get(registration.researchId)?.seatsLeft ?? null,
+      researchTitle: registration.researchTitle || program?.titleAr || program?.titleEn || "",
+      researchStatus: program?.status || "",
+      researchCategory: program?.category || "active",
+      remainingSeats: program?.seatsLeft ?? null,
       coordinatorName: staff.role === "owner" && registration.coordinatorId
         ? coordinatorNames.get(registration.coordinatorId) || "منسق سابق"
         : null,
       registrationSource: registration.coordinatorId ? "coordinator" : "public",
+      ...(ownerOnly ? {
+        paymentWorkflowAvailable,
+        paymentStatus: invoice?.paymentStatus || "unpaid",
+        paymentPaidAt: invoice?.paymentPaidAt || null,
+        paymentMarkedBy: invoice?.paymentMarkedBy || null,
+        invoiceOriginalSar: invoice?.originalSar ?? program?.priceOriginalSar ?? null,
+        invoiceDiscountedSar: invoice?.discountedSar ?? program?.priceDiscountedSar ?? null,
+        invoiceTotalSeats: invoice?.totalSeats ?? program?.totalSeats ?? null,
+        invoiceRemainingSeats: invoice?.remainingSeats ?? null,
+        invoiceSpecialty: invoice?.specialty ?? program?.specialtyAr ?? program?.specialtyEn ?? "",
+        invoiceJournalTarget: invoice?.journalTarget ?? program?.journalTarget ?? "",
+        hiddenFields: hiddenByProgram.get(registration.researchId) || [],
+        paymentHistory: paymentEventsByRegistration.get(registration.id) || [],
+      } : {}),
     };
   }));
 });
@@ -384,6 +474,78 @@ router.patch("/registrations/:id/status", requireOwner, async (req, res) => {
     }
     req.log.error({ err: error, registrationId: id }, "Could not change registration status and seat");
     res.status(500).json({ error: "تعذر تحديث الحالة والمقعد. لم يتم اعتماد التغيير." });
+  }
+});
+
+/* ── PATCH /api/registrations/:id/payment ── owner-only payment status, separate from student approval. */
+router.patch("/registrations/:id/payment", requireOwner, async (req, res) => {
+  const id = Number(req.params["id"]);
+  const status = req.body?.status;
+  if (!Number.isInteger(id) || id < 1 || !["paid", "unpaid"].includes(status)) {
+    res.status(400).json({ error: "رقم التسجيل أو حالة السداد غير صحيحة." });
+    return;
+  }
+  if (!await hasRegistrationInvoiceSchema()) {
+    res.status(503).json({ error: "ميزة السداد غير مفعلة بعد. طبّق ملف ترحيل قاعدة Render أولاً؛ لن يتغير التسجيل أو المقعد." });
+    return;
+  }
+  const owner = res.locals.owner as { email?: string } | undefined;
+  const recordedBy = owner?.email?.trim().toLowerCase();
+  if (!recordedBy) {
+    res.status(403).json({ error: "تعذر التحقق من حساب المالك." });
+    return;
+  }
+  try {
+    const updated = await db.transaction(async (tx: DatabaseTransaction) => {
+      const [registration] = await tx.select().from(registrationsTable).where(eq(registrationsTable.id, id)).limit(1).for("update");
+      if (!registration) throw new RegistrationCapacityError("التسجيل غير موجود.", 404);
+      let [current] = await tx.select().from(registrationInvoiceRecordsTable)
+        .where(eq(registrationInvoiceRecordsTable.registrationId, id)).limit(1).for("update");
+      if (!current) {
+        const [program] = await tx.select().from(researchProgramsTable).where(eq(researchProgramsTable.id, registration.researchId)).limit(1);
+        if (!program) throw new RegistrationCapacityError("الفرصة المرتبطة بهذا التسجيل غير موجودة.", 409);
+        await tx.insert(registrationInvoiceRecordsTable).values({
+          registrationId: id,
+          originalSar: program.priceOriginalSar,
+          discountedSar: program.priceDiscountedSar,
+          totalSeats: program.totalSeats,
+          specialty: program.specialtyAr || program.specialtyEn,
+          journalTarget: program.journalTarget,
+          paymentStatus: "unpaid",
+        });
+        [current] = await tx.select().from(registrationInvoiceRecordsTable)
+          .where(eq(registrationInvoiceRecordsTable.registrationId, id)).limit(1).for("update");
+      }
+      if (!current) throw new RegistrationCapacityError("تعذر تجهيز سجل الفاتورة.", 409);
+      if (current.paymentStatus === status) return current;
+      const paidAt = status === "paid" ? new Date() : null;
+      const [row] = await tx.update(registrationInvoiceRecordsTable).set({
+        paymentStatus: status,
+        paymentPaidAt: paidAt,
+        paymentMarkedBy: status === "paid" ? recordedBy : null,
+        updatedAt: new Date(),
+      }).where(eq(registrationInvoiceRecordsTable.registrationId, id)).returning();
+      await tx.insert(registrationPaymentEventsTable).values({
+        registrationId: id,
+        status,
+        recordedBy,
+        createdAt: new Date(),
+      });
+      return row;
+    });
+    res.json({
+      id,
+      paymentStatus: updated.paymentStatus,
+      paymentPaidAt: updated.paymentPaidAt,
+      paymentMarkedBy: updated.paymentMarkedBy,
+    });
+  } catch (error) {
+    if (error instanceof RegistrationCapacityError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    req.log.error({ err: error, registrationId: id }, "Could not update registration payment status");
+    res.status(500).json({ error: "تعذر تحديث حالة السداد. لم يتغير تسجيل الطالب أو مقعده." });
   }
 });
 

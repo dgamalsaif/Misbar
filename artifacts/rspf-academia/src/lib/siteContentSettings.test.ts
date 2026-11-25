@@ -175,9 +175,9 @@ test("participant opportunity filter visibility is configurable and defaults on"
   );
 });
 
-test("invoice settings default to unpaid and only accept safe image URLs", () => {
+test("invoice settings use a neutral title and only accept safe image URLs", () => {
   assert.equal(DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings.enabled, true);
-  assert.match(DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings.titleAr, /غير مدفوعة/);
+  assert.equal(DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings.titleAr, "فاتورة مشاركة بحثية");
   const normalized = normalizeSiteContentSettings({
     invoiceSettings: {
       enabled: false,

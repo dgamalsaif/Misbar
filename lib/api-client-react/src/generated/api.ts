@@ -43,11 +43,16 @@ import type {
   ParticipantPushSubscriptionInput,
   ParticipantPushSubscriptionRemoval,
   ParticipantResearchUpdateInput,
+  ProgramArchiveUpdate,
+  ProgramArchiveUpdateResponse,
+  ProgramDuplicateGroupsResponse,
   ProgramParticipantNotificationEvent,
   ProgramParticipantNotifications,
   PublishSocialPostResult,
   PublishSocialPostsBody,
   PublishSocialPostsResponse,
+  RegistrationPaymentStatus,
+  RegistrationPaymentUpdate,
   SocialConnectionsResponse,
   SocialOAuthStartResponse,
   SocialPostsResponse,
@@ -216,6 +221,274 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+export const getUpdateRegistrationPaymentStatusUrl = (id: number,) => {
+
+
+
+
+  return `/api/registrations/${id}/payment`
+}
+
+/**
+ * Owner-only manual status update. Does not approve the registration or change seat allocation.
+ * @summary Mark a registration invoice paid or unpaid
+ */
+export const updateRegistrationPaymentStatus = async (id: number,
+    registrationPaymentUpdate: RegistrationPaymentUpdate, options?: Parameters<typeof customFetch>[1]): Promise<RegistrationPaymentStatus> => {
+
+  return customFetch<RegistrationPaymentStatus>(getUpdateRegistrationPaymentStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(registrationPaymentUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateRegistrationPaymentStatusMutationKey = () => ['updateRegistrationPaymentStatus'] as const;
+
+export const getUpdateRegistrationPaymentStatusMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>, TError,UpdateRegistrationPaymentStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>, TError,UpdateRegistrationPaymentStatusMutationVariables, TContext> => {
+
+const mutationKey = getUpdateRegistrationPaymentStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>, UpdateRegistrationPaymentStatusMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateRegistrationPaymentStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateRegistrationPaymentStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>>
+    export type UpdateRegistrationPaymentStatusMutationBody = BodyType<RegistrationPaymentUpdate>
+    export type UpdateRegistrationPaymentStatusMutationError = ErrorType<void>
+    export type UpdateRegistrationPaymentStatusMutationVariables = {id: number;data: BodyType<RegistrationPaymentUpdate>}
+
+    /**
+ * Owner-only manual status update. Does not approve the registration or change seat allocation.
+ * @summary Mark a registration invoice paid or unpaid
+ */
+export const useUpdateRegistrationPaymentStatus = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>, TError,UpdateRegistrationPaymentStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateRegistrationPaymentStatus>>,
+        TError,
+        UpdateRegistrationPaymentStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateRegistrationPaymentStatusMutationOptions(options), queryClient);
+    }
+
+export const getListDuplicateResearchOpportunitiesUrl = () => {
+
+
+
+
+  return `/api/programs/duplicates`
+}
+
+/**
+ * Matches normalized Arabic and English title/specialty values. Returns only the minimum data needed for owner review.
+ * @summary List likely duplicate opportunities for owner review
+ */
+export const listDuplicateResearchOpportunities = async ( options?: Parameters<typeof customFetch>[1]): Promise<ProgramDuplicateGroupsResponse> => {
+
+  return customFetch<ProgramDuplicateGroupsResponse>(getListDuplicateResearchOpportunitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDuplicateResearchOpportunitiesQueryKey = () => {
+    return [
+    `/api/programs/duplicates`
+    ] as const;
+    }
+
+
+export const getListDuplicateResearchOpportunitiesQueryOptions = <TData = Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDuplicateResearchOpportunitiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>> = ({ signal }) => listDuplicateResearchOpportunities({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListDuplicateResearchOpportunitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>>
+export type ListDuplicateResearchOpportunitiesQueryError = ErrorType<void>
+
+
+/**
+ * Matches normalized Arabic and English title/specialty values. Returns only the minimum data needed for owner review.
+ * @summary List likely duplicate opportunities for owner review
+ */
+export function useListDuplicateResearchOpportunities<TData = Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>,
+          TError,
+          Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * Matches normalized Arabic and English title/specialty values. Returns only the minimum data needed for owner review.
+ * @summary List likely duplicate opportunities for owner review
+ */
+export function useListDuplicateResearchOpportunities<TData = Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>,
+          TError,
+          Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * Matches normalized Arabic and English title/specialty values. Returns only the minimum data needed for owner review.
+ * @summary List likely duplicate opportunities for owner review
+ */
+export function useListDuplicateResearchOpportunities<TData = Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * Matches normalized Arabic and English title/specialty values. Returns only the minimum data needed for owner review.
+ * @summary List likely duplicate opportunities for owner review
+ */
+export function useListDuplicateResearchOpportunities<TData = Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDuplicateResearchOpportunities>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListDuplicateResearchOpportunitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateResearchOpportunityArchiveUrl = (id: number,) => {
+
+
+
+
+  return `/api/programs/${id}/archive`
+}
+
+/**
+ * Requires an explicit canonical opportunity before archiving. Existing registrations and reserved seats are retained. A restored duplicate stays a draft if another matching copy is still active.
+ * @summary Archive or restore a duplicate opportunity without deleting records
+ */
+export const updateResearchOpportunityArchive = async (id: number,
+    programArchiveUpdate: ProgramArchiveUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ProgramArchiveUpdateResponse> => {
+
+  return customFetch<ProgramArchiveUpdateResponse>(getUpdateResearchOpportunityArchiveUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(programArchiveUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateResearchOpportunityArchiveMutationKey = () => ['updateResearchOpportunityArchive'] as const;
+
+export const getUpdateResearchOpportunityArchiveMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateResearchOpportunityArchive>>, TError,UpdateResearchOpportunityArchiveMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateResearchOpportunityArchive>>, TError,UpdateResearchOpportunityArchiveMutationVariables, TContext> => {
+
+const mutationKey = getUpdateResearchOpportunityArchiveMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateResearchOpportunityArchive>>, UpdateResearchOpportunityArchiveMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateResearchOpportunityArchive(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateResearchOpportunityArchiveMutationResult = NonNullable<Awaited<ReturnType<typeof updateResearchOpportunityArchive>>>
+    export type UpdateResearchOpportunityArchiveMutationBody = BodyType<ProgramArchiveUpdate>
+    export type UpdateResearchOpportunityArchiveMutationError = ErrorType<void>
+    export type UpdateResearchOpportunityArchiveMutationVariables = {id: number;data: BodyType<ProgramArchiveUpdate>}
+
+    /**
+ * Requires an explicit canonical opportunity before archiving. Existing registrations and reserved seats are retained. A restored duplicate stays a draft if another matching copy is still active.
+ * @summary Archive or restore a duplicate opportunity without deleting records
+ */
+export const useUpdateResearchOpportunityArchive = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateResearchOpportunityArchive>>, TError,UpdateResearchOpportunityArchiveMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateResearchOpportunityArchive>>,
+        TError,
+        UpdateResearchOpportunityArchiveMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateResearchOpportunityArchiveMutationOptions(options), queryClient);
+    }
 
 export const getStartOrcidAuthorizationUrl = () => {
 

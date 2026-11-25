@@ -79,9 +79,9 @@ test("country and WhatsApp fields stay enabled and required after loading saved 
   assert.equal(fields.city.placeholderEn, "Riyadh");
 });
 
-test("invoice settings persist as unpaid and reject unsafe image links", () => {
+test("invoice settings use a neutral title and reject unsafe image links", () => {
   assert.equal(DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings.enabled, true);
-  assert.match(DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings.titleAr, /غير مدفوعة/);
+  assert.equal(DEFAULT_SITE_CONTENT_SETTINGS.invoiceSettings.titleAr, "فاتورة مشاركة بحثية");
   const saved = sanitizeSiteContentSettings({
     invoiceSettings: {
       enabled: false,

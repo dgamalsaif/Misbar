@@ -9,6 +9,35 @@ export interface HealthStatus {
   status: string;
 }
 
+export type RegistrationPaymentUpdateStatus = typeof RegistrationPaymentUpdateStatus[keyof typeof RegistrationPaymentUpdateStatus];
+
+
+export const RegistrationPaymentUpdateStatus = {
+  paid: 'paid',
+  unpaid: 'unpaid',
+} as const;
+
+export interface RegistrationPaymentUpdate {
+  status: RegistrationPaymentUpdateStatus;
+}
+
+export type RegistrationPaymentStatusPaymentStatus = typeof RegistrationPaymentStatusPaymentStatus[keyof typeof RegistrationPaymentStatusPaymentStatus];
+
+
+export const RegistrationPaymentStatusPaymentStatus = {
+  paid: 'paid',
+  unpaid: 'unpaid',
+} as const;
+
+export interface RegistrationPaymentStatus {
+  id: number;
+  paymentStatus: RegistrationPaymentStatusPaymentStatus;
+  /** @nullable */
+  paymentPaidAt: string | null;
+  /** @nullable */
+  paymentMarkedBy: string | null;
+}
+
 export interface SocialOAuthStartResponse {
   authorizeUrl: string;
 }
@@ -382,6 +411,51 @@ export interface ParticipantNotificationRetryResponse {
   message: string;
   /** @minimum 1 */
   queued: number;
+}
+
+export interface ProgramDuplicateOpportunity {
+  id: number;
+  titleAr: string;
+  titleEn: string;
+  specialtyAr: string;
+  specialtyEn: string;
+  category: string;
+  status: string;
+  seatsLeft: number;
+  totalSeats: number;
+  isArchived: boolean;
+  /** @nullable */
+  archivedAt: string | null;
+  /** @nullable */
+  canonicalResearchId: number | null;
+  /** @minimum 0 */
+  registrationCount: number;
+}
+
+export interface ProgramDuplicateGroup {
+  key: string;
+  /** @minimum 0 */
+  activeCount: number;
+  opportunities: ProgramDuplicateOpportunity[];
+}
+
+export interface ProgramDuplicateGroupsResponse {
+  archiveAvailable: boolean;
+  groups: ProgramDuplicateGroup[];
+}
+
+export interface ProgramArchiveUpdate {
+  archived: boolean;
+  /** @minimum 1 */
+  canonicalId?: number;
+  restoreAsDraft?: boolean;
+}
+
+export interface ProgramArchiveUpdateResponse {
+  id: number;
+  archived: boolean;
+  status: string;
+  restoredAsDraft: boolean;
 }
 
 export type CompleteOrcidAuthorizationParams = {

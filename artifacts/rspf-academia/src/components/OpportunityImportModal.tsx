@@ -15,7 +15,11 @@ const IMPORT_COLUMNS = [
 type ImportRow = Record<string, string | number> & { sourceRow?: number };
 type ImportResult = {
   inserted?: ResearchOpportunity[];
-  rejected?: Array<{ row: number; reason: string }>;
+  rejected?: Array<{
+    row: number;
+    reason: string;
+    matchedOpportunity?: { id?: number; sourceRow?: number; title: string; specialty: string };
+  }>;
   skipped?: number;
   received?: number;
   error?: string;
@@ -227,7 +231,16 @@ export default function OpportunityImportModal({
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-right">
             <p className="font-black text-amber-900">صفوف لم تُستورد ({result.rejected.length})</p>
             <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-xs leading-5 text-amber-800">
-              {result.rejected.map((item) => <li key={`${item.row}-${item.reason}`}>الصف {item.row}: {item.reason}</li>)}
+              {result.rejected.map((item) => (
+                <li key={`${item.row}-${item.reason}`}>
+                  <span>الصف {item.row}: {item.reason}</span>
+                  {item.matchedOpportunity && (
+                    <span className="block pr-3 font-bold">
+                      المطابقة: {item.matchedOpportunity.id ? `الفرصة #${item.matchedOpportunity.id}` : `الصف #${item.matchedOpportunity.sourceRow}`} — {item.matchedOpportunity.title} · {item.matchedOpportunity.specialty}
+                    </span>
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
         ) : null}
